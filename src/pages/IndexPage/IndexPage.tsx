@@ -4,6 +4,7 @@ import type { FC } from 'react';
 import { Link } from '@/components/Link/Link.tsx';
 import { Page } from '@/components/Page.tsx';
 
+import InitDataPage from '@/components/stc';
 import tonSvg from './ton.svg';
 
 export const IndexPage: FC = () => {
@@ -16,10 +17,10 @@ export const IndexPage: FC = () => {
         >
           <Link to="/ton-connect">
             <Cell
-              before={<Image src={tonSvg} style={{ backgroundColor: '#007AFF' }}/>}
+              before={<Image src={tonSvg} style={{ backgroundColor: '#007AFF' }} />}
               subtitle="Connect your TON wallet"
-            >
-              TON Connect
+            >TON
+              <InitDataPage />
             </Cell>
           </Link>
         </Section>
