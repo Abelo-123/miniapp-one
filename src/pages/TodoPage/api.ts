@@ -1,6 +1,6 @@
 import type { Todo } from './types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost/todo-api/todos.php';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://paxyo.com/backend/todos.php';
 
 export async function fetchTodos(userId: number): Promise<Todo[]> {
     const response = await fetch(`${API_BASE}?user_id=${userId}`);
