@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, type FC, type FormEvent } from 'react';
-import { useSignal, isMiniAppDark, initData } from '@telegram-apps/sdk-react';
+import { useState, useEffect, useCallback, type FC } from 'react';
+import { useSignal, initData } from '@telegram-apps/sdk-react';
 import {
     List,
     Section,
@@ -26,7 +26,6 @@ const DeleteIcon = () => (
 );
 
 export const TodoPage: FC = () => {
-    const isDark = useSignal(isMiniAppDark);
     const initDataState = useSignal(initData.state);
     const userId = initDataState?.user?.id || 12345;
 
