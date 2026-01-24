@@ -168,7 +168,7 @@ export const TodoPage: FC = () => {
                     <div className="center-content">
                         <Title level="3">No tasks found</Title>
                         <Text>
-                            {filter === 'all' ? 'Add a task tto get started' :
+                            {filter === 'all' ? 'Add a task to get started' :
                                 filter === 'active' ? 'You have completed everything!' :
                                     'No completed tasks yet'}
                         </Text>

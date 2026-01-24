@@ -4,12 +4,12 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://paxyo.com/backend/todo
 
 function mapToTodo(data: any): Todo {
     return {
-        ...data,
-        // Ensure completed is a boolean, handling 0/1, "0"/"1", true/false
-        completed: data.completed === true || data.completed === 1 || data.completed === '1',
         id: Number(data.id),
         user_id: Number(data.user_id),
-        completed_by: data.completed_by ? Number(data.completed_by) : undefined
+        text: String(data.text || ''),
+        completed: data.completed === true || data.completed === 1 || data.completed === '1' || data.completed === 'true',
+        completed_by: data.completed_by ? Number(data.completed_by) : undefined,
+        created_at: String(data.created_at || '')
     };
 }
 
