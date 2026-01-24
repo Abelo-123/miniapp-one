@@ -1,4 +1,4 @@
-import { Section, Cell, Image, List } from '@telegram-apps/telegram-ui';
+import { Avatar, Section, Cell, Image, List } from '@telegram-apps/telegram-ui';
 import type { FC } from 'react';
 
 import { Link } from '@/components/Link/Link.tsx';
@@ -21,6 +21,10 @@ export const IndexPage: FC = () => {
               subtitle="Connect your TON wallet"
             >TON
               <InitDataPage />
+              <Avatar
+                size={96}
+                src="https://avatars.githubusercontent.com/u/84640980?v=4"
+              />
             </Cell>
           </Link>
         </Section>
@@ -35,6 +39,9 @@ export const IndexPage: FC = () => {
             <Cell subtitle="Platform identifier, Mini Apps version, etc.">Launch Parameters</Cell>
           </Link>
           <Link to="/theme-params">
+            <Cell subtitle="Telegram application palette information">Theme Parameters</Cell>
+          </Link>
+          <Link to="/about">
             <Cell subtitle="Telegram application palette information">Theme Parameters</Cell>
           </Link>
         </Section>
