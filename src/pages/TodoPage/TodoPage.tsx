@@ -113,7 +113,10 @@ export const TodoPage: FC = () => {
                     header="Team Tasks"
                     footer="Tasks are shared with everyone."
                 >
-                    <Cell
+                    <Input
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        placeholder="Whats needs to be done?"
                         after={
                             <Button
                                 size="s"
@@ -123,13 +126,7 @@ export const TodoPage: FC = () => {
                                 Add
                             </Button>
                         }
-                    >
-                        <Input
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            placeholder="What needs to be done?"
-                        />
-                    </Cell>
+                    />
                 </Section>
 
                 <div style={{ padding: '0 20px 10px' }}>
