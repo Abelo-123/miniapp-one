@@ -1,23 +1,42 @@
 import { useState, useEffect, useCallback, type FC, type FormEvent } from 'react';
 import { useSignal, isMiniAppDark, initData } from '@telegram-apps/sdk-react';
+import {
+    List,
+    Section,
+    Cell,
+    Input,
+    Button,
+    Text,
+    Title,
+    Placeholder,
+    SegmentedControl,
+    Checkbox
+} from '@telegram-apps/telegram-ui';
 import { Page } from '@/components/Page';
 import type { Todo, FilterType } from './types';
 import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
 import './TodoPage.css';
 
+// Simple icon replacement using text if icons aren't available, 
+// or SVG if we want to be fancy.
+const DeleteIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+);
+
 export const TodoPage: FC = () => {
     const isDark = useSignal(isMiniAppDark);
     const initDataState = useSignal(initData.state);
-    const userId = initDataState?.user?.id || 12345; // Fallback for testing
+    const userId = initDataState?.user?.id || 12345;
 
     const [todos, setTodos] = useState<Todo[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [filter, setFilter] = useState<FilterType>('all');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isAdding, setIsAdding] = useState(false);
 
-    // Load todos on mount
+    // Load todos
     const loadTodos = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -36,232 +55,180 @@ export const TodoPage: FC = () => {
         loadTodos();
     }, [loadTodos]);
 
-    // Handle add todo
-    const handleAddTodo = async (e: FormEvent) => {
-        e.preventDefault();
-        if (!inputValue.trim() || isAdding) return;
-
+    // Handlers
+    const handleAddTodo = async () => {
+        if (!inputValue.trim()) return;
         try {
-            setIsAdding(true);
             const newTodo = await addTodo(userId, inputValue.trim());
             setTodos(prev => [newTodo, ...prev]);
             setInputValue('');
         } catch (err) {
             console.error(err);
-        } finally {
-            setIsAdding(false);
         }
     };
 
-    // Handle toggle complete
     const handleToggle = async (todo: Todo) => {
         const newCompleted = !todo.completed;
-        // Optimistic update
-        setTodos(prev =>
-            prev.map(t => (t.id === todo.id ? { ...t, completed: newCompleted, completed_by: newCompleted ? userId : undefined } : t))
+        const optimisticTodos = todos.map(t =>
+            t.id === todo.id ? { ...t, completed: newCompleted, completed_by: newCompleted ? userId : undefined } : t
         );
+        setTodos(optimisticTodos);
+
         try {
             await updateTodo(userId, todo.id, { completed: newCompleted });
         } catch (err) {
-            // Revert on error
-            setTodos(prev =>
-                prev.map(t => (t.id === todo.id ? { ...t, completed: todo.completed } : t))
-            );
+            setTodos(todos); // Revert
             console.error(err);
         }
     };
 
-    // Handle delete
     const handleDelete = async (todoId: number) => {
+        const optimisticTodos = todos.filter(t => t.id !== todoId);
         const prevTodos = todos;
-        // Optimistic update
-        setTodos(prev => prev.filter(t => t.id !== todoId));
+        setTodos(optimisticTodos);
+
         try {
             await deleteTodo(userId, todoId);
         } catch (err) {
-            // Revert on error
-            setTodos(prevTodos);
+            setTodos(prevTodos); // Revert
             console.error(err);
         }
     };
 
-    // Filter todos
+    // Derived state
     const filteredTodos = todos.filter(todo => {
         if (filter === 'active') return !todo.completed;
         if (filter === 'completed') return todo.completed;
         return true;
     });
 
-    // Stats
-    const completedCount = todos.filter(t => t.completed).length;
-    const activeCount = todos.length - completedCount;
-    const progress = todos.length > 0 ? (completedCount / todos.length) * 100 : 0;
-
-    // Generate user color
     const getUserColor = (id: number) => {
         const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#FFCC5C', '#FF9671'];
-        return colors[id % colors.length];
+        return colors[Math.abs(id) % colors.length];
     };
 
     return (
         <Page back={false}>
-            <div className="todo-page">
-                {/* Header */}
-                <header className="todo-header">
-                    <h1>✨ Team Tasks</h1>
-                    <button
-                        className="theme-toggle"
-                        onClick={() => {
-                            // Theme is controlled by Telegram, this is just visual feedback
-                            document.body.classList.toggle('force-dark');
-                        }}
-                        aria-label="Toggle theme"
+            <List style={{ background: 'var(--tgui--secondary_bg_color)', minHeight: '100vh' }}>
+                <Section
+                    header="Team Tasks"
+                    footer="Tasks are shared with everyone."
+                >
+                    <Cell
+                        after={
+                            <Button
+                                size="s"
+                                onClick={handleAddTodo}
+                                disabled={!inputValue.trim()}
+                            >
+                                Add
+                            </Button>
+                        }
                     >
-                        {isDark ? '☀️' : '🌙'}
-                    </button>
-                </header>
-
-                {/* Input Section */}
-                <form className="todo-input-section" onSubmit={handleAddTodo}>
-                    <div className="todo-input-wrapper">
-                        <input
-                            type="text"
-                            className="todo-input"
-                            placeholder="What needs to be done?"
+                        <Input
                             value={inputValue}
-                            onChange={e => setInputValue(e.target.value)}
-                            disabled={isAdding}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder="What needs to be done?"
                         />
-                        <button
-                            type="submit"
-                            className="add-button"
-                            disabled={!inputValue.trim() || isAdding}
-                        >
-                            +
-                        </button>
-                    </div>
-                </form>
+                    </Cell>
+                </Section>
 
-                {/* Filter Section */}
-                <div className="filter-section">
-                    <button
-                        className={`filter-button ${filter === 'all' ? 'active' : ''}`}
-                        onClick={() => setFilter('all')}
+                <div style={{ padding: '0 20px 10px' }}>
+                    <SegmentedControl
                     >
-                        All<span className="filter-count">{todos.length}</span>
-                    </button>
-                    <button
-                        className={`filter-button ${filter === 'active' ? 'active' : ''}`}
-                        onClick={() => setFilter('active')}
-                    >
-                        Active<span className="filter-count">{activeCount}</span>
-                    </button>
-                    <button
-                        className={`filter-button ${filter === 'completed' ? 'active' : ''}`}
-                        onClick={() => setFilter('completed')}
-                    >
-                        Completed<span className="filter-count">{completedCount}</span>
-                    </button>
+                        <SegmentedControl.Item
+                            onClick={() => setFilter('all')}
+                            selected={filter === 'all'}
+                        >
+                            All
+                        </SegmentedControl.Item>
+                        <SegmentedControl.Item
+                            onClick={() => setFilter('active')}
+                            selected={filter === 'active'}
+                        >
+                            Active
+                        </SegmentedControl.Item>
+                        <SegmentedControl.Item
+                            onClick={() => setFilter('completed')}
+                            selected={filter === 'completed'}
+                        >
+                            Done
+                        </SegmentedControl.Item>
+                    </SegmentedControl>
                 </div>
 
-                {/* Progress Section */}
-                {todos.length > 0 && (
-                    <div className="progress-section">
-                        <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${progress}%` }} />
-                        </div>
-                        <p className="progress-text">
-                            {completedCount} of {todos.length} tasks completed
-                        </p>
-                    </div>
-                )}
-
-                {/* Content */}
                 {isLoading ? (
-                    <div className="loading-state">
+                    <div className="center-content">
                         <div className="spinner" />
+                        <Text>Loading tasks...</Text>
                     </div>
                 ) : error ? (
-                    <div className="error-state">
-                        <div className="error-icon">⚠️</div>
-                        <p>{error}</p>
-                        <button className="retry-button" onClick={loadTodos}>
-                            Try Again
-                        </button>
-                    </div>
+                    <Placeholder
+                        header="Oops"
+                        description={error}
+                        action={<Button onClick={loadTodos}>Try Again</Button>}
+                    />
                 ) : filteredTodos.length === 0 ? (
-                    <div className="empty-state">
-                        <div className="empty-icon">
-                            {filter === 'all' ? '📝' : filter === 'active' ? '🎉' : '🔍'}
-                        </div>
-                        <h3 className="empty-title">
-                            {filter === 'all'
-                                ? 'No tasks yet'
-                                : filter === 'active'
-                                    ? 'All done!'
-                                    : 'No completed tasks'}
-                        </h3>
-                        <p className="empty-subtitle">
-                            {filter === 'all'
-                                ? 'Add your first task above'
-                                : filter === 'active'
-                                    ? 'You completed all your tasks'
-                                    : 'Complete some tasks to see them here'}
-                        </p>
+                    <div className="center-content">
+                        <Title level="3">No tasks found</Title>
+                        <Text>
+                            {filter === 'all' ? 'Add a task to get started' :
+                                filter === 'active' ? 'You have completed everything!' :
+                                    'No completed tasks yet'}
+                        </Text>
                     </div>
                 ) : (
-                    <div className="todo-list">
+                    <Section header={`${filter.charAt(0).toUpperCase() + filter.slice(1)} Tasks (${filteredTodos.length})`}>
                         {filteredTodos.map(todo => (
-                            <div
+                            <Cell
                                 key={todo.id}
-                                className={`todo-item ${todo.completed ? 'completed' : ''}`}
+                                multiline
+                                before={
+                                    <Checkbox
+                                        checked={!!todo.completed}
+                                        onChange={() => handleToggle(todo)}
+                                    />
+                                }
+                                after={
+                                    <Button
+                                        mode="plain"
+                                        size="s"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete(todo.id);
+                                        }}
+                                        style={{ color: 'var(--tgui--destructive_text_color)' }}
+                                    >
+                                        <DeleteIcon />
+                                    </Button>
+                                }
                             >
-                                <div className="todo-main">
-                                    <div className="todo-meta-top">
+                                <div className="todo-cell-content">
+                                    <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>
+                                        {todo.text}
+                                    </span>
+                                    <div className="todo-meta">
                                         <span
-                                            className="user-badge creator-badge"
+                                            className="user-badge"
                                             style={{ backgroundColor: getUserColor(todo.user_id) }}
                                         >
                                             User {todo.user_id}
                                         </span>
-                                    </div>
-                                    <div className="todo-content-wrapper">
-                                        <button
-                                            className={`todo-checkbox ${todo.completed ? 'checked' : ''}`}
-                                            onClick={() => handleToggle(todo)}
-                                            aria-label={todo.completed ? 'Mark as incomplete' : 'Mark as complete'}
-                                        >
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                                <polyline points="20 6 9 17 4 12" />
-                                            </svg>
-                                        </button>
-                                        <span className="todo-text">{todo.text}</span>
-                                    </div>
-                                    {todo.completed && todo.completed_by && (
-                                        <div className="todo-meta-bottom">
+                                        {todo.completed && todo.completed_by && (
                                             <span
-                                                className="user-badge completer-badge"
+                                                className="user-badge"
                                                 style={{ backgroundColor: getUserColor(todo.completed_by), opacity: 0.8 }}
                                             >
                                                 ✓ Done by {todo.completed_by}
                                             </span>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
-                                <button
-                                    className="delete-button"
-                                    onClick={() => handleDelete(todo.id)}
-                                    aria-label="Delete todo"
-                                >
-                                    🗑️
-                                </button>
-                            </div>
+                            </Cell>
                         ))}
-                    </div>
+                    </Section>
                 )}
-            </div>
+            </List>
         </Page>
     );
 };
-
-export default TodoPage;

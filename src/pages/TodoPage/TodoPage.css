@@ -1,392 +1,52 @@
-/* Premium Todo App Styles */
+/* TodoPage styles using Telegram UI override or helpers */
 
-.todo-page {
-  min-height: 100vh;
-  padding-bottom: 100px;
-}
-
-/* Header */
-.todo-header {
-  display: flex;
-  justify-content: space-between;
+/* Badges for shared todo list */
+.user-badge {
+  display: inline-flex;
   align-items: center;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, var(--tgui--bg_color) 0%, var(--tgui--secondary_bg_color) 100%);
-  border-bottom: 1px solid var(--tgui--outline);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-right: 6px;
+  color: #fff;
+  text-transform: uppercase;
 }
 
-.todo-header h1 {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.theme-toggle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  background: var(--tgui--button_color);
-  color: var(--tgui--button_text_color);
-  cursor: pointer;
+/* Custom layout for complex cell content */
+.todo-cell-content {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s, box-shadow 0.2s;
-  font-size: 20px;
-}
-
-.theme-toggle:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.theme-toggle:active {
-  transform: scale(0.95);
-}
-
-/* Input Section */
-.todo-input-section {
-  padding: 20px;
-  background: var(--tgui--secondary_bg_color);
-}
-
-.todo-input-wrapper {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.todo-input {
-  flex: 1;
-  padding: 14px 18px;
-  border-radius: 16px;
-  border: 2px solid var(--tgui--outline);
-  background: var(--tgui--bg_color);
-  color: var(--tgui--text_color);
-  font-size: 16px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.todo-input:focus {
-  outline: none;
-  border-color: var(--tgui--link_color);
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
-}
-
-.todo-input::placeholder {
-  color: var(--tgui--hint_color);
-}
-
-.add-button {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  border: none;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s, box-shadow 0.2s;
-  font-size: 24px;
-  font-weight: 300;
-}
-
-.add-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-}
-
-.add-button:active {
-  transform: scale(0.95);
-}
-
-.add-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Filter Section */
-.filter-section {
-  padding: 16px 20px;
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.filter-section::-webkit-scrollbar {
-  display: none;
-}
-
-.filter-button {
-  padding: 10px 20px;
-  border-radius: 20px;
-  border: 2px solid var(--tgui--outline);
-  background: var(--tgui--bg_color);
-  color: var(--tgui--text_color);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.filter-button:hover {
-  border-color: var(--tgui--link_color);
-}
-
-.filter-button.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: transparent;
-}
-
-.filter-count {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: 12px;
-}
-
-/* Progress Section */
-.progress-section {
-  padding: 0 20px 16px;
-}
-
-.progress-bar {
-  height: 6px;
-  background: var(--tgui--outline);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--tgui--hint_color);
-  text-align: center;
-}
-
-/* Todo List */
-.todo-list {
-  padding: 0 20px;
-}
-
-/* Todo Item */
-.todo-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px;
-  margin-bottom: 12px;
-  background: var(--tgui--bg_color);
-  border-radius: 16px;
-  border: 1px solid var(--tgui--outline);
-  transition: transform 0.2s, box-shadow 0.2s, opacity 0.3s;
-  animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.todo-item:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.todo-item.completed {
-  opacity: 0.6;
-}
-
-.todo-checkbox {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: 2px solid var(--tgui--outline);
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.todo-checkbox:hover {
-  border-color: var(--tgui--link_color);
-}
-
-.todo-checkbox.checked {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: transparent;
-}
-
-.todo-checkbox svg {
-  width: 14px;
-  height: 14px;
-  color: white;
-  opacity: 0;
-  transform: scale(0);
-  transition: all 0.2s;
-}
-
-.todo-checkbox.checked svg {
-  opacity: 1;
-  transform: scale(1);
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
 }
 
 .todo-text {
-  flex: 1;
   font-size: 16px;
-  color: var(--tgui--text_color);
-  word-break: break-word;
-  transition: all 0.2s;
+  line-height: 20px;
 }
 
-.todo-item.completed .todo-text {
+.todo-text.completed {
   text-decoration: line-through;
-  color: var(--tgui--hint_color);
+  opacity: 0.6;
 }
 
-.delete-button {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--tgui--destructive_text_color);
-  cursor: pointer;
+.todo-meta {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  opacity: 0;
-  font-size: 18px;
-}
-
-.todo-item:hover .delete-button {
-  opacity: 1;
-}
-
-.delete-button:hover {
-  background: var(--tgui--destructive_text_color);
-  color: white;
-}
-
-/* User Badges & New Layout */
-.todo-item {
-  align-items: flex-start;
-  /* Changed from center to handle multi-line */
-}
-
-.todo-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.todo-content-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.todo-meta-top {
-  display: flex;
-  margin-left: 36px;
-  /* Align with text (checkbox width + gap) */
-  margin-bottom: 2px;
-}
-
-.todo-meta-bottom {
-  display: flex;
-  margin-left: 36px;
+  flex-wrap: wrap;
+  gap: 4px;
   margin-top: 2px;
 }
 
-.user-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 10px;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.creator-badge {
-  /* Dynamic bg based on user id */
-}
-
-.completer-badge {
-  /* Dynamic bg */
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-}
-
-.empty-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--tgui--text_color);
-  margin-bottom: 8px;
-}
-
-.empty-subtitle {
-  font-size: 14px;
-  color: var(--tgui--hint_color);
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 60px;
-}
-
+/* Spinner for loading state */
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--tgui--outline);
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--tgui--outline);
   border-top-color: var(--tgui--link_color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  margin: 20px auto;
 }
 
 @keyframes spin {
@@ -395,26 +55,12 @@
   }
 }
 
-/* Error State */
-.error-state {
-  text-align: center;
+.center-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 40px 20px;
-  color: var(--tgui--destructive_text_color);
-}
-
-.error-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.retry-button {
-  margin-top: 16px;
-  padding: 12px 24px;
-  border-radius: 12px;
-  border: none;
-  background: var(--tgui--button_color);
-  color: var(--tgui--button_text_color);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+  text-align: center;
+  color: var(--tgui--hint_color);
 }
