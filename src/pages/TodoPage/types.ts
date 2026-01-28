@@ -11,7 +11,7 @@ export interface Todo {
 export interface HabitMetadata {
   frequency: 'daily';
   streak: number;
-  history: string[]; // Array of 'YYYY-MM-DD' strings
+  history: Record<string, number>; // Date (YYYY-MM-DD) -> UserID
 }
 
 export type FilterType = 'all' | 'active' | 'completed';

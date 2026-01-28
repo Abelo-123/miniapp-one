@@ -12,7 +12,15 @@ function mapToTodo(data: any): Todo {
         const parts = text.split(HABIT_DELIMITER);
         text = parts[0];
         try {
-            habit = JSON.parse(parts[1]);
+            const parsed = JSON.parse(parts[1]);
+            // Migration: Convert array history to Record<date, userId>
+            if (Array.isArray(parsed.history)) {
+                parsed.history = parsed.history.reduce((acc: any, date: string) => {
+                    acc[date] = Number(data.user_id) || 0; // Default to creator
+                    return acc;
+                }, {});
+            }
+            habit = parsed;
         } catch (e) {
             console.error('Failed to parse habit metadata', e);
         }

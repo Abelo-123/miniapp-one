@@ -10,7 +10,9 @@ import {
     Title,
     Placeholder,
     SegmentedControl,
-    Checkbox
+    SegmentedControl,
+    Checkbox,
+    Modal
 } from '@telegram-apps/telegram-ui';
 import { Page } from '@/components/Page';
 import type { Todo, FilterType, HabitMetadata } from './types';
@@ -37,6 +39,11 @@ export const TodoPage: FC = () => {
     const [filter, setFilter] = useState<FilterType>('all');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isMemberModalOpen, setIsMemberModalOpen] = useState(false); // Modal State
+
+    // Helper to determine special user
+    const SPECIFIC_USER_ID = 12345; // Hardcoded as per request "Red = Specific", assuming Admin/Me
+    const getMemberColor = (uid: number) => uid === SPECIFIC_USER_ID ? '#FF6B6B' : '#4ECDC4'; // Red vs Blue
 
     // Load todos
     const loadTodos = useCallback(async () => {
@@ -64,7 +71,7 @@ export const TodoPage: FC = () => {
             const habitMetadata: HabitMetadata | undefined = isHabit ? {
                 frequency: 'daily',
                 streak: 0,
-                history: []
+                history: {}
             } : undefined;
 
             const newTodo = await addTodo(userId, inputValue.trim(), habitMetadata);
@@ -103,10 +110,15 @@ export const TodoPage: FC = () => {
     const handleHabitDateToggle = async (todo: Todo, dateStr: string) => {
         if (!todo.habit) return;
 
-        const isCompletedOnDate = todo.habit.history.includes(dateStr);
-        let newHistory = isCompletedOnDate
-            ? todo.habit.history.filter(d => d !== dateStr)
-            : [...todo.habit.history, dateStr];
+        const history = todo.habit.history || {};
+        const isCompletedOnDate = !!history[dateStr];
+
+        let newHistory = { ...history };
+        if (isCompletedOnDate) {
+            delete newHistory[dateStr];
+        } else {
+            newHistory[dateStr] = userId; // Store who completed it
+        }
 
         // Recalculate streak
         // Basic streak calc: iterate backwards from TODAY. 
@@ -127,10 +139,11 @@ export const TodoPage: FC = () => {
 
         // check past days
         // We look for consecutive days backwards
+        const historyKeys = Object.keys(newHistory);
         while (true) {
             checkDate.setDate(checkDate.getDate() - 1);
             const dStr = checkDate.toISOString().split('T')[0];
-            if (newHistory.includes(dStr)) {
+            if (newHistory[dStr]) {
                 streak++;
             } else {
                 // If we broke the chain, handled by the loop end
@@ -155,7 +168,7 @@ export const TodoPage: FC = () => {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
-        const hasYesterday = sortedHistory.includes(yesterdayStr);
+        const hasYesterday = !!newHistory[yesterdayStr];
 
         let calculatedStreak = 0;
 
@@ -164,18 +177,23 @@ export const TodoPage: FC = () => {
             let d = new Date();
             while (true) {
                 d.setDate(d.getDate() - 1);
-                if (sortedHistory.includes(d.toISOString().split('T')[0])) {
+                // Check if key exists in history
+                if (newHistory[d.toISOString().split('T')[0]]) {
                     calculatedStreak++;
                 } else {
                     break;
                 }
             }
         } else if (hasYesterday) {
-            calculatedStreak = 0; // Start at 0, adds up in loop? No, let's just count from yesterday
+            calculatedStreak = 0; // Streak calculation logic is subjective. If today is missed, streak implies *current* streak logic. 
+            // If we want "current streak including valid pending", standard is: if today not done but yesterday done, streak is active (from yesterday).
+            // If today done: streak includes today.
+            // Here we just count backwards from *yesterday*.
             let d = new Date(); // Start today
             d.setDate(d.getDate() - 1); // Yesterday
+            // We know yesterday is present
             while (true) {
-                if (sortedHistory.includes(d.toISOString().split('T')[0])) {
+                if (newHistory[d.toISOString().split('T')[0]]) {
                     calculatedStreak++;
                     d.setDate(d.getDate() - 1);
                 } else {
@@ -239,11 +257,19 @@ export const TodoPage: FC = () => {
     todayDate.setHours(0, 0, 0, 0);
     const todayStr = todayDate.toISOString().split('T')[0];
 
-    // Find the earliest date across all habits to determine start of grid
+    // Find the earliest date: Min of (created_at OR history items)
     const earliestDate = habits.reduce((min, h) => {
-        if (!h.habit?.history.length) return min;
-        const habitMin = h.habit.history.reduce((m, d) => d < m ? d : m, todayStr);
-        return habitMin < min ? habitMin : min;
+        // Start with task creation date
+        let taskMin = h.created_at ? h.created_at.split('T')[0].split(' ')[0] : todayStr;
+
+        // Check history
+        const historyKeys = Object.keys(h.habit?.history || {});
+        if (historyKeys.length > 0) {
+            const histMin = historyKeys.reduce((m, d) => d < m ? d : m, todayStr);
+            if (histMin < taskMin) taskMin = histMin;
+        }
+
+        return taskMin < min ? taskMin : min;
     }, todayStr);
 
     // Default to at least 7 days ago if no history or history is recent
@@ -266,9 +292,37 @@ export const TodoPage: FC = () => {
         <Page back={false}>
             <List style={{ background: 'var(--tgui--secondary_bg_color)', minHeight: '100vh' }}>
                 <Section
-                    header="Team Tasks"
+                    header={
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Team Tasks</span>
+                            <Button size="s" mode="plain" onClick={() => setIsMemberModalOpen(true)}>
+                                Member
+                            </Button>
+                        </div>
+                    }
                     footer="Tasks are shared with everyone."
                 >
+                    {isMemberModalOpen && (
+                        <div style={{
+                            padding: 16,
+                            background: 'var(--tgui--bg_color)',
+                            borderBottom: '1px solid var(--tgui--secondary_bg_color)',
+                            marginBottom: 16
+                        }}>
+                            <Title level="3" style={{ marginBottom: 12 }}>Member Colors</Title>
+                            <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#FF6B6B' }} />
+                                    <Text>Specific User (ID {SPECIFIC_USER_ID})</Text>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#4ECDC4' }} />
+                                    <Text>Other Members</Text>
+                                </div>
+                            </div>
+                            <Button size="s" stretched onClick={() => setIsMemberModalOpen(false)}>Close</Button>
+                        </div>
+                    )}
                     <Input
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
@@ -342,7 +396,10 @@ export const TodoPage: FC = () => {
                                                 {habit.text}
                                             </td>
                                             {dateRange.map(date => {
-                                                const isDone = habit.habit?.history.includes(date);
+                                                const completedBy = habit.habit?.history?.[date]; // Look up user ID
+                                                const isDone = completedBy !== undefined;
+                                                const color = isDone ? getMemberColor(completedBy) : 'var(--tgui--secondary_bg_color)';
+
                                                 return (
                                                     <td key={date} style={{ textAlign: 'center', padding: 4 }}>
                                                         <div
@@ -351,7 +408,7 @@ export const TodoPage: FC = () => {
                                                                 width: 20,
                                                                 height: 20,
                                                                 borderRadius: '50%',
-                                                                background: isDone ? '#4ECDC4' : 'var(--tgui--secondary_bg_color)',
+                                                                background: color,
                                                                 border: '1px solid var(--tgui--hint_color)',
                                                                 margin: '0 auto',
                                                                 cursor: 'pointer'
