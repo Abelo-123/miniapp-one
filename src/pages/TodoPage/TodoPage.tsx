@@ -10,7 +10,8 @@ import {
     Title,
     Placeholder,
     SegmentedControl,
-    Checkbox
+    Checkbox,
+    Modal
 } from '@telegram-apps/telegram-ui';
 import { Page } from '@/components/Page';
 import type { Todo, FilterType, HabitMetadata } from './types';
@@ -39,9 +40,8 @@ export const TodoPage: FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isMemberModalOpen, setIsMemberModalOpen] = useState(false); // Modal State
 
-    // Helper to determine special user
-    const SPECIFIC_USER_ID = 12345; // Hardcoded as per request "Red = Specific", assuming Admin/Me
-    const getMemberColor = (uid: number) => uid === SPECIFIC_USER_ID ? '#FF6B6B' : '#4ECDC4'; // Red vs Blue
+    // Helper to determine member color
+    const getMemberColor = (uid: number) => getUserColor(uid);
 
     // Load todos
     const loadTodos = useCallback(async () => {
@@ -201,45 +201,44 @@ export const TodoPage: FC = () => {
     });
 
     const getUserColor = (id: number) => {
-        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#FFCC5C', '#FF9671'];
+        const colors = [
+            '#FF6B6B', // Red-ish
+            '#4ECDC4', // Teal
+            '#45B7D1', // Sky Blue
+            '#96CEB4', // Sage Green
+            '#FF9F43', // Orange
+            '#A29BFE', // Purple
+            '#F8A5C2', // Pink
+            '#546E7A', // Blue Grey
+            '#D4AC0D', // Gold
+            '#27AE60', // Emerald
+        ];
         return colors[Math.abs(id) % colors.length];
     };
 
-    // Calculate date range for the grid
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
-    const todayStr = todayDate.toISOString().split('T')[0];
+    // Helper to generate date range for a specific habit
+    const getHabitDateRange = (createdAt: string) => {
+        const start = new Date(createdAt.split('T')[0].split(' ')[0]);
+        const end = new Date();
+        end.setHours(0, 0, 0, 0);
 
-    // Find the earliest date: Min of (created_at OR history items)
-    const earliestDate = habits.reduce((min, h) => {
-        // Start with task creation date
-        let taskMin = h.created_at ? h.created_at.split('T')[0].split(' ')[0] : todayStr;
-
-        // Check history
-        const historyKeys = Object.keys(h.habit?.history || {});
-        if (historyKeys.length > 0) {
-            const histMin = historyKeys.reduce((m, d) => d < m ? d : m, todayStr);
-            if (histMin < taskMin) taskMin = histMin;
+        const range: string[] = [];
+        const d = new Date(start);
+        while (d <= end) {
+            range.push(d.toISOString().split('T')[0]);
+            d.setDate(d.getDate() + 1);
         }
+        return range;
+    };
 
-        return taskMin < min ? taskMin : min;
-    }, todayStr);
+    // Extract unique members for the modal
+    const members = Array.from(new Set([
+        ...todos.map(t => t.user_id),
+        ...todos.map(t => t.completed_by).filter((id): id is number => id !== undefined),
+        ...habits.flatMap(h => Object.values(h.habit?.history || {}))
+    ]));
 
-    // Default to at least 7 days ago if no history or history is recent
-    let startDate = new Date(earliestDate);
-    const minStart = new Date(todayDate);
-    minStart.setDate(minStart.getDate() - 6);
 
-    if (startDate > minStart) {
-        startDate = minStart;
-    }
-
-    const dateRange: string[] = [];
-    const d = new Date(startDate);
-    while (d <= todayDate) {
-        dateRange.push(d.toISOString().split('T')[0]);
-        d.setDate(d.getDate() + 1);
-    }
 
     return (
         <Page back={false}>
@@ -256,25 +255,37 @@ export const TodoPage: FC = () => {
                     footer="Tasks are shared with everyone."
                 >
                     {isMemberModalOpen && (
-                        <div style={{
-                            padding: 16,
-                            background: 'var(--tgui--bg_color)',
-                            borderBottom: '1px solid var(--tgui--secondary_bg_color)',
-                            marginBottom: 16
-                        }}>
-                            <Title level="3" style={{ marginBottom: 12 }}>Member Colors</Title>
-                            <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#FF6B6B' }} />
-                                    <Text>Specific User (ID {SPECIFIC_USER_ID})</Text>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#4ECDC4' }} />
-                                    <Text>Other Members</Text>
-                                </div>
-                            </div>
-                            <Button size="s" stretched onClick={() => setIsMemberModalOpen(false)}>Close</Button>
-                        </div>
+                        <Modal
+                            header={<Modal.Header>Members Legend</Modal.Header>}
+                            open={isMemberModalOpen}
+                            onOpenChange={setIsMemberModalOpen}
+                        >
+                            <List style={{ padding: 16 }}>
+                                <Section header="Team Members">
+                                    {members.map(mid => (
+                                        <Cell
+                                            key={mid}
+                                            before={
+                                                <div style={{
+                                                    width: 16,
+                                                    height: 16,
+                                                    borderRadius: '50%',
+                                                    background: getMemberColor(mid)
+                                                }} />
+                                            }
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                                                <Text>User {mid} {mid === userId ? '(Me)' : ''}</Text>
+                                                <Text size="s" style={{ color: getMemberColor(mid) }}>
+                                                    Member
+                                                </Text>
+                                            </div>
+                                        </Cell>
+                                    ))}
+                                </Section>
+                                <Button stretched onClick={() => setIsMemberModalOpen(false)}>Close</Button>
+                            </List>
+                        </Modal>
                     )}
                     <Input
                         value={inputValue}
@@ -326,56 +337,19 @@ export const TodoPage: FC = () => {
 
                 {habits.length > 0 && (
                     <Section header="Habit Tracker">
-                        <div style={{ overflowX: 'auto', paddingBottom: 10 }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                                <thead>
-                                    <tr>
-                                        <th style={{ textAlign: 'left', padding: 8 }}>Task</th>
-                                        {dateRange.map(date => (
-                                            <th key={date} style={{ padding: 4, textAlign: 'center', fontSize: 10, minWidth: 40 }}>
-                                                {date.slice(5).replace('-', '/')}
-                                                <br />
-                                                {date === TODAY ? '(Today)' : ''}
-                                            </th>
-                                        ))}
-                                        <th style={{ padding: 8, textAlign: 'center' }}>🔥</th>
-                                        <th style={{ padding: 8 }}></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {habits.map(habit => (
-                                        <tr key={habit.id} style={{ borderTop: '1px solid var(--tgui--secondary_bg_color)' }}>
-                                            <td style={{ padding: 8, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {habit.text}
-                                            </td>
-                                            {dateRange.map(date => {
-                                                const completedBy = habit.habit?.history?.[date]; // Look up user ID
-                                                const isDone = completedBy !== undefined;
-                                                const color = isDone ? getMemberColor(completedBy) : 'var(--tgui--secondary_bg_color)';
-
-                                                return (
-                                                    <td key={date} style={{ textAlign: 'center', padding: 4 }}>
-                                                        <div
-                                                            onClick={() => handleHabitDateToggle(habit, date)}
-                                                            style={{
-                                                                width: 20,
-                                                                height: 20,
-                                                                borderRadius: '50%',
-                                                                background: color,
-                                                                border: '1px solid var(--tgui--hint_color)',
-                                                                margin: '0 auto',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            {isDone && <span style={{ color: '#fff', fontSize: 12, lineHeight: '20px' }}>✓</span>}
-                                                        </div>
-                                                    </td>
-                                                );
-                                            })}
-                                            <td style={{ textAlign: 'center', padding: 8 }}>
-                                                {habit.habit?.streak || 0}
-                                            </td>
-                                            <td style={{ textAlign: 'center', padding: 8 }}>
+                        <List>
+                            {habits.map(habit => {
+                                const hRange = getHabitDateRange(habit.created_at);
+                                return (
+                                    <Cell
+                                        key={habit.id}
+                                        multiline
+                                        after={
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <div style={{ textAlign: 'center', minWidth: 24 }}>
+                                                    <span style={{ fontSize: 14 }}>🔥</span>
+                                                    <div style={{ fontSize: 12 }}>{habit.habit?.streak || 0}</div>
+                                                </div>
                                                 <Button
                                                     mode="plain"
                                                     size="s"
@@ -387,12 +361,78 @@ export const TodoPage: FC = () => {
                                                 >
                                                     <DeleteIcon />
                                                 </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                            </div>
+                                        }
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                            <div style={{
+                                                width: 8,
+                                                height: 8,
+                                                borderRadius: '50%',
+                                                background: getUserColor(habit.user_id),
+                                                flexShrink: 0
+                                            }} />
+                                            <Text weight="2">{habit.text}</Text>
+                                        </div>
+
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: 8,
+                                            overflowX: 'auto',
+                                            paddingBottom: 8,
+                                            WebkitOverflowScrolling: 'touch',
+                                            msOverflowStyle: 'none',
+                                            scrollbarWidth: 'none'
+                                        }}>
+                                            {hRange.reverse().map(date => {
+                                                const completedBy = habit.habit?.history?.[date];
+                                                const isDone = completedBy !== undefined;
+                                                const color = isDone ? getMemberColor(completedBy) : 'var(--tgui--secondary_bg_color)';
+                                                const isToday = date === TODAY;
+
+                                                return (
+                                                    <div
+                                                        key={date}
+                                                        style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            gap: 4,
+                                                            minWidth: 40
+                                                        }}
+                                                    >
+                                                        <span style={{ fontSize: 10, color: 'var(--tgui--hint_color)' }}>
+                                                            {date.slice(5).replace('-', '/')}
+                                                            {isToday ? '\n(Today)' : ''}
+                                                        </span>
+                                                        <div
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleHabitDateToggle(habit, date);
+                                                            }}
+                                                            style={{
+                                                                width: 28,
+                                                                height: 28,
+                                                                borderRadius: '8px',
+                                                                background: color,
+                                                                border: '1px solid var(--tgui--hint_color)',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                transition: 'all 0.2s'
+                                                            }}
+                                                        >
+                                                            {isDone && <span style={{ color: '#fff', fontSize: 14 }}>✓</span>}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </Cell>
+                                );
+                            })}
+                        </List>
                     </Section>
                 )}
 
