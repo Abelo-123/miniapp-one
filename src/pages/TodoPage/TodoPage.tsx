@@ -10,9 +10,7 @@ import {
     Title,
     Placeholder,
     SegmentedControl,
-    SegmentedControl,
-    Checkbox,
-    Modal
+    Checkbox
 } from '@telegram-apps/telegram-ui';
 import { Page } from '@/components/Page';
 import type { Todo, FilterType, HabitMetadata } from './types';
@@ -121,49 +119,7 @@ export const TodoPage: FC = () => {
         }
 
         // Recalculate streak
-        // Basic streak calc: iterate backwards from TODAY. 
-        // If today is completed, streak starts including today.
-        // If today is NOT completed, streak starts from yesterday (if completed).
-        // Actually for "current streak", if today is not done, but yesterday was, streak is preserved.
-        // If yesterday was missed, streak is 0.
-
-        newHistory.sort(); // Keep sorted
-
-        let streak = 0;
-        let checkDate = new Date();
-        // check today
-        const todayStr = checkDate.toISOString().split('T')[0];
-        if (newHistory.includes(todayStr)) {
-            streak++;
-        }
-
-        // check past days
-        // We look for consecutive days backwards
-        const historyKeys = Object.keys(newHistory);
-        while (true) {
-            checkDate.setDate(checkDate.getDate() - 1);
-            const dStr = checkDate.toISOString().split('T')[0];
-            if (newHistory[dStr]) {
-                streak++;
-            } else {
-                // If we broke the chain, handled by the loop end
-                // BUT: if today is NOT done, we still might have a streak from yesterday.
-                // The above logic only counts IF connected to today.
-                // Habit trackers usually show streak:
-                // If done today: 5
-                // If not done today (but done yesterday): 4
-                // If not done yesterday: 0
-                break;
-            }
-        }
-
-        // Retry streak calculation to be robust:
-        // 1. Check if today is done. If so, count = 1 + consecutive backwards from yesterday.
-        // 2. If today NOT done. Check if yesterday is done. If so, count = consecutive backwards from yesterday.
-        // 3. Else 0.
-
-        const sortedHistory = [...newHistory].sort();
-        const hasToday = sortedHistory.includes(TODAY);
+        const hasToday = !!newHistory[TODAY];
 
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -177,23 +133,20 @@ export const TodoPage: FC = () => {
             let d = new Date();
             while (true) {
                 d.setDate(d.getDate() - 1);
-                // Check if key exists in history
-                if (newHistory[d.toISOString().split('T')[0]]) {
+                const dStr = d.toISOString().split('T')[0];
+                if (newHistory[dStr]) {
                     calculatedStreak++;
                 } else {
                     break;
                 }
             }
         } else if (hasYesterday) {
-            calculatedStreak = 0; // Streak calculation logic is subjective. If today is missed, streak implies *current* streak logic. 
-            // If we want "current streak including valid pending", standard is: if today not done but yesterday done, streak is active (from yesterday).
-            // If today done: streak includes today.
-            // Here we just count backwards from *yesterday*.
-            let d = new Date(); // Start today
+            calculatedStreak = 0;
+            let d = new Date();
             d.setDate(d.getDate() - 1); // Yesterday
-            // We know yesterday is present
             while (true) {
-                if (newHistory[d.toISOString().split('T')[0]]) {
+                const dStr = d.toISOString().split('T')[0];
+                if (newHistory[dStr]) {
                     calculatedStreak++;
                     d.setDate(d.getDate() - 1);
                 } else {
