@@ -18,7 +18,14 @@ import type { Todo, FilterType, HabitMetadata } from './types';
 import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
 import './TodoPage.css';
 
-const TODAY = new Date().toISOString().split('T')[0];
+const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const TODAY = formatDate(new Date());
 
 // Simple icon replacement using text if icons aren't available, 
 // or SVG if we want to be fancy.
@@ -218,25 +225,36 @@ export const TodoPage: FC = () => {
 
     // Helper to generate date range for a specific habit
     const getHabitDateRange = (createdAt: string) => {
-        const start = new Date(createdAt.split('T')[0].split(' ')[0]);
+        if (!createdAt) return [TODAY];
+        // Parse the creation date. If it's "2024-01-28 10:00:00", we want 2024-01-28.
+        const start = new Date(createdAt.replace(' ', 'T'));
+        start.setHours(0, 0, 0, 0);
+
         const end = new Date();
         end.setHours(0, 0, 0, 0);
 
         const range: string[] = [];
         const d = new Date(start);
-        while (d <= end) {
-            range.push(d.toISOString().split('T')[0]);
+
+        // Safety check: if start is somehow in the future, just show today
+        if (d > end) return [TODAY];
+
+        let iterations = 0;
+        while (d <= end && iterations < 365) { // Max 1 year history
+            range.push(formatDate(d));
             d.setDate(d.getDate() + 1);
+            iterations++;
         }
-        return range;
+        return range.length > 0 ? range : [TODAY];
     };
 
     // Extract unique members for the modal
     const members = Array.from(new Set([
-        ...todos.map(t => t.user_id),
-        ...todos.map(t => t.completed_by).filter((id): id is number => id !== undefined),
-        ...habits.flatMap(h => Object.values(h.habit?.history || {}))
-    ]));
+        userId, // Always include current user
+        ...todos.map(t => Number(t.user_id)),
+        ...todos.map(t => t.completed_by).filter((id): id is number => id !== undefined).map(Number),
+        ...habits.flatMap(h => Object.values(h.habit?.history || {}).map(Number))
+    ])).filter(id => !isNaN(id));
 
 
 
@@ -384,7 +402,7 @@ export const TodoPage: FC = () => {
                                             msOverflowStyle: 'none',
                                             scrollbarWidth: 'none'
                                         }}>
-                                            {hRange.reverse().map(date => {
+                                            {hRange.map(date => {
                                                 const completedBy = habit.habit?.history?.[date];
                                                 const isDone = completedBy !== undefined;
                                                 const color = isDone ? getMemberColor(completedBy) : 'var(--tgui--secondary_bg_color)';
@@ -401,9 +419,9 @@ export const TodoPage: FC = () => {
                                                             minWidth: 40
                                                         }}
                                                     >
-                                                        <span style={{ fontSize: 10, color: 'var(--tgui--hint_color)' }}>
+                                                        <span style={{ fontSize: 10, color: 'var(--tgui--hint_color)', textAlign: 'center', height: 24, display: 'block' }}>
                                                             {date.slice(5).replace('-', '/')}
-                                                            {isToday ? '\n(Today)' : ''}
+                                                            {isToday && <div>(Today)</div>}
                                                         </span>
                                                         <div
                                                             onClick={(e) => {
