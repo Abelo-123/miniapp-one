@@ -275,8 +275,8 @@ export const TodoPage: FC = () => {
                                             }
                                         >
                                             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                                <Text>User {mid} {mid === userId ? '(Me)' : ''}</Text>
-                                                <Text size="s" style={{ color: getMemberColor(mid) }}>
+                                                <Text>User {mid} {Number(mid) === userId ? '(Me)' : ''}</Text>
+                                                <Text style={{ color: getMemberColor(Number(mid)) }}>
                                                     Member
                                                 </Text>
                                             </div>
