@@ -248,6 +248,16 @@ export const TodoPage: FC = () => {
         return range.length > 0 ? range : [TODAY];
     };
 
+    // Calculate member statistics
+    const getMemberStats = (memberId: number) => {
+        const tasksCreated = todos.filter(t => Number(t.user_id) === memberId).length;
+        const tasksCompleted = regularTodos.filter(t => t.completed_by === memberId).length;
+        const habitsChecked = habits.reduce((count, h) => {
+            return count + Object.values(h.habit?.history || {}).filter(uid => Number(uid) === memberId).length;
+        }, 0);
+        return { tasksCreated, tasksCompleted, habitsChecked };
+    };
+
     // Extract unique members for the modal
     const members = Array.from(new Set([
         userId, // Always include current user
@@ -279,28 +289,70 @@ export const TodoPage: FC = () => {
                             onOpenChange={setIsMemberModalOpen}
                         >
                             <List style={{ padding: 16 }}>
-                                <Section header="Team Members">
-                                    {members.map(mid => (
-                                        <Cell
-                                            key={mid}
-                                            before={
-                                                <div style={{
-                                                    width: 16,
-                                                    height: 16,
-                                                    borderRadius: '50%',
-                                                    background: getMemberColor(mid)
-                                                }} />
-                                            }
-                                        >
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                                <Text>User {mid} {Number(mid) === userId ? '(Me)' : ''}</Text>
-                                                <Text style={{ color: getMemberColor(Number(mid)) }}>
-                                                    Member
-                                                </Text>
-                                            </div>
-                                        </Cell>
-                                    ))}
+                                <Section header="Team Members & Activity">
+                                    {members.map(mid => {
+                                        const stats = getMemberStats(mid);
+                                        return (
+                                            <Cell
+                                                key={mid}
+                                                multiline
+                                                before={
+                                                    <div style={{
+                                                        width: 24,
+                                                        height: 24,
+                                                        borderRadius: '50%',
+                                                        background: getMemberColor(mid),
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: '#fff',
+                                                        fontSize: 10,
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {String(mid).slice(-2)}
+                                                    </div>
+                                                }
+                                            >
+                                                <div style={{ width: '100%' }}>
+                                                    <Text weight="2" style={{ marginBottom: 4 }}>
+                                                        User {mid} {Number(mid) === userId ? '(Me)' : ''}
+                                                    </Text>
+                                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, color: 'var(--tgui--hint_color)' }}>
+                                                        <span style={{
+                                                            background: getMemberColor(mid),
+                                                            color: '#fff',
+                                                            padding: '2px 6px',
+                                                            borderRadius: 4
+                                                        }}>
+                                                            📝 {stats.tasksCreated} created
+                                                        </span>
+                                                        <span style={{
+                                                            background: 'rgba(39, 174, 96, 0.8)',
+                                                            color: '#fff',
+                                                            padding: '2px 6px',
+                                                            borderRadius: 4
+                                                        }}>
+                                                            ✓ {stats.tasksCompleted} done
+                                                        </span>
+                                                        <span style={{
+                                                            background: 'rgba(155, 89, 182, 0.8)',
+                                                            color: '#fff',
+                                                            padding: '2px 6px',
+                                                            borderRadius: 4
+                                                        }}>
+                                                            🔥 {stats.habitsChecked} checks
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </Cell>
+                                        );
+                                    })}
                                 </Section>
+                                <div style={{ padding: '8px 0' }}>
+                                    <Text style={{ fontSize: 12, color: 'var(--tgui--hint_color)', textAlign: 'center', display: 'block' }}>
+                                        Each member has a unique color shown on tasks they create and habit days they complete.
+                                    </Text>
+                                </div>
                                 <Button stretched onClick={() => setIsMemberModalOpen(false)}>Close</Button>
                             </List>
                         </Modal>
@@ -384,12 +436,25 @@ export const TodoPage: FC = () => {
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                                             <div style={{
-                                                width: 8,
-                                                height: 8,
-                                                borderRadius: '50%',
-                                                background: getUserColor(habit.user_id),
-                                                flexShrink: 0
-                                            }} />
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                padding: '2px 8px 2px 4px',
+                                                borderRadius: 12,
+                                                background: `${getUserColor(habit.user_id)}20`,
+                                                border: `1px solid ${getUserColor(habit.user_id)}40`
+                                            }}>
+                                                <div style={{
+                                                    width: 12,
+                                                    height: 12,
+                                                    borderRadius: '50%',
+                                                    background: getUserColor(habit.user_id),
+                                                    flexShrink: 0
+                                                }} />
+                                                <span style={{ fontSize: 10, color: getUserColor(habit.user_id), fontWeight: 500 }}>
+                                                    User {habit.user_id}
+                                                </span>
+                                            </div>
                                             <Text weight="2">{habit.text}</Text>
                                         </div>
 
@@ -405,8 +470,16 @@ export const TodoPage: FC = () => {
                                             {hRange.map(date => {
                                                 const completedBy = habit.habit?.history?.[date];
                                                 const isDone = completedBy !== undefined;
-                                                const color = isDone ? getMemberColor(completedBy) : 'var(--tgui--secondary_bg_color)';
                                                 const isToday = date === TODAY;
+                                                // Fixed: Empty cells now have visible distinct styling
+                                                const cellBg = isDone
+                                                    ? getMemberColor(completedBy)
+                                                    : 'rgba(128, 128, 128, 0.15)';
+                                                const borderColor = isToday
+                                                    ? 'var(--tgui--link_color)'
+                                                    : isDone
+                                                        ? getMemberColor(completedBy)
+                                                        : 'rgba(128, 128, 128, 0.3)';
 
                                                 return (
                                                     <div
@@ -419,9 +492,16 @@ export const TodoPage: FC = () => {
                                                             minWidth: 40
                                                         }}
                                                     >
-                                                        <span style={{ fontSize: 10, color: 'var(--tgui--hint_color)', textAlign: 'center', height: 24, display: 'block' }}>
+                                                        <span style={{
+                                                            fontSize: 10,
+                                                            color: isToday ? 'var(--tgui--link_color)' : 'var(--tgui--hint_color)',
+                                                            textAlign: 'center',
+                                                            height: 24,
+                                                            display: 'block',
+                                                            fontWeight: isToday ? 600 : 400
+                                                        }}>
                                                             {date.slice(5).replace('-', '/')}
-                                                            {isToday && <div>(Today)</div>}
+                                                            {isToday && <div style={{ fontSize: 8 }}>TODAY</div>}
                                                         </span>
                                                         <div
                                                             onClick={(e) => {
@@ -429,19 +509,21 @@ export const TodoPage: FC = () => {
                                                                 handleHabitDateToggle(habit, date);
                                                             }}
                                                             style={{
-                                                                width: 28,
-                                                                height: 28,
+                                                                width: 32,
+                                                                height: 32,
                                                                 borderRadius: '8px',
-                                                                background: color,
-                                                                border: '1px solid var(--tgui--hint_color)',
+                                                                background: cellBg,
+                                                                border: `2px solid ${borderColor}`,
                                                                 cursor: 'pointer',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
-                                                                transition: 'all 0.2s'
+                                                                transition: 'all 0.2s',
+                                                                boxShadow: isToday ? '0 0 8px var(--tgui--link_color)' : 'none'
                                                             }}
+                                                            title={isDone ? `Completed by User ${completedBy}` : `Click to mark ${date} as done`}
                                                         >
-                                                            {isDone && <span style={{ color: '#fff', fontSize: 14 }}>✓</span>}
+                                                            {isDone && <span style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>✓</span>}
                                                         </div>
                                                     </div>
                                                 );
