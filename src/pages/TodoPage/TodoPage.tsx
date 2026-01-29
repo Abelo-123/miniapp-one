@@ -45,7 +45,7 @@ export const TodoPage: FC = () => {
     const [filter, setFilter] = useState<FilterType>('all');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isMemberModalOpen, setIsMemberModalOpen] = useState(false); // Modal State
+    // const [isMemberModalOpen, setIsMemberModalOpen] = useState(false); // Modal State Removed
 
     // Helper to determine member color
     const getMemberColor = (uid: number) => getUserColor(uid);
@@ -248,23 +248,10 @@ export const TodoPage: FC = () => {
         return range.length > 0 ? range : [TODAY];
     };
 
-    // Calculate member statistics
-    const getMemberStats = (memberId: number) => {
-        const tasksCreated = todos.filter(t => Number(t.user_id) === memberId).length;
-        const tasksCompleted = regularTodos.filter(t => t.completed_by === memberId).length;
-        const habitsChecked = habits.reduce((count, h) => {
-            return count + Object.values(h.habit?.history || {}).filter(uid => Number(uid) === memberId).length;
-        }, 0);
-        return { tasksCreated, tasksCompleted, habitsChecked };
-    };
 
-    // Extract unique members for the modal
-    const members = Array.from(new Set([
-        userId, // Always include current user
-        ...todos.map(t => Number(t.user_id)),
-        ...todos.map(t => t.completed_by).filter((id): id is number => id !== undefined).map(Number),
-        ...habits.flatMap(h => Object.values(h.habit?.history || {}).map(Number))
-    ])).filter(id => !isNaN(id));
+    // Member Modal removed
+    // SegmentedControl removed
+
 
 
 
@@ -272,91 +259,11 @@ export const TodoPage: FC = () => {
         <Page back={false}>
             <List style={{ background: 'var(--tgui--secondary_bg_color)', minHeight: '100vh' }}>
                 <Section
-                    header={
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>Team Tasks</span>
-                            <Button size="s" mode="plain" onClick={() => setIsMemberModalOpen(true)}>
-                                Member
-                            </Button>
-                        </div>
-                    }
+                    header="Team Tasks"
                     footer="Tasks are shared with everyone."
                 >
-                    {isMemberModalOpen && (
-                        <Modal
-                            header={<Modal.Header>Members Legend</Modal.Header>}
-                            open={isMemberModalOpen}
-                            onOpenChange={setIsMemberModalOpen}
-                        >
-                            <List style={{ padding: 16 }}>
-                                <Section header="Team Members & Activity">
-                                    {members.map(mid => {
-                                        const stats = getMemberStats(mid);
-                                        return (
-                                            <Cell
-                                                key={mid}
-                                                multiline
-                                                before={
-                                                    <div style={{
-                                                        width: 24,
-                                                        height: 24,
-                                                        borderRadius: '50%',
-                                                        background: getMemberColor(mid),
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        color: '#fff',
-                                                        fontSize: 10,
-                                                        fontWeight: 'bold'
-                                                    }}>
-                                                        {String(mid).slice(-2)}
-                                                    </div>
-                                                }
-                                            >
-                                                <div style={{ width: '100%' }}>
-                                                    <Text weight="2" style={{ marginBottom: 4 }}>
-                                                        User {mid} {Number(mid) === userId ? '(Me)' : ''}
-                                                    </Text>
-                                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 11, color: 'var(--tgui--hint_color)' }}>
-                                                        <span style={{
-                                                            background: getMemberColor(mid),
-                                                            color: '#fff',
-                                                            padding: '2px 6px',
-                                                            borderRadius: 4
-                                                        }}>
-                                                            📝 {stats.tasksCreated} created
-                                                        </span>
-                                                        <span style={{
-                                                            background: 'rgba(39, 174, 96, 0.8)',
-                                                            color: '#fff',
-                                                            padding: '2px 6px',
-                                                            borderRadius: 4
-                                                        }}>
-                                                            ✓ {stats.tasksCompleted} done
-                                                        </span>
-                                                        <span style={{
-                                                            background: 'rgba(155, 89, 182, 0.8)',
-                                                            color: '#fff',
-                                                            padding: '2px 6px',
-                                                            borderRadius: 4
-                                                        }}>
-                                                            🔥 {stats.habitsChecked} checks
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </Cell>
-                                        );
-                                    })}
-                                </Section>
-                                <div style={{ padding: '8px 0' }}>
-                                    <Text style={{ fontSize: 12, color: 'var(--tgui--hint_color)', textAlign: 'center', display: 'block' }}>
-                                        Each member has a unique color shown on tasks they create and habit days they complete.
-                                    </Text>
-                                </div>
-                                <Button stretched onClick={() => setIsMemberModalOpen(false)}>Close</Button>
-                            </List>
-                        </Modal>
-                    )}
+
+
                     <Input
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
@@ -386,29 +293,7 @@ export const TodoPage: FC = () => {
                     />
                 </Section>
 
-                <div style={{ padding: '0 20px 10px' }}>
-                    <SegmentedControl
-                    >
-                        <SegmentedControl.Item
-                            onClick={() => setFilter('all')}
-                            selected={filter === 'all'}
-                        >
-                            All
-                        </SegmentedControl.Item>
-                        <SegmentedControl.Item
-                            onClick={() => setFilter('active')}
-                            selected={filter === 'active'}
-                        >
-                            Active
-                        </SegmentedControl.Item>
-                        <SegmentedControl.Item
-                            onClick={() => setFilter('completed')}
-                            selected={filter === 'completed'}
-                        >
-                            Done
-                        </SegmentedControl.Item>
-                    </SegmentedControl>
-                </div>
+                {/* SegmentedControl Removed */}
 
                 {habits.length > 0 && (
                     <Section header="Habit Tracker">
@@ -476,7 +361,6 @@ export const TodoPage: FC = () => {
                                                 const completedBy = habit.habit?.history?.[date];
                                                 const isDone = completedBy !== undefined;
                                                 const isToday = date === TODAY;
-                                                // Fixed: Empty cells now have visible distinct styling
                                                 const cellBg = isDone
                                                     ? getMemberColor(completedBy)
                                                     : 'rgba(128, 128, 128, 0.15)';
@@ -489,50 +373,29 @@ export const TodoPage: FC = () => {
                                                 return (
                                                     <div
                                                         key={date}
-                                                        style={{
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            alignItems: 'center',
-                                                            gap: 4,
-                                                            minWidth: 40
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleHabitDateToggle(habit, date);
                                                         }}
+                                                        style={{
+                                                            width: 32,
+                                                            height: 32,
+                                                            borderRadius: '8px',
+                                                            background: cellBg,
+                                                            border: `2px solid ${borderColor}`,
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            transition: 'all 0.2s',
+                                                            boxShadow: isToday ? '0 0 8px var(--tgui--link_color)' : 'none',
+                                                            position: 'relative',
+                                                            zIndex: 2,
+                                                            flexShrink: 0
+                                                        }}
+                                                        title={isDone ? `Completed by User ${completedBy} on ${date}` : `Click to mark ${date} as done`}
                                                     >
-                                                        <span style={{
-                                                            fontSize: 10,
-                                                            color: isToday ? 'var(--tgui--link_color)' : 'var(--tgui--hint_color)',
-                                                            textAlign: 'center',
-                                                            height: 24,
-                                                            display: 'block',
-                                                            fontWeight: isToday ? 600 : 400
-                                                        }}>
-                                                            {date.slice(5).replace('-', '/')}
-                                                            {isToday && <div style={{ fontSize: 8 }}>TODAY</div>}
-                                                        </span>
-                                                        <div
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                console.log('Toggling date:', date, 'Current status:', isDone);
-                                                                handleHabitDateToggle(habit, date);
-                                                            }}
-                                                            style={{
-                                                                width: 32,
-                                                                height: 32,
-                                                                borderRadius: '8px',
-                                                                background: cellBg,
-                                                                border: `2px solid ${borderColor}`,
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                transition: 'all 0.2s',
-                                                                boxShadow: isToday ? '0 0 8px var(--tgui--link_color)' : 'none',
-                                                                position: 'relative',
-                                                                zIndex: 2
-                                                            }}
-                                                            title={isDone ? `Completed by User ${completedBy}` : `Click to mark ${date} as done`}
-                                                        >
-                                                            {isDone && <span style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>✓</span>}
-                                                        </div>
+                                                        {isDone && <span style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>✓</span>}
                                                     </div>
                                                 );
                                             })}
@@ -620,6 +483,6 @@ export const TodoPage: FC = () => {
                     )
                 )}
             </List>
-        </Page>
+        </Page >
     );
 };
