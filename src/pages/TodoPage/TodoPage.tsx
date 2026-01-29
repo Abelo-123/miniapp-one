@@ -116,7 +116,7 @@ export const TodoPage: FC = () => {
         if (!todo.habit) return;
 
         const history = todo.habit.history || {};
-        const isCompletedOnDate = !!history[dateStr];
+        const isCompletedOnDate = history[dateStr] !== undefined;
 
         let newHistory = { ...history };
         if (isCompletedOnDate) {
@@ -368,7 +368,12 @@ export const TodoPage: FC = () => {
                                     onChange={() => setIsHabit(!isHabit)}
                                 // label="Habit"  // Checkbox might not support label directly inside 'after' cleanly, depending on UI kit
                                 />
-                                <span style={{ fontSize: 12, marginRight: 4, color: 'var(--tgui--hint_color)' }}>Daily</span>
+                                <span
+                                    onClick={() => setIsHabit(!isHabit)}
+                                    style={{ fontSize: 12, marginRight: 4, color: 'var(--tgui--hint_color)', cursor: 'pointer' }}
+                                >
+                                    Daily
+                                </span>
                                 <Button
                                     size="s"
                                     onClick={handleAddTodo}
@@ -506,6 +511,7 @@ export const TodoPage: FC = () => {
                                                         <div
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
+                                                                console.log('Toggling date:', date, 'Current status:', isDone);
                                                                 handleHabitDateToggle(habit, date);
                                                             }}
                                                             style={{
@@ -519,7 +525,9 @@ export const TodoPage: FC = () => {
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
                                                                 transition: 'all 0.2s',
-                                                                boxShadow: isToday ? '0 0 8px var(--tgui--link_color)' : 'none'
+                                                                boxShadow: isToday ? '0 0 8px var(--tgui--link_color)' : 'none',
+                                                                position: 'relative',
+                                                                zIndex: 2
                                                             }}
                                                             title={isDone ? `Completed by User ${completedBy}` : `Click to mark ${date} as done`}
                                                         >
