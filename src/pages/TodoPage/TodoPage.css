@@ -1,4 +1,4 @@
-/* Habits Tracker - Multi-User Identification UI */
+/* Habits Tracker - Super Fast Multi-User UI */
 
 .habits-container {
   background: #1a1a1a;
@@ -34,13 +34,14 @@
   background: #2a2a2a;
   border: none;
   color: #888;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   padding: 6px 10px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   gap: 4px;
+  transition: background 0.1s;
 }
 
 .header-btn:hover {
@@ -48,9 +49,14 @@
   color: #fff;
 }
 
+.header-btn.active {
+  background: rgba(0, 210, 255, 0.2);
+  color: #00d2ff;
+}
+
 .member-count {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 /* Filter */
@@ -68,6 +74,7 @@
   border-radius: 6px;
   z-index: 100;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
 }
 
 .filter-option {
@@ -87,8 +94,8 @@
 }
 
 .filter-option.selected {
-  background: rgba(79, 195, 247, 0.2);
-  color: #4fc3f7;
+  background: rgba(0, 210, 255, 0.2);
+  color: #00d2ff;
 }
 
 /* Days Header */
@@ -112,7 +119,7 @@
 }
 
 .day-col.today {
-  color: #4fc3f7;
+  color: #00d2ff;
 }
 
 .day-letter {
@@ -125,7 +132,7 @@
   margin-top: 1px;
 }
 
-/* Add Section */
+/* Add Section (Compact) */
 .add-section {
   display: flex;
   gap: 8px;
@@ -145,11 +152,11 @@
 }
 
 .add-input:focus {
-  border-color: #4fc3f7;
+  border-color: #00d2ff;
 }
 
 .add-btn {
-  background: #4fc3f7;
+  background: #00d2ff;
   border: none;
   border-radius: 4px;
   width: 32px;
@@ -163,20 +170,22 @@
   opacity: 0.4;
 }
 
-/* Habit List */
+/* Habit List (High Performance) */
 .habits-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  contain: layout;
 }
 
 .habit-row {
   display: grid;
   grid-template-columns: 1fr repeat(5, 32px) 28px;
   align-items: center;
-  padding: 4px 12px;
+  padding: 6px 12px;
   border-bottom: 1px solid #222;
-  min-height: 32px;
+  min-height: 36px;
+  transition: background 0.1s;
 }
 
 .habit-row:hover {
@@ -186,8 +195,16 @@
 .habit-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
+}
+
+.habit-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
 }
 
 .habit-text {
@@ -198,11 +215,18 @@
   text-overflow: ellipsis;
 }
 
-
+/* Identification Dot for Collaborators */
+.creator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
 
 .checkbox {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid #555;
   border-radius: 50%;
   cursor: pointer;
@@ -215,7 +239,7 @@
 .checkbox.checked::after {
   content: '✓';
   color: #fff;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: bold;
 }
 
@@ -225,8 +249,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  height: 28px;
+  height: 24px;
   border-radius: 4px;
+  transition: background 0.05s;
 }
 
 .cell:hover {
@@ -239,12 +264,13 @@
 }
 
 .mark {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
 }
 
 .mark.done {
-  font-weight: 700;
+  font-weight: 800;
+  transform: scale(1.1);
 }
 
 /* Delete */
@@ -255,40 +281,11 @@
   cursor: pointer;
   font-size: 18px;
   padding: 0;
-  transition: color 0.1s;
+  line-height: 1;
 }
 
 .del-btn:hover {
-  color: #ff6b6b;
-}
-
-/* Loading & Empty */
-.loading {
-  display: flex;
-  justify-content: center;
-  padding: 40px;
-}
-
-.spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #333;
-  border-top-color: #4fc3f7;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.empty {
-  text-align: center;
-  padding: 40px;
-  color: #444;
-  font-size: 13px;
+  color: #ff4b2b;
 }
 
 /* Modal */
@@ -311,7 +308,7 @@
   border-radius: 16px;
   width: 280px;
   z-index: 100;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
 }
 
@@ -319,7 +316,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px;
+  padding: 12px 18px;
   border-bottom: 1px solid #333;
 }
 
@@ -346,7 +343,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 18px;
+  padding: 8px 18px;
 }
 
 .member-dot {
@@ -363,8 +360,30 @@
 }
 
 .you-badge {
-  color: #4fc3f7;
-  font-size: 11px;
+  color: #00d2ff;
+  font-size: 10px;
   margin-left: 4px;
   opacity: 0.8;
+}
+
+/* Performance Helpers */
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #333;
+  border-top-color: #00d2ff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

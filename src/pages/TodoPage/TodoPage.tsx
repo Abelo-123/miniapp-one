@@ -1,16 +1,24 @@
-import { useState, useEffect, useCallback, useMemo, type FC } from 'react';
+import { useState, useEffect, useCallback, useMemo, type FC, memo } from 'react';
 import { useSignal, initData } from '@telegram-apps/sdk-react';
 import type { Todo, HabitMetadata, Member } from './types';
 import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
 import './TodoPage.css';
 
 // ═══════════════════════════════════════════════════════════════
-// MEMBER COLORS
+// MEMBER COLORS - More vibrant & distinct
 // ═══════════════════════════════════════════════════════════════
 
 const MEMBER_COLORS = [
-    '#4fc3f7', '#ff7043', '#66bb6a', '#ab47bc', '#ffa726',
-    '#ef5350', '#26c6da', '#ec407a', '#8d6e63', '#78909c',
+    '#00d2ff', // Cyan
+    '#ff4b2b', // Red-Orange
+    '#b1f33d', // Lime
+    '#ff00cc', // Pink
+    '#7042f4', // Purple
+    '#ffbf00', // Amber
+    '#00ff87', // Spring Green
+    '#ff3e00', // Deep Orange
+    '#9d50bb', // Plum
+    '#ad5389', // Rose
 ];
 
 const getColorForUser = (userId: number): string => {
@@ -19,7 +27,7 @@ const getColorForUser = (userId: number): string => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// DATE UTILITIES
+// UTILITIES
 // ═══════════════════════════════════════════════════════════════
 
 const formatDate = (date: Date) => {
@@ -63,7 +71,72 @@ const getLastDays = (count: number) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// MAIN COMPONENT
+// MINI COMPONENTS FOR PERF
+// ═══════════════════════════════════════════════════════════════
+
+const HabitRow = memo(({
+    habit,
+    displayDays,
+    userId,
+    getMember,
+    onToggle,
+    onDelete
+}: {
+    habit: Todo,
+    displayDays: any[],
+    userId: number,
+    getMember: (id: number, name?: string) => Member,
+    onToggle: (todo: Todo, dateStr: string) => void,
+    onDelete: (id: number) => void
+}) => {
+    const creator = getMember(habit.user_id, habit.user_name);
+    const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
+
+    return (
+        <li className="habit-row">
+            <div className="habit-info">
+                {/* Visual Identity: Checkbox border = creator color */}
+                <div
+                    className={`checkbox ${isTodayDone ? 'checked' : ''}`}
+                    style={{ borderColor: creator.color, backgroundColor: isTodayDone ? creator.color : 'transparent' }}
+                    onClick={() => onToggle(habit, TODAY)}
+                />
+                <div className="habit-content">
+                    <span className="habit-text" style={{ color: creator.color }}>
+                        {habit.text}
+                    </span>
+                    {/* Small creator indicator if not self */}
+                    {habit.user_id !== userId && (
+                        <span className="creator-dot" style={{ backgroundColor: creator.color }} title={creator.name} />
+                    )}
+                </div>
+            </div>
+
+            {displayDays.map(day => {
+                const checkerId = habit.habit?.history?.[day.date];
+                const isDone = checkerId !== undefined;
+                const isDisabled = isFutureDate(day.date) || isBeforeCreation(day.date, habit.created_at);
+                const checkerColor = isDone ? getColorForUser(checkerId) : '#444';
+
+                return (
+                    <div
+                        key={day.date}
+                        className={`cell ${isDisabled ? 'disabled' : ''}`}
+                        onClick={() => !isDisabled && onToggle(habit, day.date)}
+                    >
+                        <span className={`mark ${isDone ? 'done' : ''}`} style={{ color: checkerColor }}>
+                            {isDisabled ? '·' : isDone ? '✓' : '○'}
+                        </span>
+                    </div>
+                );
+            })}
+            <button className="del-btn" onClick={() => onDelete(habit.id)}>×</button>
+        </li>
+    );
+});
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN PAGE
 // ═══════════════════════════════════════════════════════════════
 
 export const TodoPage: FC = () => {
@@ -78,10 +151,34 @@ export const TodoPage: FC = () => {
     const [showFilterMenu, setShowFilterMenu] = useState(false);
     const [showMembersModal, setShowMembersModal] = useState(false);
 
-    const displayDays = getLastDays(5);
+    const displayDays = useMemo(() => getLastDays(5), []);
 
     // ═══════════════════════════════════════════════════════════
-    // EXTRACT MEMBERS (Smart logic using stored names)
+    // SYNC LOGIC (Super Fast)
+    // ═══════════════════════════════════════════════════════════
+
+    const loadTodos = useCallback(async (silent = false) => {
+        try {
+            if (!silent) setIsLoading(true);
+            const data = await fetchTodos(userId);
+            // Only update state if data actually changed to prevent flutter
+            setTodos(prev => JSON.stringify(prev) === JSON.stringify(data) ? prev : data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            if (!silent) setIsLoading(false);
+        }
+    }, [userId]);
+
+    // Background polling every 8 seconds for collaboration
+    useEffect(() => {
+        loadTodos();
+        const interval = setInterval(() => loadTodos(true), 8000);
+        return () => clearInterval(interval);
+    }, [loadTodos]);
+
+    // ═══════════════════════════════════════════════════════════
+    // MEMBERS LOGIC
     // ═══════════════════════════════════════════════════════════
 
     const members = useMemo((): Member[] => {
@@ -106,43 +203,49 @@ export const TodoPage: FC = () => {
         return Array.from(memberMap.values());
     }, [todos, userId, userName]);
 
-    const getMember = (id: number, fallbackName?: string): Member => {
+    const getMember = useCallback((id: number, fallbackName?: string): Member => {
         return members.find(m => m.id === id) || {
             id,
             name: fallbackName || `User ${id}`,
             color: getColorForUser(id)
         };
-    };
+    }, [members]);
 
     // ═══════════════════════════════════════════════════════════
-    // ACTIONS
+    // ACTIONS (Optimistic Updates)
     // ═══════════════════════════════════════════════════════════
-
-    const loadTodos = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const data = await fetchTodos(userId);
-            setTodos(data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [userId]);
-
-    useEffect(() => { loadTodos(); }, [loadTodos]);
 
     const handleAddHabit = async () => {
         if (!inputValue.trim()) return;
+        const textToSubmit = inputValue.trim();
+        setInputValue('');
+
+        // Optimistic Entry
+        const tempId = -Math.floor(Math.random() * 1000000);
+        const tempTodo: Todo = {
+            id: tempId,
+            user_id: userId,
+            user_name: userName,
+            text: textToSubmit,
+            completed: false,
+            created_at: new Date().toISOString(),
+            habit: { frequency: 'daily', streak: 0, history: {} }
+        };
+
+        setTodos(prev => [tempTodo, ...prev]);
+
         try {
             const habitMetadata: HabitMetadata = { frequency: 'daily', streak: 0, history: {} };
-            const newTodo = await addTodo(userId, inputValue.trim(), habitMetadata, userName);
-            setTodos(prev => [newTodo, ...prev]);
-            setInputValue('');
-        } catch (err) { console.error(err); }
+            const newTodo = await addTodo(userId, textToSubmit, habitMetadata, userName);
+            // Replace optimistic one with real one
+            setTodos(prev => prev.map(t => t.id === tempId ? newTodo : t));
+        } catch (err) {
+            setTodos(prev => prev.filter(t => t.id !== tempId));
+            console.error(err);
+        }
     };
 
-    const handleDayToggle = async (todo: Todo, dateStr: string) => {
+    const handleDayToggle = useCallback(async (todo: Todo, dateStr: string) => {
         if (!todo.habit || isFutureDate(dateStr) || isBeforeCreation(dateStr, todo.created_at)) return;
 
         const history = todo.habit.history || {};
@@ -157,30 +260,33 @@ export const TodoPage: FC = () => {
         }
 
         const newHabit = { ...todo.habit, history: newHistory };
-        setTodos(todos.map(t => t.id === todo.id ? { ...t, habit: newHabit } : t));
+        const backup = todos;
+        setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, habit: newHabit } : t));
 
-        try { await updateTodo(userId, todo.id, { text: todo.text, habit: newHabit }); }
-        catch (err) { setTodos(todos); console.error(err); }
-    };
+        try {
+            await updateTodo(userId, todo.id, { text: todo.text, habit: newHabit });
+        } catch (err) {
+            setTodos(backup);
+            console.error(err);
+        }
+    }, [userId, todos]);
 
-    const handleTodayToggle = (todo: Todo) => {
-        handleDayToggle(todo, TODAY);
-    };
-
-    const handleDelete = async (todoId: number) => {
+    const handleDelete = useCallback(async (todoId: number) => {
         if (!confirm('Delete this habit?')) return;
         const prevTodos = todos;
-        setTodos(todos.filter(t => t.id !== todoId));
+        setTodos(prev => prev.filter(t => t.id !== todoId));
         try { await deleteTodo(userId, todoId); }
         catch (err) { setTodos(prevTodos); console.error(err); }
-    };
+    }, [userId, todos]);
 
-    const filteredHabits = todos.filter(t => t.habit).filter(habit => {
-        const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
-        if (filterMode === 'completed') return isTodayDone;
-        if (filterMode === 'incomplete') return !isTodayDone;
-        return true;
-    });
+    const filteredHabits = useMemo(() => {
+        return todos.filter(t => t.habit).filter(habit => {
+            const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
+            if (filterMode === 'completed') return isTodayDone;
+            if (filterMode === 'incomplete') return !isTodayDone;
+            return true;
+        });
+    }, [todos, filterMode]);
 
     return (
         <div className="habits-container">
@@ -191,7 +297,7 @@ export const TodoPage: FC = () => {
                         <span className="member-count">{members.length}</span> 👥
                     </button>
                     <div className="filter-wrapper">
-                        <button className="header-btn" onClick={() => setShowFilterMenu(!showFilterMenu)}>
+                        <button className={`header-btn ${filterMode !== 'all' ? 'active' : ''}`} onClick={() => setShowFilterMenu(!showFilterMenu)}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                             </svg>
@@ -219,44 +325,29 @@ export const TodoPage: FC = () => {
             </div>
 
             <div className="add-section">
-                <input className="add-input" placeholder="New habit..." value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddHabit()} />
+                <input
+                    className="add-input"
+                    placeholder="New habit..."
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddHabit()}
+                />
                 <button className="add-btn" onClick={handleAddHabit} disabled={!inputValue.trim()}>+</button>
             </div>
 
             {isLoading ? <div className="loading"><div className="spinner" /></div> : (
                 <ul className="habits-list">
-                    {filteredHabits.map(habit => {
-                        const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
-                        const creator = getMember(habit.user_id, habit.user_name);
-
-
-                        return (
-                            <li key={habit.id} className="habit-row">
-                                <div className="habit-info">
-                                    <div className={`checkbox ${isTodayDone ? 'checked' : ''}`}
-                                        style={{ borderColor: creator.color, backgroundColor: isTodayDone ? creator.color : 'transparent' }}
-                                        onClick={() => handleTodayToggle(habit)} />
-                                    <span className="habit-text" style={{ color: creator.color }}>{habit.text}</span>
-                                </div>
-
-                                {displayDays.map(day => {
-                                    const checkerId = habit.habit?.history?.[day.date];
-                                    const isDone = checkerId !== undefined;
-                                    const isDisabled = isFutureDate(day.date) || isBeforeCreation(day.date, habit.created_at);
-                                    const checkerColor = isDone ? getColorForUser(checkerId) : '#444';
-
-                                    return (
-                                        <div key={day.date} className={`cell ${isDisabled ? 'disabled' : ''}`} onClick={() => !isDisabled && handleDayToggle(habit, day.date)}>
-                                            <span className={`mark ${isDone ? 'done' : ''}`} style={{ color: checkerColor }}>
-                                                {isDisabled ? '·' : isDone ? '✓' : '○'}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                                <button className="del-btn" onClick={() => handleDelete(habit.id)}>×</button>
-                            </li>
-                        );
-                    })}
+                    {filteredHabits.map(habit => (
+                        <HabitRow
+                            key={habit.id}
+                            habit={habit}
+                            displayDays={displayDays}
+                            userId={userId}
+                            getMember={getMember}
+                            onToggle={handleDayToggle}
+                            onDelete={handleDelete}
+                        />
+                    ))}
                 </ul>
             )}
 
