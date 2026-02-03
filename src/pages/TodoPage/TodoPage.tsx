@@ -9,20 +9,22 @@ import './TodoPage.css';
 // ═══════════════════════════════════════════════════════════════
 
 const MEMBER_COLORS = [
+    '#3498db', // Bright Blue
+    '#e74c3c', // Bright Red
+    '#2ecc71', // Bright Green
+    '#f1c40f', // Bright Yellow
+    '#9b59b6', // Bright Purple
+    '#1abc9c', // Turquoise
+    '#e67e22', // Orange
+    '#e91e63', // Pink
+    '#2c3e50', // Navy Blue
     '#00d2ff', // Cyan
-    '#ff4b2b', // Red-Orange
-    '#b1f33d', // Lime
-    '#ff00cc', // Pink
-    '#7042f4', // Purple
-    '#ffbf00', // Amber
-    '#00ff87', // Spring Green
-    '#ff3e00', // Deep Orange
-    '#9d50bb', // Plum
-    '#ad5389', // Rose
 ];
 
 const getColorForUser = (userId: number): string => {
-    const index = Math.abs(userId) % MEMBER_COLORS.length;
+    // Scatter the IDs so sequential IDs get very different colors
+    const hash = (Math.abs(userId) * 7 + 3);
+    const index = hash % MEMBER_COLORS.length;
     return MEMBER_COLORS[index];
 };
 
