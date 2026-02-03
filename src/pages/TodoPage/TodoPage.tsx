@@ -104,7 +104,7 @@ const HabitRow = memo(({
                     onClick={() => onToggle(habit, TODAY)}
                 />
                 <div className="habit-content">
-                    <span className="habit-text" style={{ color: creator.color }}>
+                    <span className="habit-text">
                         {habit.text}
                     </span>
                     {/* Small creator indicator if not self */}
