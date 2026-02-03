@@ -1,173 +1,217 @@
-# 🧙‍♂️ THE MAGIC SHEET
-## *Everything You Need to Know on One Page*
+# 🧠 THE INTELLIGENT CHEATSHEET
+## *Quick Reference with Embedded Reasoning*
+
+> **USAGE**: Scan this first. Think, then act. When deeper reasoning needed → Read full guide.
 
 ---
 
-## 🎯 WHAT TO DO FIRST
+## 🎯 THE MASTER ALGORITHM
 
 ```
-1. Read this sheet
-2. If you need details → Read .agent/workflows/telegram-miniapp-guide.md
-3. Follow the decision trees - they tell you exactly what to do
-```
-
----
-
-## 📁 PROJECT STRUCTURE (Universal)
-
-```
-src/
-├── index.tsx          ← Entry (don't touch)
-├── init.ts            ← SDK setup
-├── mockEnv.ts         ← Fake Telegram for testing
-├── navigation/
-│   └── routes.tsx     ← ADD NEW PAGES HERE
-├── components/        ← Reusable pieces
-└── pages/             ← Each screen of the app
-    └── [PageName]/
-        ├── index.ts        ← export { PageName }
-        ├── [PageName].tsx  ← Component
-        ├── [PageName].css  ← Styles
-        ├── api.ts          ← API calls (optional)
-        └── types.ts        ← TypeScript types
+BEFORE ANY ACTION, ASK:
+┌─────────────────────────────────────────────────────────────┐
+│ 1. WHAT does user want? (not just what they said)           │
+│ 2. WHAT files need to change?                               │
+│ 3. WHAT order? (dependencies first)                         │
+│ 4. WHAT could go wrong?                                     │
+│ 5. HOW will I verify success?                               │
+└─────────────────────────────────────────────────────────────┘
+Then execute. Then verify.
 ```
 
 ---
 
-## ⚡ COMMANDS
+## 📁 FILE DECISION MATRIX
 
-```bash
-npm run dev          # Start dev server
-npm run build        # Build for production
-npm run deploy       # Deploy to GitHub Pages
+```
+User wants to...              →  Modify...
+────────────────────────────────────────────────
+Add new page                  →  src/pages/[New]/* + routes.tsx
+Change page logic             →  [Page].tsx
+Change page style             →  [Page].css  
+Add data type                 →  types.ts
+Add/change API                →  api.ts
+Change routing                →  routes.tsx
+Global styles                 →  index.css
+Build/deploy config           →  vite.config.ts
+Mock user for testing         →  mockEnv.ts
 ```
 
 ---
 
-## 🎨 STYLE DECISION
-
-```
-What style?
-│
-├── "Like Telegram" → Use @telegram-apps/telegram-ui
-│
-└── "Custom/Minimal" → Use plain HTML + CSS
-    │
-    └── Dark theme colors:
-        Background:  #1a1a1a
-        Secondary:   #222222
-        Input bg:    #2a2a2a
-        Border:      #444444
-        Text:        #ffffff
-        Hint:        #888888
-        Accent:      #4fc3f7
-        Danger:      #ff6b6b
-```
-
----
-
-## 👤 GET TELEGRAM USER
+## ⚡ PERFORMANCE PATTERNS
 
 ```typescript
-import { useSignal, initData } from '@telegram-apps/sdk-react';
-
-const state = useSignal(initData.state);
-const userId = state?.user?.id;
-const firstName = state?.user?.firstName;
-```
-
----
-
-## ➕ CREATE NEW PAGE
-
-```
-1. Create folder: src/pages/[PageName]/
-2. Create files:
-   - index.ts     → export { PageName } from './PageName';
-   - types.ts     → Your interfaces
-   - PageName.tsx → Your component
-   - PageName.css → Your styles
-3. Add to routes.tsx:
-   - Import: import { PageName } from '@/pages/PageName';
-   - Route: { path: '/page-name', Component: PageName }
-```
-
----
-
-## 🔄 API PATTERN
-
-```typescript
-// Optimistic update pattern:
-const handleAction = async () => {
-    const backup = data;           // 1. Save backup
-    setData(newData);              // 2. Update UI immediately
+// 1. OPTIMISTIC UPDATES (instant feedback)
+const handle = async (id, value) => {
+    const backup = state;              // Save for rollback
+    setState(update(state, id, value)); // Update immediately
     try {
-        await apiCall();           // 3. Call API
-    } catch (e) {
-        setData(backup);           // 4. Revert on error
+        await api.update(id, value);   // Sync with server
+    } catch {
+        setState(backup);              // Rollback on failure
     }
 };
+
+// 2. MEMOIZE EXPENSIVE COMPUTATIONS
+const filtered = useMemo(() => 
+    items.filter(predicate), 
+    [items, predicate]
+);
+
+// 3. DEBOUNCE USER INPUT
+const debouncedSearch = useMemo(
+    () => debounce(api.search, 300),
+    []
+);
+
+// 4. PREVENT RE-RENDERS
+const config = useMemo(() => ({ theme: 'dark' }), []);
+const handler = useCallback(() => doThing(), [deps]);
 ```
 
 ---
 
-## 🐛 COMMON FIXES
-
-| Error | Fix |
-|-------|-----|
-| `Cannot find '@/...'` | Check tsconfig.json paths |
-| Blank page in Telegram | Fix `base` in vite.config.ts |
-| CORS error | Add CORS headers to PHP |
-| initData undefined | mockEnv.ts should handle it |
-
----
-
-## ✅ BEFORE YOU'RE DONE
+## 🔄 STATE LOCATION DECISION
 
 ```
-□ No TypeScript errors
-□ No console errors
-□ Feature works
-□ Existing features still work
-□ Looks good on mobile
+Used by ONE component    →  useState in that component
+Used by SIBLINGS         →  useState in parent
+Used EVERYWHERE          →  React Context
+Needs PERSISTENCE        →  localStorage + useState
+From SERVER              →  fetch + useState
+URL-based                →  route params
 ```
 
 ---
 
-## 🎯 SIZING REFERENCE
+## 🎨 UI DECISION TREE
 
 ```
-Touch targets:  minimum 44px × 44px
-Page title:     24px, bold
-Body text:      15-16px
-Secondary:      13-14px
-Page padding:   16-20px horizontal
-Item padding:   14px vertical
-Border radius:  8px (medium), 50% (circle)
-Transitions:    0.2s ease
+                    What style?
+                        │
+          ┌─────────────┴─────────────┐
+          ▼                           ▼
+   "Like Telegram"              "Custom design"
+          │                           │
+          ▼                           ▼
+   Use telegram-ui            Use HTML + CSS
+   components                 with reference
 ```
 
 ---
 
-## 📐 LAYOUT PATTERNS
+## 🐛 DEBUGGING ALGORITHM
+
+```
+1. OBSERVE   → What exactly is the error?
+2. REPRODUCE → Can you make it happen again?
+3. ISOLATE   → What's the smallest code that breaks?
+4. HYPOTHESIZE → What could cause this? (list 3)
+5. TEST      → Try most likely fix first
+6. VERIFY    → Does it work? No side effects?
+```
+
+### Common Bugs → Fixes
+
+| Bug | Fix |
+|-----|-----|
+| Component not updating | Don't mutate state, create new object |
+| Stale value in callback | Use `setState(prev => ...)` |
+| Infinite loop | Check effect dependencies |
+| Memory leak warning | Cleanup async in effect |
+| "undefined" error | Use optional chaining `obj?.prop` |
+
+---
+
+## 📋 CREATE NEW PAGE (5 Steps)
+
+```
+1. Create folder: src/pages/[Name]/
+2. Create files:
+   └── index.ts      → export { Name } from './Name';
+   └── types.ts      → interfaces
+   └── [Name].tsx    → component
+   └── [Name].css    → styles
+3. Add to routes.tsx:
+   import { Name } from '@/pages/Name';
+   { path: '/name', Component: Name }
+4. Run dev server, verify page loads
+5. Implement features
+```
+
+---
+
+## 🛡️ SMART VALIDATION PATTERNS
+
+```typescript
+// Block invalid dates
+const isValid = (date: string, createdAt: string) => {
+    if (date > TODAY) return false;           // Future blocked
+    if (date < formatDate(created)) return false; // Pre-creation blocked
+    return true;
+};
+
+// Validate before submit
+const handleSubmit = () => {
+    if (!input.trim()) return;                // Empty blocked
+    if (input.length > 100) return;           // Too long blocked
+    // ... proceed
+};
+
+// Handle all states
+{isLoading ? <Spinner /> :
+ error ? <Error message={error} /> :
+ data.length === 0 ? <Empty /> :
+ <List items={data} />}
+```
+
+---
+
+## 📐 SIZING REFERENCE
+
+```
+Touch targets     →  min 44px × 44px
+Page title        →  24px, bold
+Body text         →  14-15px
+Secondary text    →  12-13px
+Page padding      →  16-20px
+Item padding      →  12-14px
+Border radius     →  6-8px (subtle), 50% (circle)
+Transitions       →  0.15-0.2s ease
+```
+
+---
+
+## 🎨 DARK THEME PALETTE
 
 ```css
-/* List */
-.list { list-style: none; padding: 0; }
-.item { padding: 14px 20px; border-bottom: 1px solid #2a2a2a; }
+--bg-primary:     #1a1a1a;
+--bg-secondary:   #222222;
+--bg-input:       #2a2a2a;
+--border:         #333333;
+--border-input:   #444444;
+--text-primary:   #ffffff;
+--text-secondary: #888888;
+--text-muted:     #666666;
+--accent:         #4fc3f7;
+--danger:         #ff6b6b;
+--success:        #4ade80;
+```
 
-/* Grid */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
-}
+---
 
-/* Fixed columns (tracker style) */
-.fixed-grid {
-  display: grid;
-  grid-template-columns: 1fr repeat(5, 48px);
-}
+## ✅ COMPLETION CHECKLIST
+
+```
+□ Does it do what user asked?
+□ Handles loading state?
+□ Handles empty state?
+□ Handles error state?
+□ No TypeScript errors?
+□ No console errors?
+□ Works on mobile (320px+)?
+□ Existing features still work?
 ```
 
 ---
@@ -175,14 +219,40 @@ Transitions:    0.2s ease
 ## 🔑 GOLDEN RULES
 
 ```
-1. ALWAYS use absolute file paths
-2. ALWAYS verify after changes
-3. NEVER guess - look at existing code
-4. SIMPLE is better than complex
-5. Follow the decision frameworks - they have the answers
+1. THINK before you code
+2. SIMPLE beats clever
+3. ONE change at a time when risky
+4. VERIFY after every change
+5. NEVER guess — look at existing code
+6. HANDLE all edge cases
+7. OPTIMIZE only when slow
 ```
 
 ---
 
-*When in doubt, read the full guide:*
-*`.agent/workflows/telegram-miniapp-guide.md`*
+## 🚀 COMMANDS
+
+```bash
+npm run dev       # Start dev server
+npm run build     # Production build
+npm run deploy    # Deploy to GitHub Pages
+npm run lint      # Check code quality
+```
+
+---
+
+## 📖 NEED MORE DEPTH?
+
+Read the full guide: `.agent/workflows/telegram-miniapp-guide.md`
+
+Covers:
+- Problem decomposition algorithms
+- Performance optimization strategies
+- Component architecture patterns
+- Comprehensive debugging methods
+- Code quality heuristics
+- Refactoring decision trees
+
+---
+
+*Cheatsheet v4.0 | Intelligent Edition | 2026-02-03*

@@ -67,7 +67,7 @@ type FilterMode = 'all' | 'completed' | 'incomplete';
 export const TodoPage: FC = () => {
     const initDataState = useSignal(initData.state);
     const userId = initDataState?.user?.id || 12345;
-    const userName = initDataState?.user?.firstName || 'You';
+    const userName = initDataState?.user?.first_name || 'You';
 
     const [todos, setTodos] = useState<Todo[]>([]);
     const [inputValue, setInputValue] = useState('');
@@ -338,7 +338,7 @@ export const TodoPage: FC = () => {
                 <ul className="habits-list">
                     {filteredHabits.map(habit => {
                         const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
-                        const creationDate = habit.created_at ? formatDate(parseDate(habit.created_at)) : '';
+
 
                         return (
                             <li
