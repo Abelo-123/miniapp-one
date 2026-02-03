@@ -22,9 +22,10 @@ const MEMBER_COLORS = [
 ];
 
 const getColorForUser = (userId: number): string => {
-    // Scatter the IDs so sequential IDs get very different colors
-    const hash = (Math.abs(userId) * 7 + 3);
-    const index = hash % MEMBER_COLORS.length;
+    // Better scatter: id * large prime + offset
+    // This ensures even sequential IDs result in very different indices
+    const hash = (Math.abs(userId) * 1103515245 + 12345);
+    const index = (hash >> 16) % MEMBER_COLORS.length;
     return MEMBER_COLORS[index];
 };
 
@@ -79,38 +80,31 @@ const getLastDays = (count: number) => {
 const HabitRow = memo(({
     habit,
     displayDays,
-    userId,
     getMember,
     onToggle,
     onDelete
 }: {
     habit: Todo,
     displayDays: any[],
-    userId: number,
     getMember: (id: number, name?: string) => Member,
     onToggle: (todo: Todo, dateStr: string) => void,
     onDelete: (id: number) => void
 }) => {
     const creator = getMember(habit.user_id, habit.user_name);
-    const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
 
     return (
         <li className="habit-row">
             <div className="habit-info">
-                {/* Visual Identity: Checkbox border = creator color */}
-                <div
-                    className={`checkbox ${isTodayDone ? 'checked' : ''}`}
-                    style={{ borderColor: creator.color, backgroundColor: isTodayDone ? creator.color : 'transparent' }}
-                    onClick={() => onToggle(habit, TODAY)}
-                />
                 <div className="habit-content">
                     <span className="habit-text">
                         {habit.text}
                     </span>
-                    {/* Small creator indicator if not self */}
-                    {habit.user_id !== userId && (
-                        <span className="creator-dot" style={{ backgroundColor: creator.color }} title={creator.name} />
-                    )}
+                    {/* Visual identification: Colored dot shows who created the task */}
+                    <span
+                        className="creator-dot"
+                        style={{ backgroundColor: creator.color }}
+                        title={`Created by ${creator.name}`}
+                    />
                 </div>
             </div>
 
@@ -344,7 +338,6 @@ export const TodoPage: FC = () => {
                             key={habit.id}
                             habit={habit}
                             displayDays={displayDays}
-                            userId={userId}
                             getMember={getMember}
                             onToggle={handleDayToggle}
                             onDelete={handleDelete}
