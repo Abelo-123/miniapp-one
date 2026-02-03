@@ -4,6 +4,10 @@ import type { Todo, HabitMetadata } from './types';
 import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
 import './TodoPage.css';
 
+// ═══════════════════════════════════════════════════════════════
+// DATE UTILITIES
+// ═══════════════════════════════════════════════════════════════
+
 const formatDate = (date: Date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -16,14 +20,25 @@ const getWeekday = (date: Date) => {
     return days[date.getDay()];
 };
 
-const TODAY = formatDate(new Date());
-
-// Check if a date is in the future
-const isFutureDate = (dateStr: string) => {
-    return dateStr > TODAY;
+const parseDate = (dateStr: string): Date => {
+    // Handle "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS" format
+    const cleaned = dateStr.replace(' ', 'T');
+    return new Date(cleaned);
 };
 
-// Get last N days for the header (past dates only)
+const TODAY = formatDate(new Date());
+
+// Check if date is in the future (after today)
+const isFutureDate = (dateStr: string) => dateStr > TODAY;
+
+// Check if date is before habit was created
+const isBeforeCreation = (dateStr: string, createdAt: string) => {
+    if (!createdAt) return false;
+    const creationDate = formatDate(parseDate(createdAt));
+    return dateStr < creationDate;
+};
+
+// Get last N days for the header
 const getLastDays = (count: number) => {
     const days = [];
     for (let i = 0; i < count; i++) {
@@ -32,24 +47,42 @@ const getLastDays = (count: number) => {
         days.push({
             date: formatDate(d),
             weekday: getWeekday(d),
-            dayNum: d.getDate()
+            dayNum: d.getDate(),
+            isToday: i === 0
         });
     }
     return days;
 };
 
+// ═══════════════════════════════════════════════════════════════
+// FILTER TYPES
+// ═══════════════════════════════════════════════════════════════
+
+type FilterMode = 'all' | 'completed' | 'incomplete';
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════
+
 export const TodoPage: FC = () => {
     const initDataState = useSignal(initData.state);
     const userId = initDataState?.user?.id || 12345;
+    const userName = initDataState?.user?.firstName || 'You';
 
     const [todos, setTodos] = useState<Todo[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [filterMode, setFilterMode] = useState<FilterMode>('all');
+    const [showFilterMenu, setShowFilterMenu] = useState(false);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
 
-    // Last 5 days for the grid (all past dates)
+    // Last 5 days for the grid
     const displayDays = getLastDays(5);
 
-    // Load todos
+    // ═══════════════════════════════════════════════════════════
+    // DATA LOADING
+    // ═══════════════════════════════════════════════════════════
+
     const loadTodos = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -66,7 +99,10 @@ export const TodoPage: FC = () => {
         loadTodos();
     }, [loadTodos]);
 
-    // Add new habit
+    // ═══════════════════════════════════════════════════════════
+    // HABIT ACTIONS
+    // ═══════════════════════════════════════════════════════════
+
     const handleAddHabit = async () => {
         if (!inputValue.trim()) return;
         try {
@@ -84,12 +120,14 @@ export const TodoPage: FC = () => {
         }
     };
 
-    // Toggle habit for a specific date
     const handleDayToggle = async (todo: Todo, dateStr: string) => {
         if (!todo.habit) return;
 
-        // BLOCK FUTURE DATES
+        // SMART BLOCKING: No future dates, no dates before creation
         if (isFutureDate(dateStr)) {
+            return;
+        }
+        if (isBeforeCreation(dateStr, todo.created_at)) {
             return;
         }
 
@@ -138,13 +176,12 @@ export const TodoPage: FC = () => {
         }
     };
 
-    // Toggle today's completion (via checkbox)
     const handleTodayToggle = (todo: Todo) => {
         handleDayToggle(todo, TODAY);
     };
 
-    // Delete habit
     const handleDelete = async (todoId: number) => {
+        setDeletingId(todoId);
         const optimisticTodos = todos.filter(t => t.id !== todoId);
         const prevTodos = todos;
         setTodos(optimisticTodos);
@@ -154,11 +191,33 @@ export const TodoPage: FC = () => {
         } catch (err) {
             setTodos(prevTodos);
             console.error(err);
+        } finally {
+            setDeletingId(null);
         }
     };
 
-    // Filter only habits
+    // ═══════════════════════════════════════════════════════════
+    // FILTERING
+    // ═══════════════════════════════════════════════════════════
+
     const habits = todos.filter(t => t.habit);
+
+    const filteredHabits = habits.filter(habit => {
+        const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
+
+        switch (filterMode) {
+            case 'completed':
+                return isTodayDone;
+            case 'incomplete':
+                return !isTodayDone;
+            default:
+                return true;
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════════════════════════
 
     return (
         <div className="habits-container">
@@ -166,39 +225,64 @@ export const TodoPage: FC = () => {
             <header className="habits-header">
                 <h1 className="habits-title">Habits</h1>
                 <div className="header-actions">
-                    <button className="header-btn" title="Add">+</button>
-                    <button className="header-btn" title="Filter">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <line x1="4" y1="21" x2="4" y2="14" />
-                            <line x1="4" y1="10" x2="4" y2="3" />
-                            <line x1="12" y1="21" x2="12" y2="12" />
-                            <line x1="12" y1="8" x2="12" y2="3" />
-                            <line x1="20" y1="21" x2="20" y2="16" />
-                            <line x1="20" y1="12" x2="20" y2="3" />
-                        </svg>
-                    </button>
-                    <button className="header-btn" title="Menu">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="12" cy="5" r="2" />
-                            <circle cx="12" cy="12" r="2" />
-                            <circle cx="12" cy="19" r="2" />
-                        </svg>
-                    </button>
+                    {/* Filter Button */}
+                    <div className="filter-wrapper">
+                        <button
+                            className={`header-btn ${filterMode !== 'all' ? 'active' : ''}`}
+                            title="Filter"
+                            onClick={() => setShowFilterMenu(!showFilterMenu)}
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                            </svg>
+                        </button>
+
+                        {/* Filter Dropdown */}
+                        {showFilterMenu && (
+                            <div className="filter-menu">
+                                <button
+                                    className={`filter-option ${filterMode === 'all' ? 'selected' : ''}`}
+                                    onClick={() => { setFilterMode('all'); setShowFilterMenu(false); }}
+                                >
+                                    All Habits
+                                </button>
+                                <button
+                                    className={`filter-option ${filterMode === 'completed' ? 'selected' : ''}`}
+                                    onClick={() => { setFilterMode('completed'); setShowFilterMenu(false); }}
+                                >
+                                    ✓ Completed Today
+                                </button>
+                                <button
+                                    className={`filter-option ${filterMode === 'incomplete' ? 'selected' : ''}`}
+                                    onClick={() => { setFilterMode('incomplete'); setShowFilterMenu(false); }}
+                                >
+                                    ✕ Not Done Today
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
+
+            {/* Current User */}
+            <div className="user-badge">
+                <span className="user-dot"></span>
+                <span className="user-name">{userName}</span>
+            </div>
 
             {/* Days Header Row */}
             <div className="days-header">
                 <div className="days-header-spacer"></div>
                 {displayDays.map(day => (
-                    <div key={day.date} className="day-column-header">
+                    <div key={day.date} className={`day-column-header ${day.isToday ? 'today' : ''}`}>
                         <span className="weekday">{day.weekday}</span>
                         <span className="day-num">{day.dayNum}</span>
                     </div>
                 ))}
+                <div className="delete-column-spacer"></div>
             </div>
 
-            {/* Add Habit Input (hidden by default, shown when + clicked) */}
+            {/* Add Habit Input */}
             <div className="add-habit-section">
                 <input
                     type="text"
@@ -217,33 +301,51 @@ export const TodoPage: FC = () => {
                 </button>
             </div>
 
+            {/* Filter indicator */}
+            {filterMode !== 'all' && (
+                <div className="filter-indicator">
+                    Showing: {filterMode === 'completed' ? 'Completed today' : 'Not done today'}
+                    <button
+                        className="clear-filter"
+                        onClick={() => setFilterMode('all')}
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
             {/* Habits List */}
             {isLoading ? (
                 <div className="loading-state">
                     <div className="spinner" />
                     <span>Loading habits...</span>
                 </div>
-            ) : habits.length === 0 ? (
+            ) : filteredHabits.length === 0 ? (
                 <div className="empty-state">
-                    <h3>No habits yet</h3>
-                    <p>Add a habit above to get started</p>
+                    {habits.length === 0 ? (
+                        <>
+                            <h3>No habits yet</h3>
+                            <p>Add a habit above to get started</p>
+                        </>
+                    ) : (
+                        <>
+                            <h3>No habits match filter</h3>
+                            <p>Try changing the filter</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <ul className="habits-list">
-                    {habits.map(habit => {
+                    {filteredHabits.map(habit => {
                         const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
+                        const creationDate = habit.created_at ? formatDate(parseDate(habit.created_at)) : '';
 
                         return (
                             <li
                                 key={habit.id}
-                                className="habit-row"
-                                onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    if (confirm(`Delete "${habit.text}"?`)) {
-                                        handleDelete(habit.id);
-                                    }
-                                }}
+                                className={`habit-row ${deletingId === habit.id ? 'deleting' : ''}`}
                             >
+                                {/* Habit Name with Checkbox */}
                                 <div className="habit-name">
                                     <div
                                         className={`habit-checkbox ${isTodayDone ? 'checked' : ''}`}
@@ -252,25 +354,48 @@ export const TodoPage: FC = () => {
                                     <span className="habit-text">{habit.text}</span>
                                 </div>
 
+                                {/* Day Cells */}
                                 {displayDays.map(day => {
                                     const isDone = habit.habit?.history?.[day.date] !== undefined;
                                     const isFuture = isFutureDate(day.date);
+                                    const isBeforeHabit = isBeforeCreation(day.date, habit.created_at);
+                                    const isDisabled = isFuture || isBeforeHabit;
+
                                     return (
                                         <div
                                             key={day.date}
-                                            className={`day-cell ${isFuture ? 'future' : ''}`}
-                                            onClick={() => !isFuture && handleDayToggle(habit, day.date)}
+                                            className={`day-cell ${isDisabled ? 'disabled' : ''} ${day.isToday ? 'today-cell' : ''}`}
+                                            onClick={() => !isDisabled && handleDayToggle(habit, day.date)}
+                                            title={isBeforeHabit ? 'Before habit created' : isFuture ? 'Future date' : ''}
                                         >
                                             <span className={`day-mark ${isDone ? 'completed' : ''}`}>
-                                                ✕
+                                                {isBeforeHabit ? '—' : '✕'}
                                             </span>
                                         </div>
                                     );
                                 })}
+
+                                {/* Delete Button */}
+                                <button
+                                    className="delete-btn"
+                                    onClick={() => handleDelete(habit.id)}
+                                    title="Delete habit"
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+                                        <line x1="10" y1="11" x2="10" y2="17" />
+                                        <line x1="14" y1="11" x2="14" y2="17" />
+                                    </svg>
+                                </button>
                             </li>
                         );
                     })}
                 </ul>
+            )}
+
+            {/* Click overlay to close filter menu */}
+            {showFilterMenu && (
+                <div className="overlay" onClick={() => setShowFilterMenu(false)} />
             )}
         </div>
     );
