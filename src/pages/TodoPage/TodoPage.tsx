@@ -5,20 +5,12 @@ import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
 import './TodoPage.css';
 
 // ═══════════════════════════════════════════════════════════════
-// MEMBER COLORS - Unique color for each user
+// MEMBER COLORS
 // ═══════════════════════════════════════════════════════════════
 
 const MEMBER_COLORS = [
-    '#4fc3f7', // Cyan
-    '#ff7043', // Orange
-    '#66bb6a', // Green
-    '#ab47bc', // Purple
-    '#ffa726', // Amber
-    '#ef5350', // Red
-    '#26c6da', // Teal
-    '#ec407a', // Pink
-    '#8d6e63', // Brown
-    '#78909c', // Blue Grey
+    '#4fc3f7', '#ff7043', '#66bb6a', '#ab47bc', '#ffa726',
+    '#ef5350', '#26c6da', '#ec407a', '#8d6e63', '#78909c',
 ];
 
 const getColorForUser = (userId: number): string => {
@@ -71,12 +63,6 @@ const getLastDays = (count: number) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// FILTER TYPES
-// ═══════════════════════════════════════════════════════════════
-
-type FilterMode = 'all' | 'completed' | 'incomplete';
-
-// ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
@@ -88,47 +74,31 @@ export const TodoPage: FC = () => {
     const [todos, setTodos] = useState<Todo[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(true);
-    const [filterMode, setFilterMode] = useState<FilterMode>('all');
+    const [filterMode, setFilterMode] = useState<'all' | 'completed' | 'incomplete'>('all');
     const [showFilterMenu, setShowFilterMenu] = useState(false);
     const [showMembersModal, setShowMembersModal] = useState(false);
 
     const displayDays = getLastDays(5);
 
     // ═══════════════════════════════════════════════════════════
-    // EXTRACT MEMBERS FROM DATA
+    // EXTRACT MEMBERS (Smart logic using stored names)
     // ═══════════════════════════════════════════════════════════
 
     const members = useMemo((): Member[] => {
         const memberMap = new Map<number, Member>();
 
-        // Add current user
         memberMap.set(userId, {
             id: userId,
             name: userName,
             color: getColorForUser(userId)
         });
 
-        // Extract from todos (creators and checkers)
         todos.forEach(todo => {
-            // Creator
             if (todo.user_id && !memberMap.has(todo.user_id)) {
                 memberMap.set(todo.user_id, {
                     id: todo.user_id,
-                    name: `User ${todo.user_id}`,
+                    name: todo.user_name || `User ${todo.user_id}`,
                     color: getColorForUser(todo.user_id)
-                });
-            }
-
-            // People who checked habits
-            if (todo.habit?.history) {
-                Object.values(todo.habit.history).forEach(checkerId => {
-                    if (!memberMap.has(checkerId)) {
-                        memberMap.set(checkerId, {
-                            id: checkerId,
-                            name: `User ${checkerId}`,
-                            color: getColorForUser(checkerId)
-                        });
-                    }
                 });
             }
         });
@@ -136,17 +106,16 @@ export const TodoPage: FC = () => {
         return Array.from(memberMap.values());
     }, [todos, userId, userName]);
 
-    // Get member by ID
-    const getMember = (id: number): Member => {
+    const getMember = (id: number, fallbackName?: string): Member => {
         return members.find(m => m.id === id) || {
             id,
-            name: `User ${id}`,
+            name: fallbackName || `User ${id}`,
             color: getColorForUser(id)
         };
     };
 
     // ═══════════════════════════════════════════════════════════
-    // DATA LOADING
+    // ACTIONS
     // ═══════════════════════════════════════════════════════════
 
     const loadTodos = useCallback(async () => {
@@ -161,84 +130,37 @@ export const TodoPage: FC = () => {
         }
     }, [userId]);
 
-    useEffect(() => {
-        loadTodos();
-    }, [loadTodos]);
-
-    // ═══════════════════════════════════════════════════════════
-    // HABIT ACTIONS
-    // ═══════════════════════════════════════════════════════════
+    useEffect(() => { loadTodos(); }, [loadTodos]);
 
     const handleAddHabit = async () => {
         if (!inputValue.trim()) return;
         try {
-            const habitMetadata: HabitMetadata = {
-                frequency: 'daily',
-                streak: 0,
-                history: {}
-            };
-
-            const newTodo = await addTodo(userId, inputValue.trim(), habitMetadata);
+            const habitMetadata: HabitMetadata = { frequency: 'daily', streak: 0, history: {} };
+            const newTodo = await addTodo(userId, inputValue.trim(), habitMetadata, userName);
             setTodos(prev => [newTodo, ...prev]);
             setInputValue('');
-        } catch (err) {
-            console.error(err);
-        }
+        } catch (err) { console.error(err); }
     };
 
     const handleDayToggle = async (todo: Todo, dateStr: string) => {
-        if (!todo.habit) return;
-        if (isFutureDate(dateStr)) return;
-        if (isBeforeCreation(dateStr, todo.created_at)) return;
+        if (!todo.habit || isFutureDate(dateStr) || isBeforeCreation(dateStr, todo.created_at)) return;
 
         const history = todo.habit.history || {};
         const isCompletedOnDate = history[dateStr] !== undefined;
-
         let newHistory = { ...history };
+
         if (isCompletedOnDate) {
-            // Only allow unchecking your own check
-            if (history[dateStr] === userId) {
-                delete newHistory[dateStr];
-            } else {
-                return; // Can't uncheck someone else's mark
-            }
+            if (history[dateStr] === userId) delete newHistory[dateStr];
+            else return;
         } else {
             newHistory[dateStr] = userId;
         }
 
-        // Calculate streak
-        let calculatedStreak = 0;
-        if (newHistory[TODAY]) {
-            calculatedStreak = 1;
-            let d = new Date();
-            while (true) {
-                d.setDate(d.getDate() - 1);
-                const dStr = formatDate(d);
-                if (newHistory[dStr]) {
-                    calculatedStreak++;
-                } else {
-                    break;
-                }
-            }
-        }
+        const newHabit = { ...todo.habit, history: newHistory };
+        setTodos(todos.map(t => t.id === todo.id ? { ...t, habit: newHabit } : t));
 
-        const newHabit = {
-            ...todo.habit,
-            history: newHistory,
-            streak: calculatedStreak
-        };
-
-        const optimisticTodos = todos.map(t =>
-            t.id === todo.id ? { ...t, habit: newHabit } : t
-        );
-        setTodos(optimisticTodos);
-
-        try {
-            await updateTodo(userId, todo.id, { text: todo.text, habit: newHabit });
-        } catch (err) {
-            setTodos(todos);
-            console.error(err);
-        }
+        try { await updateTodo(userId, todo.id, { text: todo.text, habit: newHabit }); }
+        catch (err) { setTodos(todos); console.error(err); }
     };
 
     const handleTodayToggle = (todo: Todo) => {
@@ -247,87 +169,44 @@ export const TodoPage: FC = () => {
 
     const handleDelete = async (todoId: number) => {
         if (!confirm('Delete this habit?')) return;
-
-        const optimisticTodos = todos.filter(t => t.id !== todoId);
         const prevTodos = todos;
-        setTodos(optimisticTodos);
-
-        try {
-            await deleteTodo(userId, todoId);
-        } catch (err) {
-            setTodos(prevTodos);
-            console.error(err);
-        }
+        setTodos(todos.filter(t => t.id !== todoId));
+        try { await deleteTodo(userId, todoId); }
+        catch (err) { setTodos(prevTodos); console.error(err); }
     };
 
-    // ═══════════════════════════════════════════════════════════
-    // FILTERING
-    // ═══════════════════════════════════════════════════════════
-
-    const habits = todos.filter(t => t.habit);
-
-    const filteredHabits = habits.filter(habit => {
+    const filteredHabits = todos.filter(t => t.habit).filter(habit => {
         const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
-
-        switch (filterMode) {
-            case 'completed': return isTodayDone;
-            case 'incomplete': return !isTodayDone;
-            default: return true;
-        }
+        if (filterMode === 'completed') return isTodayDone;
+        if (filterMode === 'incomplete') return !isTodayDone;
+        return true;
     });
-
-    // ═══════════════════════════════════════════════════════════
-    // RENDER
-    // ═══════════════════════════════════════════════════════════
 
     return (
         <div className="habits-container">
-            {/* Header */}
             <header className="habits-header">
                 <h1 className="habits-title">Habits</h1>
                 <div className="header-actions">
-                    {/* Members Button */}
-                    <button
-                        className="header-btn"
-                        onClick={() => setShowMembersModal(true)}
-                        title="View Members"
-                    >
-                        <span className="member-count">{members.length}</span>
-                        👥
+                    <button className="header-btn" onClick={() => setShowMembersModal(true)}>
+                        <span className="member-count">{members.length}</span> 👥
                     </button>
-
-                    {/* Filter Button */}
                     <div className="filter-wrapper">
-                        <button
-                            className={`header-btn ${filterMode !== 'all' ? 'active' : ''}`}
-                            onClick={() => setShowFilterMenu(!showFilterMenu)}
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <button className="header-btn" onClick={() => setShowFilterMenu(!showFilterMenu)}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                             </svg>
                         </button>
-
                         {showFilterMenu && (
                             <div className="filter-menu">
-                                <button
-                                    className={`filter-option ${filterMode === 'all' ? 'selected' : ''}`}
-                                    onClick={() => { setFilterMode('all'); setShowFilterMenu(false); }}
-                                >All</button>
-                                <button
-                                    className={`filter-option ${filterMode === 'completed' ? 'selected' : ''}`}
-                                    onClick={() => { setFilterMode('completed'); setShowFilterMenu(false); }}
-                                >✓ Done</button>
-                                <button
-                                    className={`filter-option ${filterMode === 'incomplete' ? 'selected' : ''}`}
-                                    onClick={() => { setFilterMode('incomplete'); setShowFilterMenu(false); }}
-                                >✕ Todo</button>
+                                <button className={`filter-option ${filterMode === 'all' ? 'selected' : ''}`} onClick={() => { setFilterMode('all'); setShowFilterMenu(false); }}>All</button>
+                                <button className={`filter-option ${filterMode === 'completed' ? 'selected' : ''}`} onClick={() => { setFilterMode('completed'); setShowFilterMenu(false); }}>Done</button>
+                                <button className={`filter-option ${filterMode === 'incomplete' ? 'selected' : ''}`} onClick={() => { setFilterMode('incomplete'); setShowFilterMenu(false); }}>Todo</button>
                             </div>
                         )}
                     </div>
                 </div>
             </header>
 
-            {/* Days Header */}
             <div className="days-header">
                 <div className="days-header-spacer"></div>
                 {displayDays.map(day => (
@@ -339,73 +218,41 @@ export const TodoPage: FC = () => {
                 <div className="del-col"></div>
             </div>
 
-            {/* Add Input */}
             <div className="add-section">
-                <input
-                    type="text"
-                    className="add-input"
-                    placeholder="New habit..."
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddHabit()}
-                />
+                <input className="add-input" placeholder="New habit..." value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddHabit()} />
                 <button className="add-btn" onClick={handleAddHabit} disabled={!inputValue.trim()}>+</button>
             </div>
 
-            {/* Habits List */}
-            {isLoading ? (
-                <div className="loading"><div className="spinner" /></div>
-            ) : filteredHabits.length === 0 ? (
-                <div className="empty">
-                    {habits.length === 0 ? 'No habits yet' : 'No matches'}
-                </div>
-            ) : (
+            {isLoading ? <div className="loading"><div className="spinner" /></div> : (
                 <ul className="habits-list">
                     {filteredHabits.map(habit => {
                         const isTodayDone = habit.habit?.history?.[TODAY] !== undefined;
-                        const creator = getMember(habit.user_id);
+                        const creator = getMember(habit.user_id, habit.user_name);
+
 
                         return (
                             <li key={habit.id} className="habit-row">
-                                {/* Checkbox + Name + Creator Color */}
                                 <div className="habit-info">
-                                    <div
-                                        className={`checkbox ${isTodayDone ? 'checked' : ''}`}
+                                    <div className={`checkbox ${isTodayDone ? 'checked' : ''}`}
                                         style={{ borderColor: creator.color, backgroundColor: isTodayDone ? creator.color : 'transparent' }}
-                                        onClick={() => handleTodayToggle(habit)}
-                                    />
-                                    <span className="habit-text" style={{ color: creator.color }}>
-                                        {habit.text}
-                                    </span>
+                                        onClick={() => handleTodayToggle(habit)} />
+                                    <span className="habit-text" style={{ color: creator.color }}>{habit.text}</span>
                                 </div>
 
-                                {/* Day Cells with colored marks */}
                                 {displayDays.map(day => {
                                     const checkerId = habit.habit?.history?.[day.date];
                                     const isDone = checkerId !== undefined;
-                                    const isFuture = isFutureDate(day.date);
-                                    const isBeforeHabit = isBeforeCreation(day.date, habit.created_at);
-                                    const isDisabled = isFuture || isBeforeHabit;
+                                    const isDisabled = isFutureDate(day.date) || isBeforeCreation(day.date, habit.created_at);
                                     const checkerColor = isDone ? getColorForUser(checkerId) : '#444';
 
                                     return (
-                                        <div
-                                            key={day.date}
-                                            className={`cell ${isDisabled ? 'disabled' : ''}`}
-                                            onClick={() => !isDisabled && handleDayToggle(habit, day.date)}
-                                            title={isDone ? `Checked by User ${checkerId}` : ''}
-                                        >
-                                            <span
-                                                className={`mark ${isDone ? 'done' : ''}`}
-                                                style={{ color: checkerColor }}
-                                            >
-                                                {isBeforeHabit ? '·' : isDone ? '✓' : '○'}
+                                        <div key={day.date} className={`cell ${isDisabled ? 'disabled' : ''}`} onClick={() => !isDisabled && handleDayToggle(habit, day.date)}>
+                                            <span className={`mark ${isDone ? 'done' : ''}`} style={{ color: checkerColor }}>
+                                                {isDisabled ? '·' : isDone ? '✓' : '○'}
                                             </span>
                                         </div>
                                     );
                                 })}
-
-                                {/* Delete */}
                                 <button className="del-btn" onClick={() => handleDelete(habit.id)}>×</button>
                             </li>
                         );
@@ -413,7 +260,6 @@ export const TodoPage: FC = () => {
                 </ul>
             )}
 
-            {/* Members Modal */}
             {showMembersModal && (
                 <>
                     <div className="overlay" onClick={() => setShowMembersModal(false)} />
@@ -426,21 +272,14 @@ export const TodoPage: FC = () => {
                             {members.map(member => (
                                 <li key={member.id} className="member-item">
                                     <span className="member-dot" style={{ backgroundColor: member.color }}></span>
-                                    <span className="member-name">
-                                        {member.name}
-                                        {member.id === userId && <span className="you-badge"> (you)</span>}
-                                    </span>
+                                    <span className="member-name">{member.name}{member.id === userId && <span className="you-badge"> (you)</span>}</span>
                                 </li>
                             ))}
                         </ul>
                     </div>
                 </>
             )}
-
-            {/* Click overlay to close filter */}
-            {showFilterMenu && (
-                <div className="overlay" onClick={() => setShowFilterMenu(false)} />
-            )}
+            {showFilterMenu && <div className="overlay" onClick={() => setShowFilterMenu(false)} />}
         </div>
     );
 };
