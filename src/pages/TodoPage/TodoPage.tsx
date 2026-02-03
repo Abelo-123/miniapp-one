@@ -22,10 +22,11 @@ const MEMBER_COLORS = [
 ];
 
 const getColorForUser = (userId: number): string => {
-    // Better scatter: id * large prime + offset
-    // This ensures even sequential IDs result in very different indices
-    const hash = (Math.abs(userId) * 1103515245 + 12345);
-    const index = (hash >> 16) % MEMBER_COLORS.length;
+    // Large Telegram IDs cause overflow with bitwise ops like >>.
+    // Instead, use a simple prime-based scatter that stays within JS safe integer limits.
+    const safeId = Math.abs(userId) % 1000003; // Limit the range
+    const hash = (safeId * 7 + 3); // Scatter
+    const index = hash % MEMBER_COLORS.length;
     return MEMBER_COLORS[index];
 };
 
@@ -187,7 +188,7 @@ export const TodoPage: FC = () => {
         });
 
         todos.forEach(todo => {
-            if (todo.user_id && !memberMap.has(todo.user_id)) {
+            if (todo.user_id !== undefined && !memberMap.has(todo.user_id)) {
                 memberMap.set(todo.user_id, {
                     id: todo.user_id,
                     name: todo.user_name || `User ${todo.user_id}`,
