@@ -13,11 +13,9 @@ function mapToTodo(data: any): Todo {
         text = parts[0];
         try {
             const parsed = JSON.parse(parts[1]);
+            // Ensure history is a proper record, not an array
             if (Array.isArray(parsed.history)) {
-                parsed.history = parsed.history.reduce((acc: any, date: string) => {
-                    acc[date] = Number(data.user_id) || 0;
-                    return acc;
-                }, {});
+                parsed.history = {};
             }
             habit = parsed;
         } catch (e) {

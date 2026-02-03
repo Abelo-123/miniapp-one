@@ -5,18 +5,28 @@ import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
 import './TodoPage.css';
 
 // ═══════════════════════════════════════════════════════════════
-// MEMBER COLORS
+// MEMBER COLORS - Refined for distinction
 // ═══════════════════════════════════════════════════════════════
 
 const MEMBER_COLORS = [
-    '#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6',
-    '#1abc9c', '#e67e22', '#e91e63', '#4fc3f7', '#ff7043',
+    '#3498db', // Blue
+    '#2ecc71', // Green
+    '#e74c3c', // Red
+    '#f1c40f', // Yellow
+    '#9b59b6', // Purple
+    '#1abc9c', // Teal
+    '#e67e22', // Orange
+    '#e91e63', // Pink
+    '#bdc3c7', // Silver
+    '#34495e', // Charcoal
 ];
 
-const getColorForUser = (userId: number): string => {
-    // Large prime multiplier for maximum distribution variance
-    const hash = (Math.abs(userId) * 2654435761 + 12345) >>> 0;
-    const index = hash % MEMBER_COLORS.length;
+const getColorForUser = (userId: any): string => {
+    const idNum = Number(userId) || 0;
+    // Hash shuffle for better distribution
+    const hash = (idNum ^ (idNum >>> 16)) * 0x45d9f3b;
+    const finalHash = (hash ^ (hash >>> 16)) >>> 0;
+    const index = finalHash % MEMBER_COLORS.length;
     return MEMBER_COLORS[index];
 };
 
@@ -65,32 +75,30 @@ const getLastDays = (count: number) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// HABIT ROW COMPONENT (Optimized)
+// HABIT ROW COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
 const HabitRow = memo(({
     habit,
     displayDays,
-    getMember,
     onToggle,
     onDelete
 }: {
     habit: Todo,
     displayDays: any[],
-    getMember: (id: number, name?: string) => Member,
     onToggle: (todo: Todo, dateStr: string) => void,
     onDelete: (id: number) => void
 }) => {
-    const creator = getMember(habit.user_id, habit.user_name);
+    const creatorColor = getColorForUser(habit.user_id);
 
     return (
         <li className="habit-row">
             <div className="habit-info">
                 <div className="habit-content">
-                    {/* CREATOR IDENTIFICATION: Simple Color Dot */}
+                    {/* CREATOR: HOLLOW RING (Identity) */}
                     <div
-                        className="creator-dot"
-                        style={{ backgroundColor: creator.color }}
+                        className="creator-ring"
+                        style={{ borderColor: creatorColor }}
                     />
                     <span className="habit-text">{habit.text}</span>
                 </div>
@@ -101,7 +109,7 @@ const HabitRow = memo(({
                 const isDone = checkerId !== undefined;
                 const isDisabled = isFutureDate(day.date) || isBeforeCreation(day.date, habit.created_at);
 
-                // CHECKER IDENTIFICATION: Solid Cell Color
+                // CHECKER: SOLID FILL (Action)
                 const checkerColor = isDone ? getColorForUser(checkerId) : 'transparent';
 
                 return (
@@ -151,7 +159,7 @@ export const TodoPage: FC = () => {
 
     useEffect(() => {
         loadTodos();
-        const interval = setInterval(() => loadTodos(true), 8000);
+        const interval = setInterval(() => loadTodos(true), 12000);
         return () => clearInterval(interval);
     }, [loadTodos]);
 
@@ -168,12 +176,13 @@ export const TodoPage: FC = () => {
                 });
             }
             if (todo.habit?.history) {
-                Object.values(todo.habit.history).forEach(checkerId => {
-                    if (!memberMap.has(checkerId)) {
-                        memberMap.set(checkerId, {
-                            id: checkerId,
-                            name: `User ${checkerId}`,
-                            color: getColorForUser(checkerId)
+                Object.values(todo.habit.history).forEach(cId => {
+                    const cidNum = Number(cId);
+                    if (!memberMap.has(cidNum)) {
+                        memberMap.set(cidNum, {
+                            id: cidNum,
+                            name: `User ${cidNum}`,
+                            color: getColorForUser(cidNum)
                         });
                     }
                 });
@@ -181,14 +190,6 @@ export const TodoPage: FC = () => {
         });
         return Array.from(memberMap.values());
     }, [todos, userId, userName]);
-
-    const getMember = useCallback((id: number, fallbackName?: string): Member => {
-        return members.find(m => m.id === id) || {
-            id,
-            name: fallbackName || `User ${id}`,
-            color: getColorForUser(id)
-        };
-    }, [members]);
 
     const handleAddHabit = async () => {
         if (!inputValue.trim()) return;
@@ -284,7 +285,7 @@ export const TodoPage: FC = () => {
             {isLoading ? <div className="loading"><div className="spinner" /></div> : (
                 <ul className="habits-list">
                     {filteredHabits.map(habit => (
-                        <HabitRow key={habit.id} habit={habit} displayDays={displayDays} getMember={getMember} onToggle={handleDayToggle} onDelete={handleDelete} />
+                        <HabitRow key={habit.id} habit={habit} displayDays={displayDays} onToggle={handleDayToggle} onDelete={handleDelete} />
                     ))}
                 </ul>
             )}
