@@ -1,31 +1,22 @@
 import { useState, useEffect, useCallback, useMemo, type FC, memo } from 'react';
 import { useSignal, initData } from '@telegram-apps/sdk-react';
-import type { Todo, HabitMetadata, Member } from './types';
+import type { Todo, Member } from './types';
 import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
 import './TodoPage.css';
 
 // ═══════════════════════════════════════════════════════════════
-// MEMBER COLORS - More vibrant & distinct
+// MEMBER COLORS
 // ═══════════════════════════════════════════════════════════════
 
 const MEMBER_COLORS = [
-    '#3498db', // Bright Blue
-    '#e74c3c', // Bright Red
-    '#2ecc71', // Bright Green
-    '#f1c40f', // Bright Yellow
-    '#9b59b6', // Bright Purple
-    '#1abc9c', // Turquoise
-    '#e67e22', // Orange
-    '#e91e63', // Pink
-    '#2c3e50', // Navy Blue
-    '#00d2ff', // Cyan
+    '#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6',
+    '#1abc9c', '#e67e22', '#e91e63', '#4fc3f7', '#ff7043',
 ];
 
 const getColorForUser = (userId: number): string => {
-    // Better scatter: id * large prime + offset
-    // This ensures even sequential IDs result in very different indices
-    const hash = (Math.abs(userId) * 1103515245 + 12345);
-    const index = (hash >> 16) % MEMBER_COLORS.length;
+    // Large prime multiplier for maximum distribution variance
+    const hash = (Math.abs(userId) * 2654435761 + 12345) >>> 0;
+    const index = hash % MEMBER_COLORS.length;
     return MEMBER_COLORS[index];
 };
 
@@ -74,7 +65,7 @@ const getLastDays = (count: number) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// MINI COMPONENTS FOR PERF
+// HABIT ROW COMPONENT (Optimized)
 // ═══════════════════════════════════════════════════════════════
 
 const HabitRow = memo(({
@@ -96,15 +87,12 @@ const HabitRow = memo(({
         <li className="habit-row">
             <div className="habit-info">
                 <div className="habit-content">
-                    <span className="habit-text">
-                        {habit.text}
-                    </span>
-                    {/* Visual identification: Colored dot shows who created the task */}
-                    <span
+                    {/* CREATOR IDENTIFICATION: Simple Color Dot */}
+                    <div
                         className="creator-dot"
                         style={{ backgroundColor: creator.color }}
-                        title={`Created by ${creator.name}`}
                     />
+                    <span className="habit-text">{habit.text}</span>
                 </div>
             </div>
 
@@ -112,15 +100,18 @@ const HabitRow = memo(({
                 const checkerId = habit.habit?.history?.[day.date];
                 const isDone = checkerId !== undefined;
                 const isDisabled = isFutureDate(day.date) || isBeforeCreation(day.date, habit.created_at);
-                const checkerColor = isDone ? getColorForUser(checkerId) : '#444';
+
+                // CHECKER IDENTIFICATION: Solid Cell Color
+                const checkerColor = isDone ? getColorForUser(checkerId) : 'transparent';
 
                 return (
                     <div
                         key={day.date}
-                        className={`cell ${isDisabled ? 'disabled' : ''}`}
+                        className={`cell ${isDisabled ? 'disabled' : ''} ${isDone ? 'done' : ''}`}
+                        style={{ backgroundColor: isDone ? checkerColor : undefined }}
                         onClick={() => !isDisabled && onToggle(habit, day.date)}
                     >
-                        <span className={`mark ${isDone ? 'done' : ''}`} style={{ color: checkerColor }}>
+                        <span className="mark">
                             {isDisabled ? '·' : isDone ? '✓' : '○'}
                         </span>
                     </div>
@@ -149,42 +140,24 @@ export const TodoPage: FC = () => {
 
     const displayDays = useMemo(() => getLastDays(5), []);
 
-    // ═══════════════════════════════════════════════════════════
-    // SYNC LOGIC (Super Fast)
-    // ═══════════════════════════════════════════════════════════
-
     const loadTodos = useCallback(async (silent = false) => {
         try {
             if (!silent) setIsLoading(true);
             const data = await fetchTodos(userId);
-            // Only update state if data actually changed to prevent flutter
             setTodos(prev => JSON.stringify(prev) === JSON.stringify(data) ? prev : data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            if (!silent) setIsLoading(false);
-        }
+        } catch (err) { console.error(err); }
+        finally { if (!silent) setIsLoading(false); }
     }, [userId]);
 
-    // Background polling every 8 seconds for collaboration
     useEffect(() => {
         loadTodos();
         const interval = setInterval(() => loadTodos(true), 8000);
         return () => clearInterval(interval);
     }, [loadTodos]);
 
-    // ═══════════════════════════════════════════════════════════
-    // MEMBERS LOGIC
-    // ═══════════════════════════════════════════════════════════
-
     const members = useMemo((): Member[] => {
         const memberMap = new Map<number, Member>();
-
-        memberMap.set(userId, {
-            id: userId,
-            name: userName,
-            color: getColorForUser(userId)
-        });
+        memberMap.set(userId, { id: userId, name: userName, color: getColorForUser(userId) });
 
         todos.forEach(todo => {
             if (todo.user_id && !memberMap.has(todo.user_id)) {
@@ -194,8 +167,18 @@ export const TodoPage: FC = () => {
                     color: getColorForUser(todo.user_id)
                 });
             }
+            if (todo.habit?.history) {
+                Object.values(todo.habit.history).forEach(checkerId => {
+                    if (!memberMap.has(checkerId)) {
+                        memberMap.set(checkerId, {
+                            id: checkerId,
+                            name: `User ${checkerId}`,
+                            color: getColorForUser(checkerId)
+                        });
+                    }
+                });
+            }
         });
-
         return Array.from(memberMap.values());
     }, [todos, userId, userName]);
 
@@ -207,73 +190,46 @@ export const TodoPage: FC = () => {
         };
     }, [members]);
 
-    // ═══════════════════════════════════════════════════════════
-    // ACTIONS (Optimistic Updates)
-    // ═══════════════════════════════════════════════════════════
-
     const handleAddHabit = async () => {
         if (!inputValue.trim()) return;
         const textToSubmit = inputValue.trim();
         setInputValue('');
-
-        // Optimistic Entry
         const tempId = -Math.floor(Math.random() * 1000000);
         const tempTodo: Todo = {
-            id: tempId,
-            user_id: userId,
-            user_name: userName,
-            text: textToSubmit,
-            completed: false,
-            created_at: new Date().toISOString(),
+            id: tempId, user_id: userId, user_name: userName, text: textToSubmit,
+            completed: false, created_at: new Date().toISOString(),
             habit: { frequency: 'daily', streak: 0, history: {} }
         };
-
         setTodos(prev => [tempTodo, ...prev]);
-
         try {
-            const habitMetadata: HabitMetadata = { frequency: 'daily', streak: 0, history: {} };
-            const newTodo = await addTodo(userId, textToSubmit, habitMetadata, userName);
-            // Replace optimistic one with real one
+            const newTodo = await addTodo(userId, textToSubmit, { frequency: 'daily', streak: 0, history: {} }, userName);
             setTodos(prev => prev.map(t => t.id === tempId ? newTodo : t));
-        } catch (err) {
-            setTodos(prev => prev.filter(t => t.id !== tempId));
-            console.error(err);
-        }
+        } catch (err) { setTodos(prev => prev.filter(t => t.id !== tempId)); console.error(err); }
     };
 
     const handleDayToggle = useCallback(async (todo: Todo, dateStr: string) => {
         if (!todo.habit || isFutureDate(dateStr) || isBeforeCreation(dateStr, todo.created_at)) return;
-
         const history = todo.habit.history || {};
         const isCompletedOnDate = history[dateStr] !== undefined;
         let newHistory = { ...history };
-
         if (isCompletedOnDate) {
             if (history[dateStr] === userId) delete newHistory[dateStr];
             else return;
         } else {
             newHistory[dateStr] = userId;
         }
-
         const newHabit = { ...todo.habit, history: newHistory };
-        const backup = todos;
         setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, habit: newHabit } : t));
-
-        try {
-            await updateTodo(userId, todo.id, { text: todo.text, habit: newHabit });
-        } catch (err) {
-            setTodos(backup);
-            console.error(err);
-        }
-    }, [userId, todos]);
+        try { await updateTodo(userId, todo.id, { text: todo.text, habit: newHabit }); }
+        catch (err) { loadTodos(true); console.error(err); }
+    }, [userId, loadTodos]);
 
     const handleDelete = useCallback(async (todoId: number) => {
         if (!confirm('Delete this habit?')) return;
-        const prevTodos = todos;
         setTodos(prev => prev.filter(t => t.id !== todoId));
         try { await deleteTodo(userId, todoId); }
-        catch (err) { setTodos(prevTodos); console.error(err); }
-    }, [userId, todos]);
+        catch (err) { loadTodos(true); console.error(err); }
+    }, [userId, loadTodos]);
 
     const filteredHabits = useMemo(() => {
         return todos.filter(t => t.habit).filter(habit => {
@@ -321,27 +277,14 @@ export const TodoPage: FC = () => {
             </div>
 
             <div className="add-section">
-                <input
-                    className="add-input"
-                    placeholder="New habit..."
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddHabit()}
-                />
+                <input className="add-input" placeholder="New habit..." value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddHabit()} />
                 <button className="add-btn" onClick={handleAddHabit} disabled={!inputValue.trim()}>+</button>
             </div>
 
             {isLoading ? <div className="loading"><div className="spinner" /></div> : (
                 <ul className="habits-list">
                     {filteredHabits.map(habit => (
-                        <HabitRow
-                            key={habit.id}
-                            habit={habit}
-                            displayDays={displayDays}
-                            getMember={getMember}
-                            onToggle={handleDayToggle}
-                            onDelete={handleDelete}
-                        />
+                        <HabitRow key={habit.id} habit={habit} displayDays={displayDays} getMember={getMember} onToggle={handleDayToggle} onDelete={handleDelete} />
                     ))}
                 </ul>
             )}
