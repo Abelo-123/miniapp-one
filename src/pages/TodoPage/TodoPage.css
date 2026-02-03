@@ -1,82 +1,65 @@
-/* Habits Tracker - Smart UI */
+/* Habits Tracker - Compact Multi-User UI */
 
 .habits-container {
   background: #1a1a1a;
   min-height: 100vh;
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  position: relative;
+  font-size: 14px;
 }
 
-/* Header */
+/* Header - Compact */
 .habits-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 12px 16px;
   background: #1a1a1a;
+  border-bottom: 1px solid #2a2a2a;
 }
 
 .habits-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
-  color: #fff;
   margin: 0;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 .header-btn {
-  background: none;
+  background: #2a2a2a;
   border: none;
   color: #888;
-  font-size: 22px;
+  font-size: 14px;
   cursor: pointer;
-  padding: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  transition: all 0.2s;
+  gap: 4px;
+  transition: all 0.15s;
 }
 
 .header-btn:hover {
-  background: #2a2a2a;
-  color: #4fc3f7;
+  background: #333;
+  color: #fff;
 }
 
 .header-btn.active {
-  color: #4fc3f7;
-  background: rgba(79, 195, 247, 0.15);
-}
-
-/* User Badge */
-.user-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 20px;
-  font-size: 13px;
-  color: #888;
-  border-bottom: 1px solid #2a2a2a;
-}
-
-.user-dot {
-  width: 8px;
-  height: 8px;
-  background: #4fc3f7;
-  border-radius: 50%;
-}
-
-.user-name {
+  background: rgba(79, 195, 247, 0.2);
   color: #4fc3f7;
 }
 
-/* Filter Wrapper */
+.member-count {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Filter Menu */
 .filter-wrapper {
   position: relative;
 }
@@ -85,27 +68,26 @@
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 8px;
+  margin-top: 4px;
   background: #2a2a2a;
   border: 1px solid #444;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   z-index: 100;
-  min-width: 180px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .filter-option {
   display: block;
   width: 100%;
-  padding: 12px 16px;
+  padding: 8px 16px;
   background: none;
   border: none;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  white-space: nowrap;
 }
 
 .filter-option:hover {
@@ -117,140 +99,81 @@
   color: #4fc3f7;
 }
 
-.filter-option:not(:last-child) {
-  border-bottom: 1px solid #333;
-}
-
-/* Filter Indicator */
-.filter-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 20px;
-  background: rgba(79, 195, 247, 0.1);
-  font-size: 12px;
-  color: #4fc3f7;
-}
-
-.clear-filter {
-  background: none;
-  border: none;
-  color: #4fc3f7;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 4px 8px;
-}
-
-.clear-filter:hover {
-  color: #fff;
-}
-
-/* Overlay */
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-}
-
-/* Days Header Row */
+/* Days Header - Compact */
 .days-header {
   display: grid;
-  grid-template-columns: 1fr repeat(5, 48px) 40px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #333;
+  grid-template-columns: 1fr repeat(5, 32px) 28px;
+  padding: 6px 12px;
   background: #1a1a1a;
+  border-bottom: 1px solid #2a2a2a;
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
 .days-header-spacer,
-.delete-column-spacer {
-  /* Empty space */
-}
+.del-col {}
 
-.day-column-header {
+.day-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
-}
-
-.day-column-header.today {
-  color: #4fc3f7;
-}
-
-.day-column-header .weekday {
   font-size: 10px;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.day-column-header.today .weekday {
-  color: #4fc3f7;
-}
-
-.day-column-header .day-num {
-  font-size: 13px;
-  color: #aaa;
-  margin-top: 2px;
-}
-
-.day-column-header.today .day-num {
-  color: #4fc3f7;
-  font-weight: 600;
-}
-
-/* Add Habit Input */
-.add-habit-section {
-  padding: 12px 16px;
-  border-bottom: 1px solid #333;
-  display: flex;
-  gap: 10px;
-}
-
-.add-habit-input {
-  flex: 1;
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 10px 14px;
-  color: #fff;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.add-habit-input::placeholder {
   color: #666;
 }
 
-.add-habit-input:focus {
+.day-col.today {
+  color: #4fc3f7;
+}
+
+.day-letter {
+  font-weight: 500;
+}
+
+.day-num {
+  font-size: 11px;
+}
+
+/* Add Section - Compact */
+.add-section {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.add-input {
+  flex: 1;
+  background: #2a2a2a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+.add-input:focus {
   border-color: #4fc3f7;
 }
 
-.add-habit-btn {
+.add-input::placeholder {
+  color: #555;
+}
+
+.add-btn {
   background: #4fc3f7;
   border: none;
-  border-radius: 6px;
-  padding: 10px 16px;
+  border-radius: 4px;
+  width: 32px;
   color: #000;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
 }
 
-.add-habit-btn:hover {
-  opacity: 0.9;
-}
-
-.add-habit-btn:disabled {
-  opacity: 0.5;
+.add-btn:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -261,147 +184,117 @@
   margin: 0;
 }
 
-/* Habit Row */
+/* Habit Row - COMPACT */
 .habit-row {
   display: grid;
-  grid-template-columns: 1fr repeat(5, 48px) 40px;
+  grid-template-columns: 1fr repeat(5, 32px) 28px;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #2a2a2a;
-  transition: all 0.2s;
+  padding: 8px 12px;
+  border-bottom: 1px solid #222;
+  min-height: 36px;
 }
 
 .habit-row:hover {
-  background: #222;
+  background: #1e1e1e;
 }
 
-.habit-row.deleting {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-/* Habit Name */
-.habit-name {
+/* Habit Info */
+.habit-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .habit-text {
-  font-size: 14px;
-  color: #4fc3f7;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Checkbox */
-.habit-checkbox {
-  width: 18px;
-  height: 18px;
+/* Checkbox - Small */
+.checkbox {
+  width: 14px;
+  height: 14px;
   border: 2px solid #555;
   border-radius: 50%;
   cursor: pointer;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
+  transition: all 0.15s;
 }
 
-.habit-checkbox:hover {
-  border-color: #4fc3f7;
-}
-
-.habit-checkbox.checked {
-  background: #4fc3f7;
-  border-color: #4fc3f7;
-}
-
-.habit-checkbox.checked::after {
+.checkbox.checked::after {
   content: '✓';
   color: #fff;
-  font-size: 10px;
+  font-size: 8px;
   font-weight: bold;
 }
 
-/* Day Cell */
-.day-cell {
+/* Day Cell - Compact */
+.cell {
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  height: 32px;
-  border-radius: 4px;
-  transition: all 0.15s;
+  height: 24px;
+  border-radius: 3px;
+  transition: background 0.1s;
 }
 
-.day-cell:hover {
+.cell:hover {
   background: #333;
 }
 
-.day-cell.today-cell {
-  background: rgba(79, 195, 247, 0.1);
-}
-
-.day-cell.disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
+.cell.disabled {
+  opacity: 0.25;
+  cursor: default;
   pointer-events: none;
 }
 
-.day-mark {
-  font-size: 16px;
-  color: #555;
-  transition: all 0.15s;
+.mark {
+  font-size: 12px;
+  transition: all 0.1s;
 }
 
-.day-mark.completed {
-  color: #4fc3f7;
+.mark.done {
+  font-weight: 600;
 }
 
-.day-cell:hover .day-mark {
-  transform: scale(1.15);
-}
-
-/* Delete Button */
-.delete-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Delete Button - Compact */
+.del-btn {
   background: none;
   border: none;
-  color: #555;
+  color: #444;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: all 0.15s;
+  font-size: 16px;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.1s;
 }
 
-.delete-btn:hover {
-  background: rgba(255, 107, 107, 0.15);
+.del-btn:hover {
   color: #ff6b6b;
 }
 
-/* Loading State */
-.loading-state {
+/* Loading & Empty */
+.loading {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  padding: 60px 20px;
-  color: #888;
+  padding: 40px;
 }
 
 .spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid #333;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #333;
   border-top-color: #4fc3f7;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 12px;
+  animation: spin 0.6s linear infinite;
 }
 
 @keyframes spin {
@@ -410,20 +303,96 @@
   }
 }
 
-/* Empty State */
-.empty-state {
+.empty {
   text-align: center;
-  padding: 60px 20px;
-  color: #666;
-}
-
-.empty-state h3 {
-  font-size: 16px;
-  color: #888;
-  margin-bottom: 6px;
-}
-
-.empty-state p {
+  padding: 40px 16px;
+  color: #555;
   font-size: 13px;
+}
+
+/* Overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 50;
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #2a2a2a;
+  border-radius: 12px;
+  width: 280px;
+  max-height: 70vh;
+  overflow: hidden;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #333;
+}
+
+.modal-header h2 {
   margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: #fff;
+}
+
+/* Members List */
+.members-list {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+}
+
+.member-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.member-name {
+  font-size: 13px;
+  color: #fff;
+}
+
+.you-badge {
+  color: #4fc3f7;
+  font-size: 11px;
 }
