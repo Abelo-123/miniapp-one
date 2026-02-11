@@ -13,6 +13,7 @@ import {
   showBackButton,
   hideBackButton,
   onBackButtonClick,
+  onSettingsButtonClick,
 } from '@telegram-apps/sdk-react';
 
 function AppContent() {
@@ -47,6 +48,17 @@ function AppContent() {
       try { hideBackButton(); } catch { /* ignore */ }
     }
   }, [activeTab, setActiveTab]);
+
+  // Settings button via SDK
+  useEffect(() => {
+    try {
+      const off = onSettingsButtonClick(() => {
+        setActiveTab('more');
+        (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged();
+      });
+      return () => off();
+    } catch { /* ignore */ }
+  }, [setActiveTab]);
 
   return (
     <AppRoot>

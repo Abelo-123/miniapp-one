@@ -69,6 +69,7 @@ export interface ChatMessage {
 export interface UserProfile {
     id: number;
     first_name: string;
+    last_name?: string;
     display_name: string;
     photo_url: string;
     balance: number;

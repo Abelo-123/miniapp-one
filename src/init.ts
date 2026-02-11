@@ -62,13 +62,28 @@ export async function init(options: {
   // Mount all components used in the project.
   mountBackButton.ifAvailable();
   restoreInitData();
-  
+
   if (miniApp.mountSync.isAvailable()) {
     miniApp.mountSync();
     bindThemeParamsCssVars();
   }
 
+  // Mount enhanced features
+  void import('@telegram-apps/sdk-react').then(sdk => {
+    sdk.mountClosingBehavior.ifAvailable();
+    sdk.mountSettingsButton.ifAvailable();
+
+    if (sdk.mountSwipeBehavior.isAvailable()) {
+      sdk.mountSwipeBehavior();
+      try { sdk.disableVerticalSwipes(); } catch { /* ignore */ }
+    }
+  });
+
   mountViewport.isAvailable() && mountViewport().then(() => {
     bindViewportCssVars();
+    // Expand to full height
+    if ((window as any).Telegram?.WebApp?.expand) {
+      (window as any).Telegram.WebApp.expand();
+    }
   });
 }

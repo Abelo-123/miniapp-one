@@ -110,6 +110,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSelectedService(null);
     }, [selectedCategory]);
 
+    // Initialize user from Telegram data if available
+    useEffect(() => {
+        try {
+            const { initData } = (window as any).Telegram?.WebApp || {};
+            if (initData?.user) {
+                const tgUser = initData.user;
+                setUser({
+                    id: tgUser.id,
+                    first_name: tgUser.first_name,
+                    last_name: tgUser.last_name,
+                    username: tgUser.username,
+                    display_name: [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' '),
+                    photo_url: tgUser.photo_url,
+                    balance: 0, // Mock balance since we don't have a real backend
+                });
+            }
+        } catch (e) {
+            console.error('Failed to parse initData', e);
+        }
+    }, []);
+
+    const handleSetActiveTab = useCallback((tab: TabId) => {
+        setActiveTab(tab);
+        try {
+            (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged();
+            // Save tab state
+            (window as any).Telegram?.WebApp?.CloudStorage?.setItem('last_tab', tab);
+        } catch { /* ignore */ }
+    }, []);
+
+    const handleSetSelectedPlatform = useCallback((p: SocialPlatform | null) => {
+        setSelectedPlatform(p);
+        if (p) {
+            try { (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged(); } catch { /* ignore */ }
+        }
+    }, []);
+
+    const handleSetSelectedService = useCallback((s: Service | null) => {
+        setSelectedService(s);
+        if (s) {
+            try { (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged(); } catch { /* ignore */ }
+        }
+    }, []);
+
+    // Restore last tab on mount
+    useEffect(() => {
+        try {
+            (window as any).Telegram?.WebApp?.CloudStorage?.getItem('last_tab', (err: any, val: string) => {
+                if (!err && val && ['order', 'history', 'deposit', 'more'].includes(val)) {
+                    setActiveTab(val as TabId);
+                }
+            });
+        } catch { /* ignore */ }
+    }, []);
+
     const value: AppContextType = {
         user,
         isTelegramApp,
@@ -133,10 +188,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isLoading,
         unreadAlerts,
         setUser,
-        setActiveTab,
-        setSelectedPlatform,
+        setActiveTab: handleSetActiveTab,
+        setSelectedPlatform: handleSetSelectedPlatform,
         setSelectedCategory,
-        setSelectedService,
+        setSelectedService: handleSetSelectedService,
         setOrders,
         setDeposits,
         setAlerts,

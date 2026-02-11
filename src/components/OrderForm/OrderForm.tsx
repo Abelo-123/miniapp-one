@@ -157,6 +157,25 @@ export function OrderForm() {
         };
     }, [isTelegramApp, isValid, submitting, charge, link, user]);
 
+    // Cleanup Closing Confirmation
+    useEffect(() => {
+        return () => {
+            const tg = (window as any).Telegram?.WebApp;
+            if (tg) tg.disableClosingConfirmation();
+        };
+    }, []);
+
+    // Closing Confirmation Logic
+    useEffect(() => {
+        const tg = (window as any).Telegram?.WebApp;
+        if (!tg) return;
+        if ((link || quantity) && !submitting) {
+            tg.enableClosingConfirmation();
+        } else {
+            tg.disableClosingConfirmation();
+        }
+    }, [link, quantity, submitting]);
+
     return (
         <>
             <Section
