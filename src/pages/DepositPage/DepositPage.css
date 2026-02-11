@@ -1,0 +1,217 @@
+.deposit-page {
+    padding: var(--space-lg);
+    padding-top: var(--space-xl);
+}
+
+.deposit-page__title {
+    font-size: var(--font-xl);
+    font-weight: 800;
+    margin-bottom: var(--space-xl);
+}
+
+/* Balance Card */
+.deposit-page__balance-card {
+    background: var(--gradient-accent);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2xl) var(--space-xl);
+    text-align: center;
+    margin-bottom: var(--space-2xl);
+    position: relative;
+    overflow: hidden;
+}
+
+.deposit-page__balance-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -30%;
+    width: 200px;
+    height: 200px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.deposit-page__balance-label {
+    display: block;
+    font-size: var(--font-sm);
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: var(--space-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.deposit-page__balance-amount {
+    display: block;
+    font-size: var(--font-2xl);
+    font-weight: 800;
+    color: #fff;
+}
+
+/* Section */
+.deposit-page__section {
+    margin-bottom: var(--space-2xl);
+}
+
+.deposit-page__section-title {
+    font-size: var(--font-md);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-md);
+}
+
+/* Amount Input */
+.deposit-page__amount-input {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-input);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-lg);
+    font-weight: 600;
+    font-family: var(--font-family);
+    outline: none;
+    text-align: center;
+    transition: border-color var(--transition-fast);
+}
+
+.deposit-page__amount-input:focus {
+    border-color: var(--color-accent);
+}
+
+.deposit-page__amount-input::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Presets */
+.deposit-page__presets {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.deposit-page__preset {
+    flex: 1;
+    padding: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.deposit-page__preset--active {
+    background: rgba(108, 92, 231, 0.15);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+.deposit-page__preset:active {
+    transform: scale(0.95);
+}
+
+/* Submit */
+.deposit-page__submit {
+    width: 100%;
+    padding: 14px;
+    background: var(--gradient-accent);
+    border: none;
+    border-radius: var(--radius-md);
+    color: #fff;
+    font-size: var(--font-md);
+    font-weight: 600;
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.deposit-page__submit:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.deposit-page__submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.deposit-page__hint {
+    text-align: center;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    margin-top: var(--space-md);
+}
+
+/* Deposit List */
+.deposit-page__empty {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+.deposit-page__empty-icon {
+    font-size: 36px;
+    display: block;
+    margin-bottom: var(--space-md);
+}
+
+.deposit-page__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-sm);
+}
+
+.deposit-page__item-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.deposit-page__item-icon {
+    font-size: 20px;
+}
+
+.deposit-page__item-amount {
+    font-weight: 600;
+    font-size: var(--font-base);
+}
+
+.deposit-page__item-date {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.deposit-page__item-status {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: var(--radius-pill);
+    text-transform: capitalize;
+}
+
+.deposit-page__item-status--completed {
+    color: var(--color-success);
+    background: rgba(0, 214, 143, 0.1);
+}
+
+.deposit-page__item-status--pending {
+    color: var(--color-warning);
+    background: rgba(255, 165, 2, 0.1);
+}
+
+.deposit-page__item-status--failed {
+    color: var(--color-danger);
+    background: rgba(255, 71, 87, 0.1);
+}
