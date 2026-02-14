@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import type { UserProfile, Service, Order, Deposit, Alert, ChatMessage, TabId, ToastMessage, SocialPlatform } from '../types';
-import { MOCK_USER, MOCK_SERVICES, MOCK_RECOMMENDED, MOCK_ORDERS, MOCK_DEPOSITS, MOCK_ALERTS, MOCK_CHAT, MOCK_SETTINGS } from '../mocks/data';
+import type { UserProfile, Service, Order, Deposit, Alert, Ticket, ChatMessage, TabId, ToastMessage, SocialPlatform } from '../types';
+import { MOCK_USER, MOCK_SERVICES, MOCK_RECOMMENDED, MOCK_ORDERS, MOCK_DEPOSITS, MOCK_ALERTS, MOCK_TICKETS, MOCK_CHAT, MOCK_SETTINGS } from '../mocks/data';
 import { TOAST_DURATION } from '../constants';
 import {
     isTelegramEnv,
@@ -28,6 +28,7 @@ interface AppState {
     orders: Order[];
     deposits: Deposit[];
     alerts: Alert[];
+    tickets: Ticket[];
     chatMessages: ChatMessage[];
 
     // Settings
@@ -54,6 +55,7 @@ interface AppActions {
     setOrders: (orders: Order[]) => void;
     setDeposits: (deposits: Deposit[]) => void;
     setAlerts: (alerts: Alert[]) => void;
+    setTickets: (tickets: Ticket[]) => void;
     setChatMessages: (msgs: ChatMessage[]) => void;
     setBalance: (balance: number) => void;
     setIsLoading: (loading: boolean) => void;
@@ -84,6 +86,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
     const [deposits, setDeposits] = useState<Deposit[]>(MOCK_DEPOSITS);
     const [alerts, setAlerts] = useState<Alert[]>(MOCK_ALERTS);
+    const [tickets, setTickets] = useState<Ticket[]>(MOCK_TICKETS);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>(MOCK_CHAT);
     const [activeTab, setActiveTab] = useState<TabId>('order');
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -175,6 +178,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         orders,
         deposits,
         alerts,
+        tickets,
         chatMessages,
         rateMultiplier: MOCK_SETTINGS.rateMultiplier,
         discountPercent: MOCK_SETTINGS.discountPercent,
@@ -194,6 +198,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setOrders,
         setDeposits,
         setAlerts,
+        setTickets,
         setChatMessages,
         setBalance,
         setIsLoading,

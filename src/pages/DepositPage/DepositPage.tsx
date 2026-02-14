@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { List, Section, Cell, Input, Button, Banner } from '@telegram-apps/telegram-ui';
+import { List, Section, Button, Input, Banner, Placeholder, Cell } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
 import { hapticSelection, hapticImpact, hapticNotification } from '../../helpers/telegram';
+import './DepositPage.css';
 
 const PRESET_AMOUNTS = [100, 500, 1000, 2000];
 
@@ -28,9 +29,9 @@ export function DepositPage() {
             if (user) setBalance(user.balance + val);
 
             const newDeposit = {
-                id: Date.now(),
+                id: Math.floor(Math.random() * 90000) + 10000,
                 amount: val,
-                reference_id: `chapa-${Date.now()}`,
+                reference_id: `CP_${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
                 status: 'completed' as const,
                 method: 'Chapa',
                 created_at: new Date().toISOString(),
@@ -54,20 +55,19 @@ export function DepositPage() {
     return (
         <List>
             <Section>
-                <Banner
-                    header="Current Balance"
-                    description={user ? formatETB(user.balance) : 'Loading...'}
-                    background="var(--tg-theme-secondary-bg-color)"
-                >
-                    <div style={{ fontSize: '2em', fontWeight: 'bold', color: 'var(--tg-theme-text-color)' }}>
-                        {user ? formatETB(user.balance) : '...'}
+                <div style={{ padding: '16px' }}>
+                    <div className="dp-balance">
+                        <span style={{ color: 'var(--tg-theme-hint-color)', fontSize: '13px' }}>Current Balance</span>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                            {user ? formatETB(user.balance) : 'Loading...'}
+                        </div>
                     </div>
-                </Banner>
+                </div>
             </Section>
 
-            <Section header="Deposit Funds">
+            <Section header="Add Funds">
                 <Input
-                    header="Amount (ETB)"
+                    header="Amount"
                     placeholder="Enter amount (min 50)"
                     type="number"
                     value={amount}
@@ -90,7 +90,7 @@ export function DepositPage() {
                     ))}
                 </div>
 
-                <div style={{ padding: '0 16px 16px' }}>
+                <div style={{ padding: '16px' }}>
                     <Button
                         size="l"
                         stretched
@@ -98,31 +98,37 @@ export function DepositPage() {
                         loading={depositing}
                         disabled={!amount || parseInt(amount) < 50}
                     >
-                        Deposit with Chapa
+                        Deposit via Chapa
                     </Button>
                 </div>
             </Section>
 
-            <Section header="Recent Deposits">
+            {/* ── Deposit History Table ── */}
+            <div className="dp-table-container">
+                <div className="dp-table-header">
+                    <div className="dp-col dp-col-id">ORDER ID</div>
+                    <div className="dp-col dp-col-amount">AMOUNT</div>
+                    <div className="dp-col dp-col-ref">TRANSACTION</div>
+                    <div className="dp-col dp-col-date">DATE</div>
+                </div>
+
                 {deposits.length === 0 ? (
-                    <Cell disabled>No recent deposits</Cell>
+                    <Placeholder description="No deposits yet" />
                 ) : (
                     deposits.map(d => (
-                        <Cell
-                            key={d.id}
-                            after={
-                                <span style={{ color: 'var(--tg-theme-link-color)' }}>
-                                    +{formatETB(d.amount)}
-                                </span>
-                            }
-                            description={new Date(d.created_at).toLocaleDateString()}
-                            subtitle={d.status}
-                        >
-                            {d.method}
-                        </Cell>
+                        <div key={d.id} className="dp-table-row">
+                            <div className="dp-col dp-col-id">#{d.id}</div>
+                            <div className="dp-col dp-col-amount">{d.amount}</div>
+                            <div className="dp-col dp-col-ref">{d.reference_id}</div>
+                            <div className="dp-col dp-col-date">
+                                {new Date(d.created_at).toLocaleDateString(undefined, {
+                                    month: 'numeric', day: 'numeric', year: '2-digit'
+                                })}
+                            </div>
+                        </div>
                     ))
                 )}
-            </Section>
+            </div>
         </List>
     );
 }

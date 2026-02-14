@@ -59,6 +59,15 @@ export interface Alert {
     created_at: string;
 }
 
+export interface Ticket {
+    id: number;
+    status: 'pending' | 'answered' | 'closed';
+    type: 'AI Support' | 'Human Support' | 'Billing' | 'Technical';
+    subject: string;
+    last_message: string;
+    updated_at: string;
+}
+
 export interface ChatMessage {
     id: number;
     sender: 'user' | 'admin';
@@ -95,7 +104,7 @@ export type SocialPlatform =
     | 'other'
     | 'top';
 
-export type TabId = 'order' | 'history' | 'deposit' | 'more';
+export type TabId = 'order' | 'history' | 'deposit' | 'ticket';
 
 export type ToastType = 'success' | 'error' | 'info';
 

@@ -7,7 +7,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
     { id: 'order', label: 'Order', icon: '🛒' },
     { id: 'history', label: 'History', icon: '📋' },
     { id: 'deposit', label: 'Deposit', icon: '💰' },
-    { id: 'more', label: 'More', icon: '⚙️' },
+    { id: 'ticket', label: 'Ticket', icon: '🎫' },
 ];
 
 export function BottomNav() {
@@ -24,7 +24,7 @@ export function BottomNav() {
                 <Tabbar.Item
                     key={tab.id}
                     selected={activeTab === tab.id}
-                    text={tab.id === 'more' && unreadAlerts > 0
+                    text={tab.id === 'ticket' && unreadAlerts > 0
                         ? `${tab.label} (${unreadAlerts > 9 ? '9+' : unreadAlerts})`
                         : tab.label
                     }

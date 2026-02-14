@@ -1,4 +1,3 @@
-
 import { PLATFORMS } from '../../constants';
 import { hapticSelection } from '../../helpers/telegram';
 import type { SocialPlatform } from '../../types';
@@ -8,12 +7,17 @@ interface Props {
     onSelect: (platform: SocialPlatform) => void;
 }
 
+/** Horizontal scrollable platform pills — matches the reference UI */
 export function PlatformGrid({ selectedPlatform, onSelect }: Props) {
     return (
         <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
+            display: 'flex',
             gap: 8,
+            overflowX: 'auto',
+            paddingBottom: 4,
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
         }}>
             {PLATFORMS.map(p => {
                 const isActive = selectedPlatform === p.id;
@@ -26,36 +30,29 @@ export function PlatformGrid({ selectedPlatform, onSelect }: Props) {
                         }}
                         style={{
                             display: 'flex',
-                            flexDirection: 'column',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 4,
-                            padding: '14px 6px',
+                            gap: 6,
+                            padding: '8px 14px',
                             background: isActive
-                                ? 'var(--tg-theme-button-color, #6c5ce7)'
-                                : 'var(--tg-theme-secondary-bg-color, #1e1e1e)',
-                            border: '1px solid',
-                            borderColor: isActive
-                                ? 'var(--tg-theme-button-color, #6c5ce7)'
-                                : 'var(--tg-theme-hint-color, #333)',
-                            borderRadius: 12,
+                                ? 'var(--tg-theme-button-color, #3390ec)'
+                                : 'var(--tg-theme-secondary-bg-color, #1e1e2e)',
+                            border: 'none',
+                            borderRadius: 20,
                             cursor: 'pointer',
                             transition: 'all 0.15s ease',
                             WebkitTapHighlightColor: 'transparent',
                             color: isActive
                                 ? 'var(--tg-theme-button-text-color, #fff)'
                                 : 'var(--tg-theme-text-color, #fff)',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            fontFamily: 'inherit',
                         }}
                     >
-                        <span style={{ fontSize: 24, lineHeight: 1 }}>{p.icon}</span>
-                        <span style={{
-                            fontSize: 11,
-                            fontWeight: 500,
-                            whiteSpace: 'nowrap',
-                            opacity: isActive ? 1 : 0.7,
-                        }}>
-                            {p.label}
-                        </span>
+                        <span style={{ fontSize: 16, lineHeight: 1 }}>{p.icon}</span>
+                        <span>{p.label}</span>
                     </button>
                 );
             })}

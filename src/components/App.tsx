@@ -17,7 +17,7 @@ import { hapticSelection } from '../helpers/telegram';
 const OrderPage = lazy(() => import('../pages/OrderPage/OrderPage').then(m => ({ default: m.OrderPage })));
 const HistoryPage = lazy(() => import('../pages/HistoryPage/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const DepositPage = lazy(() => import('../pages/DepositPage/DepositPage').then(m => ({ default: m.DepositPage })));
-const MorePage = lazy(() => import('../pages/MorePage/MorePage').then(m => ({ default: m.MorePage })));
+const TicketPage = lazy(() => import('../pages/TicketPage/TicketPage').then(m => ({ default: m.TicketPage })));
 
 // Minimal fallback to avoid layout shift while lazy chunk loads
 const TabFallback = () => (
@@ -67,7 +67,7 @@ function AppContent() {
   useEffect(() => {
     try {
       const off = onSettingsButtonClick(() => {
-        setActiveTab('more');
+        setActiveTab('ticket');
         hapticSelection();
       });
       return () => off();
@@ -81,7 +81,7 @@ function AppContent() {
           {activeTab === 'order' && <OrderPage />}
           {activeTab === 'history' && <HistoryPage />}
           {activeTab === 'deposit' && <DepositPage />}
-          {activeTab === 'more' && <MorePage />}
+          {activeTab === 'ticket' && <TicketPage />}
         </Suspense>
       </div>
       <BottomNav />

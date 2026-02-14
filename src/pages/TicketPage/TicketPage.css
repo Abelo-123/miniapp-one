@@ -1,0 +1,112 @@
+/* ─── TicketPage Styles ─── */
+
+.ticket-page {
+    /* List container inherits spacing */
+}
+
+/* ── Marquee ── */
+.tp-marquee {
+    padding: 8px 16px;
+    background: var(--tg-theme-secondary-bg-color, #1e1e2e);
+    overflow: hidden;
+    font-size: 13px;
+    color: var(--tg-theme-link-color, #3390ec);
+    border-bottom: 1px solid var(--tg-theme-bg-color, #0a0a0f);
+}
+
+.tp-marquee-inner {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Table Container ── */
+.tp-table-container {
+    background: var(--tg-theme-bg-color, #0a0a0f);
+}
+
+.tp-table-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: var(--tg-theme-secondary-bg-color, #1e1e2e);
+    color: var(--tg-theme-hint-color, #888);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tp-table-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #2a2a3a);
+    font-size: 13px;
+    color: var(--tg-theme-text-color, #fff);
+}
+
+.tp-table-row:last-child {
+    border-bottom: none;
+}
+
+/* ── Columns ── */
+.tp-col {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding-right: 8px;
+}
+
+.tp-col:last-child {
+    padding-right: 0;
+    text-align: right;
+}
+
+.tp-col-status {
+    flex: 0 0 70px;
+}
+
+.tp-col-type {
+    flex: 1;
+}
+
+.tp-col-subj {
+    flex: 0 0 60px;
+}
+
+.tp-col-action {
+    flex: 0 0 80px;
+    text-align: right;
+    color: var(--tg-theme-hint-color, #888);
+}
+
+/* ── Status Badges ── */
+.tp-status-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.tp-status-badge.pending {
+    background: rgba(251, 146, 60, 0.15);
+    /* orange */
+    color: #fb923c;
+}
+
+.tp-status-badge.answered,
+.tp-status-badge.completed {
+    background: rgba(74, 222, 128, 0.15);
+    /* green */
+    color: #4ade80;
+}
+
+.tp-status-badge.closed,
+.tp-status-badge.cancelled {
+    background: rgba(239, 68, 68, 0.15);
+    /* red */
+    color: #ef4444;
+}

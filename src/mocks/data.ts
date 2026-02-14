@@ -1,4 +1,4 @@
-import type { Service, Order, Deposit, Alert, ChatMessage, UserProfile } from '../types';
+import type { Service, Order, Deposit, Alert, Ticket, ChatMessage, UserProfile } from '../types';
 
 // ─── Mock User ────────────────────────────────────────────────
 export const MOCK_USER: UserProfile = {
@@ -45,8 +45,18 @@ export const MOCK_ORDERS: Order[] = [
 
 // ─── Mock Deposits ────────────────────────────────────────────
 export const MOCK_DEPOSITS: Deposit[] = [
-    { id: 1, amount: 200.00, reference_id: 'chapa-ref-001', status: 'completed', created_at: '2026-02-09T14:00:00Z' },
-    { id: 2, amount: 300.00, reference_id: 'chapa-ref-002', status: 'completed', created_at: '2026-02-10T09:00:00Z' },
+    { id: 73728, amount: 4, reference_id: 'CHUdfsavVG0yY', status: 'completed', method: 'Chapa', created_at: '2025-01-20T14:00:00Z' },
+    { id: 15997, amount: 2, reference_id: 'CHeJFX1hlqLWm', status: 'completed', method: 'Chapa', created_at: '2025-01-18T09:00:00Z' },
+];
+
+// ─── Mock Tickets ─────────────────────────────────────────────
+export const MOCK_TICKETS: Ticket[] = [
+    { id: 1, status: 'pending', type: 'AI Support', subject: '-', last_message: 'spec...', updated_at: '2025-01-20T10:00:00Z' },
+    { id: 2, status: 'pending', type: 'Human Support', subject: 'opk', last_message: 'ok...', updated_at: '2025-01-19T15:30:00Z' },
+    { id: 3, status: 'pending', type: 'AI Support', subject: '-', last_message: 'spec...', updated_at: '2025-01-19T12:00:00Z' },
+    { id: 4, status: 'pending', type: 'Human Support', subject: 'ok', last_message: '...', updated_at: '2025-01-18T09:00:00Z' },
+    { id: 5, status: 'answered', type: 'Human Support', subject: 'ok', last_message: 'done', updated_at: '2025-01-17T14:20:00Z' },
+    { id: 6, status: 'closed', type: 'AI Support', subject: '-', last_message: 'pok', updated_at: '2025-01-16T11:00:00Z' },
 ];
 
 // ─── Mock Alerts ──────────────────────────────────────────────

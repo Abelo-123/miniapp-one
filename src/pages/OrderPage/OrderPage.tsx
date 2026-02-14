@@ -1,19 +1,20 @@
 import { useState, useMemo, useCallback } from 'react';
-import { List, Section, Cell, Avatar, Button, Banner } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
-import { PLATFORMS } from '../../constants';
+import { PLATFORMS, formatETB } from '../../constants';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
 import { CategoryModal } from '../../components/CategoryModal/CategoryModal';
 import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
 import { OrderForm } from '../../components/OrderForm/OrderForm';
 import { SearchModal } from '../../components/SearchModal/SearchModal';
-// Styles handled by TUI components
+import { hapticSelection } from '../../helpers/telegram';
+import './OrderPage.css';
 
 export function OrderPage() {
     const {
         services, recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
         discountPercent, holidayName, marqueeText, user,
+        setActiveTab,
     } = useApp();
 
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -87,81 +88,115 @@ export function OrderPage() {
     }, [setSelectedPlatform, setSelectedCategory, setSelectedService]);
 
     return (
-        <div className="order-page-wrapper">
-            <List>
-                {/* Header Section */}
-                <Section>
-                    <Cell
-                        before={<Avatar src={user?.photo_url || ''} size={48} fallbackIcon={<span>👤</span>} />}
-                        description={`Hey ${user?.first_name || 'User'}!`}
-                        after={
-                            <Button mode="plain" size="s" onClick={() => setShowSearchModal(true)}>
-                                🔍 Search
-                            </Button>
-                        }
-                    >
-                        Paxyo SMM
-                    </Cell>
-                </Section>
-
-                {/* Marquee Banner */}
-                {marqueeText && (
-                    <Banner
-                        header="Announcement"
-                        description={marqueeText}
-                    >
-                        {/* Optional Action */}
-                    </Banner>
-                )}
-
-                {/* Discount Banner */}
-                {discountPercent > 0 && (
-                    <Banner
-                        header={`${discountPercent}% Discount Active`}
-                        description={`Holiday Special: ${holidayName}`}
-                        type="section"
-                    />
-                )}
-
-                {/* Platform Grid */}
-                <Section header="Select Platform">
-                    <div style={{ padding: '0 16px 16px' }}>
-                        <PlatformGrid
-                            selectedPlatform={selectedPlatform}
-                            onSelect={handlePlatformSelect}
-                        />
+        <div className="order-page">
+            {/* ── Header Bar ── */}
+            <div className="op-header">
+                <div className="op-header-left">
+                    <div className="op-logo">
+                        <span className="op-logo-icon">🚀</span>
                     </div>
-                </Section>
+                    <div className="op-header-info">
+                        <span className="op-brand">Paxyo</span>
+                        <span className="op-balance">
+                            Balance {user ? formatETB(user.balance) : '...'}
+                        </span>
+                    </div>
+                </div>
+                <div className="op-header-actions">
+                    <button
+                        className="op-icon-btn"
+                        onClick={() => setShowSearchModal(true)}
+                        aria-label="Search"
+                    >
+                        🔍
+                    </button>
+                    <button
+                        className="op-icon-btn op-notif-btn"
+                        onClick={() => {
+                            hapticSelection();
+                            setActiveTab('more');
+                        }}
+                        aria-label="Notifications"
+                    >
+                        🔔
+                    </button>
+                </div>
+            </div>
 
-                {/* Selection Info */}
-                {selectedCategory && (
-                    <Section header="Selection">
-                        <Cell
-                            onClick={() => setShowCategoryModal(true)}
-                            after={<Button mode="plain" size="s">Change</Button>}
-                            description="Category"
-                        >
-                            {selectedCategory}
-                        </Cell>
+            {/* ── Marquee / Announcements ── */}
+            {marqueeText && (
+                <div className="op-marquee">
+                    <div className="op-marquee-inner">{marqueeText}</div>
+                </div>
+            )}
 
-                        {selectedService && (
-                            <Cell
-                                onClick={() => setShowServiceModal(true)}
-                                after={<Button mode="plain" size="s">Change</Button>}
-                                description="Service"
-                                multiline
-                            >
-                                {selectedService.name}
-                            </Cell>
-                        )}
-                    </Section>
-                )}
+            {/* ── Discount Banner ── */}
+            {discountPercent > 0 && (
+                <div className="op-discount-banner">
+                    🔥 {discountPercent}% Off — {holidayName}
+                </div>
+            )}
 
-                {/* Order Form (Returns Fragments of Sections) */}
-                {selectedService && <OrderForm />}
-            </List>
+            {/* ── Platform Selector ── */}
+            <div className="op-platforms">
+                <PlatformGrid
+                    selectedPlatform={selectedPlatform}
+                    onSelect={handlePlatformSelect}
+                />
+            </div>
 
-            {/* Modals */}
+            {/* ── Category Dropdown ── */}
+            <div className="op-section-label">1. Category</div>
+            <button
+                className="op-dropdown"
+                onClick={() => {
+                    if (selectedPlatform) {
+                        hapticSelection();
+                        setShowCategoryModal(true);
+                    }
+                }}
+                disabled={!selectedPlatform}
+            >
+                <span className="op-dropdown-icon">📂</span>
+                <span className="op-dropdown-text">
+                    {selectedCategory || 'Select Category'}
+                </span>
+                <span className="op-dropdown-arrow">▾</span>
+            </button>
+
+            {/* ── Service Dropdown ── */}
+            <div className="op-section-label">2. Service</div>
+            <button
+                className="op-dropdown"
+                onClick={() => {
+                    if (selectedCategory) {
+                        hapticSelection();
+                        setShowServiceModal(true);
+                    }
+                }}
+                disabled={!selectedCategory}
+            >
+                <span className="op-dropdown-icon">📋</span>
+                <span className="op-dropdown-text">
+                    {selectedService ? selectedService.name : 'Select Service'}
+                </span>
+                <span className="op-dropdown-arrow">▾</span>
+            </button>
+
+            {/* ── Order Form (inline, below dropdowns) ── */}
+            {selectedService && <OrderForm />}
+
+            {/* ── Static Order Button when no service selected ── */}
+            {!selectedService && (
+                <button
+                    className="op-order-btn"
+                    disabled
+                >
+                    Order
+                </button>
+            )}
+
+            {/* ── Modals ── */}
             {showCategoryModal && (
                 <CategoryModal
                     categories={platformCategories}
