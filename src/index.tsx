@@ -11,8 +11,10 @@ import { init } from '@/init.ts';
 
 import './index.css';
 
-// Mock the environment in case, we are outside Telegram.
-import './mockEnv.ts';
+// Mock the environment in dev mode only (tree-shaken in production)
+if (import.meta.env.DEV) {
+  await import('./mockEnv.ts');
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 
@@ -22,19 +24,22 @@ try {
   const debug = (launchParams.tgWebAppStartParam || '').includes('platformer_debug')
     || import.meta.env.DEV;
 
-  // Configure all application dependencies.
-  await init({
+  // Start init — but render as soon as critical phase completes
+  // (init() now signals ready and renders before viewport/colors finish)
+  init({
     debug,
     eruda: debug && ['ios', 'android'].includes(platform),
     mockForMacOS: platform === 'macos',
-  })
-    .then(() => {
-      root.render(
-        <StrictMode>
-          <Root/>
-        </StrictMode>,
-      );
-    });
+  }).then(() => {
+    // Deferred tasks done — nothing more to do, UI is already rendered
+  });
+
+  // Render immediately — don't wait for full init
+  root.render(
+    <StrictMode>
+      <Root />
+    </StrictMode>,
+  );
 } catch (e) {
-  root.render(<EnvUnsupported/>);
+  root.render(<EnvUnsupported />);
 }

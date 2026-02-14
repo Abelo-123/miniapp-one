@@ -1,5 +1,6 @@
 
 import { PLATFORMS } from '../../constants';
+import { hapticSelection } from '../../helpers/telegram';
 import type { SocialPlatform } from '../../types';
 
 interface Props {
@@ -19,7 +20,10 @@ export function PlatformGrid({ selectedPlatform, onSelect }: Props) {
                 return (
                     <button
                         key={p.id}
-                        onClick={() => onSelect(p.id)}
+                        onClick={() => {
+                            hapticSelection();
+                            onSelect(p.id);
+                        }}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',

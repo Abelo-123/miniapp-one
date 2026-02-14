@@ -1,6 +1,7 @@
 import { Tabbar } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import type { TabId } from '../../types';
+import { hapticSelection } from '../../helpers/telegram';
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
     { id: 'order', label: 'Order', icon: '🛒' },
@@ -14,9 +15,7 @@ export function BottomNav() {
 
     const handleTabClick = (tab: TabId) => {
         setActiveTab(tab);
-        try {
-            (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged();
-        } catch { /* ignore */ }
+        hapticSelection();
     };
 
     return (

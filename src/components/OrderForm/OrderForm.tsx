@@ -2,6 +2,16 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Section, Input, Textarea, Button, Cell } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import { formatETB, getLinkPlaceholder, QUANTITY_STEP } from '../../constants';
+import {
+    hapticImpact,
+    hapticNotification,
+    configureMainButton,
+    showMainButton,
+    hideMainButton,
+    onMainButtonClick,
+    enableClosingConfirmation,
+    disableClosingConfirmation,
+} from '../../helpers/telegram';
 
 export function OrderForm() {
     const {
@@ -87,9 +97,8 @@ export function OrderForm() {
             showToast('success', `Order #${newOrder.api_order_id} placed!`);
 
             // Haptic feedback via SDK
-            try {
-                (window as any).Telegram?.WebApp?.HapticFeedback?.impactOccurred('heavy');
-            } catch { /* ignore */ }
+            hapticImpact('heavy');
+            hapticNotification('success');
 
             // Reset
             setLink('');
@@ -98,82 +107,67 @@ export function OrderForm() {
             setAnswerNumber('');
         } catch {
             showToast('error', 'Failed to place order');
+            hapticNotification('error');
         } finally {
             setSubmitting(false);
         }
     };
 
-    // MainButton Effect
+    // MainButton Effect — all via SDK helpers
     const handleSubmitRef = useRef(handleSubmit);
     useEffect(() => { handleSubmitRef.current = handleSubmit; }, [handleSubmit]);
 
     useEffect(() => {
         if (!isTelegramApp) return;
 
-        const tg = (window as any).Telegram?.WebApp;
-        if (!tg) return;
-        const mb = tg.MainButton;
-
         const handleMainBtnClick = () => handleSubmitRef.current();
 
-        const updateButton = () => {
-            if (submitting) {
-                mb.enable();
-                mb.showProgress(true);
-                mb.setText('PLACING ORDER...');
-            } else {
-                mb.hideProgress();
-                if (isValid) {
-                    mb.enable();
-                    mb.setParams({
-                        text: `PAY ${formatETB(charge)} `,
-                        color: '#2ecc71',
-                        text_color: '#ffffff'
-                    });
-                } else {
-                    mb.disable();
-                    mb.setParams({
-                        text: 'FILL DETAILS',
-                        color: '#95a5a6',
-                        text_color: '#ffffff'
-                    });
+        if (submitting) {
+            configureMainButton({
+                text: 'PLACING ORDER...',
+                isEnabled: true,
+                isLoaderVisible: true,
+            });
+        } else if (isValid) {
+            configureMainButton({
+                text: `PAY ${formatETB(charge)}`,
+                color: '#2ecc71',
+                textColor: '#ffffff',
+                isEnabled: true,
+                isLoaderVisible: false,
+            });
+        } else {
+            let text = 'FILL DETAILS';
+            if (!link.trim()) text = 'ENTER LINK';
+            else if (user && charge > user.balance) text = 'INSUFFICIENT FUNDS';
+            else text = 'INVALID QUANTITY';
 
-                    if (!link.trim()) mb.setText('ENTER LINK');
-                    else if (user && charge > user.balance) mb.setText('INSUFFICIENT FUNDS');
-                    else mb.setText('INVALID QUANTITY');
-                }
-            }
-        };
+            configureMainButton({
+                text,
+                color: '#95a5a6',
+                textColor: '#ffffff',
+                isEnabled: false,
+                isLoaderVisible: false,
+            });
+        }
 
-        updateButton();
-        mb.show();
-
-        mb.onClick(handleMainBtnClick);
+        showMainButton();
+        const off = onMainButtonClick(handleMainBtnClick);
 
         return () => {
-            mb.offClick(handleMainBtnClick);
-            mb.hide();
-            mb.hideProgress();
+            off();
+            hideMainButton();
         };
     }, [isTelegramApp, isValid, submitting, charge, link, user]);
 
-    // Cleanup Closing Confirmation
+    // Closing Confirmation via SDK — protect unsaved form data
     useEffect(() => {
-        return () => {
-            const tg = (window as any).Telegram?.WebApp;
-            if (tg) tg.disableClosingConfirmation();
-        };
-    }, []);
-
-    // Closing Confirmation Logic
-    useEffect(() => {
-        const tg = (window as any).Telegram?.WebApp;
-        if (!tg) return;
         if ((link || quantity) && !submitting) {
-            tg.enableClosingConfirmation();
+            enableClosingConfirmation();
         } else {
-            tg.disableClosingConfirmation();
+            disableClosingConfirmation();
         }
+        return () => disableClosingConfirmation();
     }, [link, quantity, submitting]);
 
     return (

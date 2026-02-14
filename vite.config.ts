@@ -27,6 +27,44 @@ export default defineConfig({
   ],
   build: {
     target: 'esnext',
+    // Enable CSS code splitting so lazy pages get their own CSS
+    cssCodeSplit: true,
+    // Minify with esbuild (default, fast) + remove console.log in production
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        // Aggressive chunk splitting for optimal caching & parallel loading
+        manualChunks(id) {
+          // React core — almost never changes, highly cacheable
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'react-vendor';
+          }
+          // React Router
+          if (id.includes('node_modules/react-router')) {
+            return 'router';
+          }
+          // Telegram SDK — separate from UI lib for better caching
+          if (id.includes('node_modules/@telegram-apps/sdk')) {
+            return 'tma-sdk';
+          }
+          // Telegram UI components (heaviest dep)
+          if (id.includes('node_modules/@telegram-apps/telegram-ui')) {
+            return 'tma-ui';
+          }
+        },
+      },
+    },
+    // Increase the asset inline limit slightly for small SVGs/icons
+    assetsInlineLimit: 8192,
+  },
+  // Pre-bundle heavy deps for faster dev cold start
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      '@telegram-apps/sdk-react',
+      '@telegram-apps/telegram-ui',
+    ],
   },
   publicDir: './public',
   server: {
@@ -34,4 +72,3 @@ export default defineConfig({
     host: true,
   },
 });
-

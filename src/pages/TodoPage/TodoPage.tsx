@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback, useMemo, type FC, memo } from 'react'
 import { useSignal, initData } from '@telegram-apps/sdk-react';
 import type { Todo, Member } from './types';
 import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
+import {
+    hapticSelection,
+    hapticImpact,
+    hapticNotification,
+    showConfirm
+} from '../../helpers/telegram';
 import './TodoPage.css';
 
 // ═══════════════════════════════════════════════════════════════
@@ -152,7 +158,17 @@ export const TodoPage: FC = () => {
         try {
             if (!silent) setIsLoading(true);
             const data = await fetchTodos(userId);
-            setTodos(prev => JSON.stringify(prev) === JSON.stringify(data) ? prev : data);
+            setTodos(prev => {
+                // Cheap heuristic: skip update if same length and same IDs  
+                if (prev.length === data.length &&
+                    prev.every((t, i) => t.id === data[i].id)) {
+                    // Deep check only when structure matches (rare path)
+                    const prevStr = JSON.stringify(prev);
+                    const dataStr = JSON.stringify(data);
+                    if (prevStr === dataStr) return prev;
+                }
+                return data;
+            });
         } catch (err) { console.error(err); }
         finally { if (!silent) setIsLoading(false); }
     }, [userId]);
@@ -202,14 +218,23 @@ export const TodoPage: FC = () => {
             habit: { frequency: 'daily', streak: 0, history: {} }
         };
         setTodos(prev => [tempTodo, ...prev]);
+        hapticNotification('success'); // FEEDBACK
+
         try {
             const newTodo = await addTodo(userId, textToSubmit, { frequency: 'daily', streak: 0, history: {} }, userName);
             setTodos(prev => prev.map(t => t.id === tempId ? newTodo : t));
-        } catch (err) { setTodos(prev => prev.filter(t => t.id !== tempId)); console.error(err); }
+        } catch (err) {
+            setTodos(prev => prev.filter(t => t.id !== tempId));
+            console.error(err);
+            hapticNotification('error');
+        }
     };
 
     const handleDayToggle = useCallback(async (todo: Todo, dateStr: string) => {
         if (!todo.habit || isFutureDate(dateStr) || isBeforeCreation(dateStr, todo.created_at)) return;
+
+        hapticSelection(); // FEEDBACK
+
         const history = todo.habit.history || {};
         const isCompletedOnDate = history[dateStr] !== undefined;
         let newHistory = { ...history };
@@ -226,7 +251,11 @@ export const TodoPage: FC = () => {
     }, [userId, loadTodos]);
 
     const handleDelete = useCallback(async (todoId: number) => {
-        if (!confirm('Delete this habit?')) return;
+        // Native Telegram Confirm
+        const confirmed = await showConfirm('Delete this habit?');
+        if (!confirmed) return;
+
+        hapticImpact('heavy'); // FEEDBACK
         setTodos(prev => prev.filter(t => t.id !== todoId));
         try { await deleteTodo(userId, todoId); }
         catch (err) { loadTodos(true); console.error(err); }

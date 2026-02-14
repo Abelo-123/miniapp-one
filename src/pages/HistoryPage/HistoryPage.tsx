@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { List, Section, Cell, Input, Button, Placeholder } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
+import { hapticImpact, hapticSelection } from '../../helpers/telegram';
 import type { OrderStatus } from '../../types';
 // Styles handled by TUI components
 
@@ -52,6 +53,7 @@ export function HistoryPage() {
     }, [orders, filter, search]);
 
     const handleRefill = (orderId: number) => {
+        hapticImpact('medium');
         showToast('info', `Refill request sent for order #${orderId}`);
     };
 
@@ -79,7 +81,10 @@ export function HistoryPage() {
                             key={f.id}
                             size="s"
                             mode={filter === f.id ? 'filled' : 'bezeled'}
-                            onClick={() => setFilter(f.id)}
+                            onClick={() => {
+                                hapticSelection();
+                                setFilter(f.id);
+                            }}
                         >
                             {f.label}
                         </Button>

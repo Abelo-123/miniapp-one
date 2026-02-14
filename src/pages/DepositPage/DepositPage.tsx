@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { List, Section, Cell, Input, Button, Banner } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
-// DepositPage.css removed/ignored as TUI handles layout
+import { hapticSelection, hapticImpact, hapticNotification } from '../../helpers/telegram';
 
 const PRESET_AMOUNTS = [100, 500, 1000, 2000];
 
@@ -15,6 +15,7 @@ export function DepositPage() {
         const val = parseInt(amount);
         if (!val || val < 50) {
             showToast('error', 'Minimum deposit is 50 ETB');
+            hapticNotification('error');
             return;
         }
 
@@ -37,9 +38,14 @@ export function DepositPage() {
 
             setDeposits([newDeposit, ...deposits]);
             showToast('success', `Deposited ${formatETB(val)} successfully!`);
+
+            hapticImpact('heavy');
+            hapticNotification('success');
+
             setAmount('');
         } catch {
             showToast('error', 'Payment failed');
+            hapticNotification('error');
         } finally {
             setDepositing(false);
         }
@@ -74,7 +80,10 @@ export function DepositPage() {
                             key={amt}
                             size="s"
                             mode="bezeled"
-                            onClick={() => setAmount(String(amt))}
+                            onClick={() => {
+                                hapticSelection();
+                                setAmount(String(amt));
+                            }}
                         >
                             +{amt}
                         </Button>

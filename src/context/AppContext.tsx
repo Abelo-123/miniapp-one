@@ -2,6 +2,13 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import type { UserProfile, Service, Order, Deposit, Alert, ChatMessage, TabId, ToastMessage, SocialPlatform } from '../types';
 import { MOCK_USER, MOCK_SERVICES, MOCK_RECOMMENDED, MOCK_ORDERS, MOCK_DEPOSITS, MOCK_ALERTS, MOCK_CHAT, MOCK_SETTINGS } from '../mocks/data';
 import { TOAST_DURATION } from '../constants';
+import {
+    isTelegramEnv,
+    hapticSelection,
+    cloudSet,
+    cloudGet,
+    getInitDataUser,
+} from '../helpers/telegram';
 
 interface AppState {
     // Auth
@@ -66,7 +73,7 @@ export function useApp(): AppContextType {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    const isTelegramApp = !!(window as any).Telegram?.WebApp;
+    const isTelegramApp = isTelegramEnv();
 
     const [user, setUser] = useState<UserProfile | null>(MOCK_USER);
     const [services] = useState<Service[]>(MOCK_SERVICES);
@@ -110,19 +117,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSelectedService(null);
     }, [selectedCategory]);
 
-    // Initialize user from Telegram data if available
+    // Initialize user from Telegram SDK init data
     useEffect(() => {
         try {
-            const { initData } = (window as any).Telegram?.WebApp || {};
-            if (initData?.user) {
-                const tgUser = initData.user;
+            const tgUser = getInitDataUser();
+            if (tgUser) {
                 setUser({
                     id: tgUser.id,
                     first_name: tgUser.first_name,
                     last_name: tgUser.last_name,
                     username: tgUser.username,
                     display_name: [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' '),
-                    photo_url: tgUser.photo_url,
+                    photo_url: tgUser.photo_url ?? '',
                     balance: 0, // Mock balance since we don't have a real backend
                 });
             }
@@ -133,36 +139,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const handleSetActiveTab = useCallback((tab: TabId) => {
         setActiveTab(tab);
-        try {
-            (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged();
-            // Save tab state
-            (window as any).Telegram?.WebApp?.CloudStorage?.setItem('last_tab', tab);
-        } catch { /* ignore */ }
+        hapticSelection();
+        // Persist tab state to Telegram Cloud Storage
+        void cloudSet('last_tab', tab);
     }, []);
 
     const handleSetSelectedPlatform = useCallback((p: SocialPlatform | null) => {
         setSelectedPlatform(p);
-        if (p) {
-            try { (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged(); } catch { /* ignore */ }
-        }
+        if (p) hapticSelection();
     }, []);
 
     const handleSetSelectedService = useCallback((s: Service | null) => {
         setSelectedService(s);
-        if (s) {
-            try { (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged(); } catch { /* ignore */ }
-        }
+        if (s) hapticSelection();
     }, []);
 
-    // Restore last tab on mount
+    // Restore last tab from Cloud Storage on mount
     useEffect(() => {
-        try {
-            (window as any).Telegram?.WebApp?.CloudStorage?.getItem('last_tab', (err: any, val: string) => {
-                if (!err && val && ['order', 'history', 'deposit', 'more'].includes(val)) {
-                    setActiveTab(val as TabId);
-                }
-            });
-        } catch { /* ignore */ }
+        void (async () => {
+            const val = await cloudGet('last_tab');
+            if (val && ['order', 'history', 'deposit', 'more'].includes(val)) {
+                setActiveTab(val as TabId);
+            }
+        })();
     }, []);
 
     const value: AppContextType = {

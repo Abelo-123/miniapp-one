@@ -1,20 +1,34 @@
 import { AppRoot } from '@telegram-apps/telegram-ui';
-import '@telegram-apps/telegram-ui/dist/styles.css';
+// telegram-ui styles already imported in index.tsx — no duplicate import
 import { AppProvider, useApp } from '../context/AppContext';
 import { BottomNav } from './BottomNav/BottomNav';
 import { ToastContainer } from './Toast/Toast';
 import { LoadingOverlay } from './LoadingOverlay/LoadingOverlay';
-import { OrderPage } from '../pages/OrderPage/OrderPage';
-import { HistoryPage } from '../pages/HistoryPage/HistoryPage';
-import { DepositPage } from '../pages/DepositPage/DepositPage';
-import { MorePage } from '../pages/MorePage/MorePage';
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import {
   showBackButton,
   hideBackButton,
   onBackButtonClick,
   onSettingsButtonClick,
 } from '@telegram-apps/sdk-react';
+import { hapticSelection } from '../helpers/telegram';
+
+// ─── Lazy-loaded pages (code-split per tab) ─────────────────
+const OrderPage = lazy(() => import('../pages/OrderPage/OrderPage').then(m => ({ default: m.OrderPage })));
+const HistoryPage = lazy(() => import('../pages/HistoryPage/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const DepositPage = lazy(() => import('../pages/DepositPage/DepositPage').then(m => ({ default: m.DepositPage })));
+const MorePage = lazy(() => import('../pages/MorePage/MorePage').then(m => ({ default: m.MorePage })));
+
+// Minimal fallback to avoid layout shift while lazy chunk loads
+const TabFallback = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+    <div style={{
+      width: 20, height: 20,
+      border: '2px solid #222', borderTopColor: '#3498db',
+      borderRadius: '50%', animation: 'spin .6s linear infinite',
+    }} />
+  </div>
+);
 
 function AppContent() {
   const { activeTab, setActiveTab, isLoading } = useApp();
@@ -54,7 +68,7 @@ function AppContent() {
     try {
       const off = onSettingsButtonClick(() => {
         setActiveTab('more');
-        (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged();
+        hapticSelection();
       });
       return () => off();
     } catch { /* ignore */ }
@@ -63,10 +77,12 @@ function AppContent() {
   return (
     <AppRoot>
       <div className="scroll-wrapper" ref={scrollRef}>
-        {activeTab === 'order' && <OrderPage />}
-        {activeTab === 'history' && <HistoryPage />}
-        {activeTab === 'deposit' && <DepositPage />}
-        {activeTab === 'more' && <MorePage />}
+        <Suspense fallback={<TabFallback />}>
+          {activeTab === 'order' && <OrderPage />}
+          {activeTab === 'history' && <HistoryPage />}
+          {activeTab === 'deposit' && <DepositPage />}
+          {activeTab === 'more' && <MorePage />}
+        </Suspense>
       </div>
       <BottomNav />
       <ToastContainer />

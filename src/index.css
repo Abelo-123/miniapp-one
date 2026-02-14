@@ -1,7 +1,7 @@
 /* ─── Paxyo SMM — Telegram Native Styles ──────────────────── */
 /* Minimal CSS: most styling comes from @telegram-apps/telegram-ui */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* Google Fonts Inter is loaded non-blocking via index.html <link> */
 
 /* ─── Reset & Base ─── */
 *,

@@ -12,29 +12,33 @@ import {
   retrieveLaunchParams,
   emitEvent,
   miniApp,
+  mountClosingBehavior,
+  mountSettingsButton,
+  mountSwipeBehavior,
+  disableVerticalSwipes,
 } from '@telegram-apps/sdk-react';
+
+import { expandViewport, signalReady } from './helpers/telegram';
 
 /**
  * Initializes the application and configures its dependencies.
+ * 
+ * PERF: Split into two phases:
+ *   1. Critical (sync) — runs immediately, required for first paint
+ *   2. Deferred (async) — runs in parallel, doesn't block render
  */
 export async function init(options: {
   debug: boolean;
   eruda: boolean;
   mockForMacOS: boolean;
 }): Promise<void> {
-  // Set @telegram-apps/sdk-react debug mode and initialize it.
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 1: CRITICAL — runs synchronously, required for UI render
+  // ═══════════════════════════════════════════════════════════════
   setDebug(options.debug);
   initSDK();
 
-  // Add Eruda if needed.
-  options.eruda && void import('eruda').then(({ default: eruda }) => {
-    eruda.init();
-    eruda.position({ x: window.innerWidth - 50, y: 0 });
-  });
-
-  // Telegram for macOS has a ton of bugs, including cases, when the client doesn't
-  // even response to the "web_app_request_theme" method. It also generates an incorrect
-  // event for the "web_app_request_safe_area" method.
+  // Telegram for macOS bug workarounds (must be before component mounts)
   if (options.mockForMacOS) {
     let firstThemeSent = false;
     mockTelegramEnv({
@@ -59,7 +63,7 @@ export async function init(options: {
     });
   }
 
-  // Mount all components used in the project.
+  // Mount critical components (sync, fast)
   mountBackButton.ifAvailable();
   restoreInitData();
 
@@ -68,22 +72,59 @@ export async function init(options: {
     bindThemeParamsCssVars();
   }
 
-  // Mount enhanced features
-  void import('@telegram-apps/sdk-react').then(sdk => {
-    sdk.mountClosingBehavior.ifAvailable();
-    sdk.mountSettingsButton.ifAvailable();
+  // Signal ready ASAP so Telegram hides its loading indicator
+  signalReady();
 
-    if (sdk.mountSwipeBehavior.isAvailable()) {
-      sdk.mountSwipeBehavior();
-      try { sdk.disableVerticalSwipes(); } catch { /* ignore */ }
-    }
-  });
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 2: DEFERRED — runs in parallel, doesn't block render
+  // ═══════════════════════════════════════════════════════════════
+  const deferredTasks: Promise<void>[] = [];
 
-  mountViewport.isAvailable() && mountViewport().then(() => {
-    bindViewportCssVars();
-    // Expand to full height
-    if ((window as any).Telegram?.WebApp?.expand) {
-      (window as any).Telegram.WebApp.expand();
-    }
-  });
+  // Viewport setup (the slowest part, was blocking render before)
+  if (mountViewport.isAvailable()) {
+    deferredTasks.push(
+      mountViewport()
+        .then(() => {
+          bindViewportCssVars();
+          expandViewport();
+        })
+        .catch(() => { /* ignore viewport errors */ })
+    );
+  }
+
+  // Header/background color
+  deferredTasks.push(
+    (async () => {
+      try {
+        const { setHeaderColor, setBackgroundColor } = await import('./helpers/telegram');
+        setHeaderColor('#0a0a0f');
+        setBackgroundColor('#0a0a0f');
+      } catch { /* ignore */ }
+    })()
+  );
+
+  // Closing and swipe behavior
+  deferredTasks.push(
+    (async () => {
+      try {
+        mountClosingBehavior.ifAvailable();
+        mountSettingsButton.ifAvailable();
+        if (mountSwipeBehavior.isAvailable()) {
+          mountSwipeBehavior();
+          try { disableVerticalSwipes(); } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+    })()
+  );
+
+  // Eruda (debug inspector) — lazy, never blocks
+  if (options.eruda) {
+    void import('eruda').then(({ default: eruda }) => {
+      eruda.init();
+      eruda.position({ x: window.innerWidth - 50, y: 0 });
+    });
+  }
+
+  // Wait for deferred tasks but don't let any failure block the app
+  await Promise.allSettled(deferredTasks);
 }
