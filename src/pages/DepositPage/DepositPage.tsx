@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { List, Section, Button, Input, Banner, Placeholder, Cell } from '@telegram-apps/telegram-ui';
+import { List, Section, Button, Input, Placeholder } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
 import { hapticSelection, hapticImpact, hapticNotification } from '../../helpers/telegram';

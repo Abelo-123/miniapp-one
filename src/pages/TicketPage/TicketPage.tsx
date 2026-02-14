@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { List, Section, Button, Placeholder } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
-import { hapticSelection, hapticImpact } from '../../helpers/telegram';
+import { hapticImpact } from '../../helpers/telegram';
 import './TicketPage.css';
 
 export function TicketPage() {

@@ -114,7 +114,7 @@ export function OrderPage() {
                         className="op-icon-btn op-notif-btn"
                         onClick={() => {
                             hapticSelection();
-                            setActiveTab('more');
+                            setActiveTab('ticket');
                         }}
                         aria-label="Notifications"
                     >
