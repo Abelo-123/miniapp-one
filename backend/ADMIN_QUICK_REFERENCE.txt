@@ -1,0 +1,237 @@
+/* ==============================================
+   ADMIN FEATURES - QUICK REFERENCE
+   ============================================== */
+
+## 🎯 Admin Panel URLs
+- Main Dashboard: http://localhost/paxyo/admin/index.php
+- User SMM Page: http://localhost/paxyo/smm.php
+
+## 🔐 Admin Login
+Default Password: admin123
+(Change in admin/index.php line 15)
+
+## ⚡ Real-time Features
+
+### Dashboard Charts (Auto-updates every 5 seconds)
+├── Performance Chart (Line)
+│   ├── Orders (Left Axis, Blue)
+│   └── Revenue (Right Axis, Purple)
+└── User Growth Chart (Bar)
+    └── New Users (Teal)
+
+### Live Data Flow:
+1. User places order on smm.php
+2. Order saved to database  with discounted price
+3. Within 5 seconds:
+   - Charts update automatically
+   - Order count increases
+   - Revenue reflects discounted amount
+   - No page refresh needed!
+
+## 🎉 Holiday Discount System
+
+### Admin Side (admin/index.php → Holidays Tab)
+```
+Create Holiday:
+├── Name: e.g., "Black Friday"
+├── Start Date: 2025-12-20
+├── End Date: 2025-12-25
+├── Discount %: 30
+└── Click "Add Event"
+
+Manage Holidays:
+├── View all events in table
+├── Toggle Active/Inactive
+└── Delete events
+```
+
+### User Side (smm.php)
+```
+When holiday is active:
+├── Service Rate Display:
+│   ├── Shows: ̶4̶0̶0̶.̶0̶0̶  280.00 ETB (Black Friday)
+│   └── Original crossed, discounted highlighted
+├── Total Charge Display:
+│   ├── Shows: ̶$̶2̶.̶0̶0̶  $1.40  [-30% OFF]
+│   └── Red badge with discount percentage
+└── Order Processing:
+    └── Saves $1.40 (discounted) to database
+```
+
+## 📊 Data Flow Diagram
+
+```
+┌─────────────────────────────────────────────┐
+│  Admin Creates Holiday (30% off)            │
+│  Start: Today, End: Tomorrow                │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  User Opens smm.php                         │
+│  PHP checks: holidays WHERE active AND      │
+│  today BETWEEN start_date AND end_date      │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  Holiday Found! (30% discount)              │
+│  JavaScript receives:                       │
+│  - discountPercent: 30                      │
+│  - holidayName: "Black Friday"              │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  User Selects Service                       │
+│  Original Rate: $0.50 per 1K                │
+│  Displayed: ̶$̶0̶.̶5̶0̶  $0.35 (30% off)        │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  User Enters Quantity: 1000                 │
+│  Calculation:                               │
+│  - Original: 1000/1000 * 0.50 = $0.50       │
+│  - Discount: 0.50 * 0.70 = $0.35            │
+│  Display: ̶$̶0̶.̶5̶0̶  $0.35  [-30% OFF]        │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  User Clicks "Place Order"                  │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  process_order.php                          │
+│  1. Check for active holiday again          │
+│  2. Apply 30% discount to rate              │
+│  3. Calculate: $0.35                        │
+│  4. Deduct $0.35 from balance               │
+│  5. Save order with charge = 0.35           │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  Admin Dashboard                            │
+│  Within 5 seconds:                          │
+│  - Revenue chart +$0.35                     │
+│  - Orders chart +1                          │
+│  - Automatic update (no refresh)            │
+└─────────────────────────────────────────────┘
+```
+
+## 🔍 Testing Quick Guide
+
+### Test 1: Create Holiday
+```bash
+1. Login to admin
+2. Go to Holidays tab
+3. Fill form:
+   Name: Test Sale
+   Start: Today
+   End: Tomorrow  
+   Discount: 50
+4. Click "Add Event"
+5. ✓ Should appear in table below
+```
+
+### Test 2: Verify Discount in SMM
+```bash
+1. Open smm.php in new tab
+2. Select platform → category → service
+3. ✓ Should see: ̶O̶r̶i̶g̶i̶n̶a̶l̶  Discounted (Test Sale)
+4. Enter quantity
+5. ✓ Charge should show: ̶O̶l̶d̶  New [-50% OFF]
+```
+
+### Test 3: Place Discounted Order
+```bash
+1. Fill all order details
+2. Click "Place Order"
+3. ✓ Should succeed
+4. Go to Admin → Orders
+5. ✓ Charge column should show discounted amount
+6. Go to Admin → Dashboard
+7. ✓ Within 5 seconds, charts should update
+```
+
+### Test 4: Disable Discount
+```bash
+1. Admin → Holidays tab
+2. Click status button (active → inactive)
+3. Refresh smm.php
+4. ✓ Prices should be normal (no strikethrough)
+5. ✓ No discount badges
+```
+
+### Test 5: Real-time Charts
+```bash
+1. Open Admin Dashboard
+2. Open smm.php in another tab
+3. Place an order
+4. Switch back to Dashboard
+5. ✓ Within 5 seconds:
+   - Charts should update
+   - Revenue increases
+   - Order count increases
+   - No page reload needed
+```
+
+## 🎨 Visual Elements
+
+### Discount Indicators
+```css
+Original Price: color: gray, strikethrough
+Discounted Price: color: accent (purple), bold
+Discount Badge: bg: red, text: white, "-XX% OFF"
+Holiday Name: text: green, size: tiny
+```
+
+### Chart Styles
+```css
+Orders Line: Blue (#4EA8DE), filled area
+Revenue Line: Purple (#5E60CE), filled area
+User Bars: Teal (#48BFE3), rounded corners
+```
+
+## 📱 Mobile Responsive
+- ✅ All features work on mobile
+- ✅ Charts resize properly
+- ✅ Tables scroll horizontally
+- ✅ Forms adapt to screen size
+
+## ⚠️ Important Notes
+
+1. **Holiday Overlap**: If multiple holidays are active, the highest discount applies
+2. **Chart Performance**: Updates use in-place data modification (no chart recreation)
+3. **Discount Validation**: Applied both frontend (display) and backend (processing)
+4. **Real-time Interval**: 5 seconds (configurable in admin/index.php line 426)
+
+## 🐛 Troubleshooting
+
+**Charts not updating?**
+- Check browser console for errors
+- Verify api_analytics.php is accessible
+- Confirm database has order data for past 7 days
+
+**Discounts not showing?**
+- Check holiday status is "active"
+- Verify today's date is between start_date and end_date
+- Check browser console for PHP errors
+
+**Orders not appearing in charts?**
+- Verify orders table exists
+- Check orders have created_at timestamps
+- Ensure holiday discount was applied to charge column
+
+## 🎯 Success Criteria
+
+All features working when:
+- ✅ Charts update automatically every 5 seconds
+- ✅ Holiday discounts display on smm.php
+- ✅ Orders save with discounted prices
+- ✅ Admin can manage holidays easily
+- ✅ Users see clear discount indicators
+- ✅ Dashboard reflects real-time data
