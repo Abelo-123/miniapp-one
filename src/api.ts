@@ -115,3 +115,17 @@ export async function fetchChat(): Promise<{ success: boolean; messages: ChatMes
 export async function heartbeat(): Promise<{ ok: number }> {
     return apiFetch('/heartbeat.php');
 }
+
+// ─── Settings ────────────────────────────────────────────────
+export interface AppSettings {
+    rateMultiplier: number;
+    discountPercent: number;
+    holidayName: string;
+    maintenanceMode: boolean;
+    userCanOrder: boolean;
+    marqueeText: string;
+}
+
+export async function getSettings(): Promise<AppSettings> {
+    return apiFetch<AppSettings>('/get_settings.php');
+}

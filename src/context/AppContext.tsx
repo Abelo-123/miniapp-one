@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { UserProfile, Service, Order, Deposit, Alert, ChatMessage, TabId, ToastMessage, SocialPlatform } from '../types';
-import { MOCK_USER, MOCK_SERVICES, MOCK_RECOMMENDED, MOCK_ORDERS, MOCK_DEPOSITS, MOCK_ALERTS, MOCK_CHAT, MOCK_SETTINGS } from '../mocks/data';
 import { TOAST_DURATION } from '../constants';
 import {
     isTelegramEnv,
@@ -9,36 +8,26 @@ import {
     cloudGet,
     getInitDataUser,
 } from '../helpers/telegram';
+import * as api from '../api';
 
 interface AppState {
-    // Auth
     user: UserProfile | null;
     isTelegramApp: boolean;
-
-    // Services
     services: Service[];
     recommendedIds: number[];
-
-    // Order flow
     selectedPlatform: SocialPlatform | null;
     selectedCategory: string | null;
     selectedService: Service | null;
-
-    // Data
     orders: Order[];
     deposits: Deposit[];
     alerts: Alert[];
     chatMessages: ChatMessage[];
-
-    // Settings
     rateMultiplier: number;
     discountPercent: number;
     holidayName: string;
     maintenanceMode: boolean;
     userCanOrder: boolean;
     marqueeText: string;
-
-    // UI state
     activeTab: TabId;
     toasts: ToastMessage[];
     isLoading: boolean;
@@ -60,6 +49,10 @@ interface AppActions {
     setUnreadAlerts: (count: number) => void;
     showToast: (type: ToastMessage['type'], message: string) => void;
     removeToast: (id: string) => void;
+    refreshServices: () => Promise<void>;
+    refreshOrders: () => Promise<void>;
+    refreshDeposits: () => Promise<void>;
+    refreshAlerts: () => Promise<void>;
 }
 
 type AppContextType = AppState & AppActions;
@@ -75,20 +68,99 @@ export function useApp(): AppContextType {
 export function AppProvider({ children }: { children: ReactNode }) {
     const isTelegramApp = isTelegramEnv();
 
-    const [user, setUser] = useState<UserProfile | null>(MOCK_USER);
-    const [services] = useState<Service[]>(MOCK_SERVICES);
-    const [recommendedIds] = useState<number[]>(MOCK_RECOMMENDED);
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [services, setServices] = useState<Service[]>([]);
+    const [recommendedIds, setRecommendedIds] = useState<number[]>([]);
     const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
-    const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
-    const [deposits, setDeposits] = useState<Deposit[]>(MOCK_DEPOSITS);
-    const [alerts, setAlerts] = useState<Alert[]>(MOCK_ALERTS);
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>(MOCK_CHAT);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [deposits, setDeposits] = useState<Deposit[]>([]);
+    const [alerts, setAlerts] = useState<Alert[]>([]);
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [activeTab, setActiveTab] = useState<TabId>('order');
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [unreadAlerts, setUnreadAlerts] = useState(MOCK_ALERTS.filter(a => !a.is_read).length);
+    const [unreadAlerts, setUnreadAlerts] = useState(0);
+    const [settings, setSettings] = useState({
+        rateMultiplier: 1,
+        discountPercent: 0,
+        holidayName: '',
+        maintenanceMode: false,
+        userCanOrder: true,
+        marqueeText: 'Welcome to Paxyo SMM!',
+    });
+
+    const refreshServices = useCallback(async () => {
+        try {
+            const data = await api.getServices(true);
+            const transformed: Service[] = data.map((s: any) => ({
+                id: s.service,
+                category: s.category,
+                name: s.name,
+                type: s.type as Service['type'],
+                rate: parseFloat(s.rate),
+                min: s.min,
+                max: s.max,
+                averageTime: s.average_time || s.averageTime || '',
+                refill: s.refill,
+                cancel: s.cancel,
+            }));
+            setServices(transformed);
+        } catch (err) {
+            console.error('Failed to fetch services:', err);
+        }
+    }, []);
+
+    const refreshOrders = useCallback(async () => {
+        try {
+            const data = await api.getOrders();
+            setOrders(data.orders || []);
+        } catch (err) {
+            console.error('Failed to fetch orders:', err);
+        }
+    }, []);
+
+    const refreshDeposits = useCallback(async () => {
+        try {
+            const data = await api.getDeposits();
+            setDeposits(data || []);
+        } catch (err) {
+            console.error('Failed to fetch deposits:', err);
+        }
+    }, []);
+
+    const refreshAlerts = useCallback(async () => {
+        try {
+            const data = await api.getAlerts();
+            setAlerts(data.alerts || []);
+            setUnreadAlerts(data.unread_count || 0);
+        } catch (err) {
+            console.error('Failed to fetch alerts:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const settingsData = await api.getSettings();
+                setSettings(settingsData);
+            } catch (err) {
+                console.error('Failed to fetch settings:', err);
+            }
+            await refreshServices();
+            try {
+                const rec = await api.getRecommended();
+                setRecommendedIds(rec || []);
+            } catch (err) {
+                console.error('Failed to fetch recommended:', err);
+            }
+            refreshOrders();
+            refreshDeposits();
+            refreshAlerts();
+        };
+        loadData();
+    }, []);
 
     const setBalance = useCallback((balance: number) => {
         setUser(prev => prev ? { ...prev, balance } : prev);
@@ -106,18 +178,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
-    // Reset category/service when platform changes
     useEffect(() => {
         setSelectedCategory(null);
         setSelectedService(null);
     }, [selectedPlatform]);
 
-    // Reset service when category changes
     useEffect(() => {
         setSelectedService(null);
     }, [selectedCategory]);
 
-    // Initialize user from Telegram SDK init data
     useEffect(() => {
         try {
             const tgUser = getInitDataUser();
@@ -129,40 +198,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     username: tgUser.username,
                     display_name: [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' '),
                     photo_url: tgUser.photo_url ?? '',
-                    balance: 0, // Mock balance since we don't have a real backend
+                    balance: 0,
                 });
             }
-        } catch (e) {
-            console.error('Failed to parse initData', e);
-        }
+        } catch (e) {}
     }, []);
 
     const handleSetActiveTab = useCallback((tab: TabId) => {
         setActiveTab(tab);
-        hapticSelection();
-        // Persist tab state to Telegram Cloud Storage
-        void cloudSet('last_tab', tab);
-    }, []);
+        if (isTelegramApp) {
+            hapticSelection();
+            void cloudSet('last_tab', tab);
+        }
+    }, [isTelegramApp]);
 
     const handleSetSelectedPlatform = useCallback((p: SocialPlatform | null) => {
         setSelectedPlatform(p);
-        if (p) hapticSelection();
-    }, []);
+        if (p && isTelegramApp) hapticSelection();
+    }, [isTelegramApp]);
 
     const handleSetSelectedService = useCallback((s: Service | null) => {
         setSelectedService(s);
-        if (s) hapticSelection();
-    }, []);
+        if (s && isTelegramApp) hapticSelection();
+    }, [isTelegramApp]);
 
-    // Restore last tab from Cloud Storage on mount
     useEffect(() => {
+        if (!isTelegramApp) return;
         void (async () => {
             const val = await cloudGet('last_tab');
             if (val && ['order', 'history', 'deposit', 'more'].includes(val)) {
                 setActiveTab(val as TabId);
             }
         })();
-    }, []);
+    }, [isTelegramApp]);
 
     const value: AppContextType = {
         user,
@@ -176,12 +244,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deposits,
         alerts,
         chatMessages,
-        rateMultiplier: MOCK_SETTINGS.rateMultiplier,
-        discountPercent: MOCK_SETTINGS.discountPercent,
-        holidayName: MOCK_SETTINGS.holidayName,
-        maintenanceMode: MOCK_SETTINGS.maintenanceMode,
-        userCanOrder: !MOCK_SETTINGS.maintenanceMode,
-        marqueeText: MOCK_SETTINGS.marqueeText,
+        rateMultiplier: settings.rateMultiplier,
+        discountPercent: settings.discountPercent,
+        holidayName: settings.holidayName,
+        maintenanceMode: settings.maintenanceMode,
+        userCanOrder: settings.userCanOrder,
+        marqueeText: settings.marqueeText,
         activeTab,
         toasts,
         isLoading,
@@ -200,6 +268,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUnreadAlerts,
         showToast,
         removeToast,
+        refreshServices,
+        refreshOrders,
+        refreshDeposits,
+        refreshAlerts,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

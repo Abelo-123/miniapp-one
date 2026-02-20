@@ -25,4 +25,8 @@ dist-ssr
 
 *.pem
 
+.env
+.env.local
+.env.*.local
+
 todos.db
