@@ -1,4 +1,5 @@
 <?php
+// get_settings.php - Mini-app settings API
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
 
