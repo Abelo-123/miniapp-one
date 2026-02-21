@@ -1,7 +1,7 @@
 import type { SocialPlatform } from './types';
 
 // ─── API Configuration ───────────────────────────────────────
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+export const API_BASE_URL = 'http://localhost/paxyo_new';
 
 // ─── Social Platforms ─────────────────────────────────────────
 export interface PlatformDef {
