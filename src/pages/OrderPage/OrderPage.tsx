@@ -30,6 +30,9 @@ export function OrderPage() {
 
         const allCategories = [...new Set(services.map(s => s.category))];
 
+        console.log('[OrderPage] services:', services.length);
+        console.log('[OrderPage] categories:', allCategories.slice(0, 5));
+
         if (selectedPlatform === 'other') {
             const majorKeywords = PLATFORMS
                 .filter(p => p.id !== 'other' && p.id !== 'top')

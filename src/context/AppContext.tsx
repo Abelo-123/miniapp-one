@@ -114,51 +114,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const refreshOrders = useCallback(async () => {
-        try {
-            const data = await api.getOrders();
-            setOrders(data.orders || []);
-        } catch (err) {
-            console.error('Failed to fetch orders:', err);
-        }
+        // Temporarily disabled
     }, []);
 
     const refreshDeposits = useCallback(async () => {
-        try {
-            const data = await api.getDeposits();
-            setDeposits(data || []);
-        } catch (err) {
-            console.error('Failed to fetch deposits:', err);
-        }
+        // Temporarily disabled
     }, []);
 
     const refreshAlerts = useCallback(async () => {
-        try {
-            const data = await api.getAlerts();
-            setAlerts(data.alerts || []);
-            setUnreadAlerts(data.unread_count || 0);
-        } catch (err) {
-            console.error('Failed to fetch alerts:', err);
-        }
+        // Temporarily disabled
     }, []);
 
     useEffect(() => {
         const loadData = async () => {
-            try {
-                const settingsData = await api.getSettings();
-                setSettings(settingsData);
-            } catch (err) {
-                console.error('Failed to fetch settings:', err);
-            }
             await refreshServices();
-            try {
-                const rec = await api.getRecommended();
-                setRecommendedIds(rec || []);
-            } catch (err) {
-                console.error('Failed to fetch recommended:', err);
-            }
-            refreshOrders();
-            refreshDeposits();
-            refreshAlerts();
         };
         loadData();
     }, []);
