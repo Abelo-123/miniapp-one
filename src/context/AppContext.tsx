@@ -93,7 +93,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const refreshServices = useCallback(async () => {
         try {
-            const data = await api.getServices(true);
+            const data = await api.getServices(false);
             const transformed: Service[] = data.map((s: any) => ({
                 id: s.service,
                 category: s.category,
@@ -107,6 +107,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 cancel: s.cancel,
             }));
             setServices(transformed);
+            api.refreshServices().catch(console.error);
         } catch (err) {
             console.error('Failed to fetch services:', err);
         }

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Section, Input, Textarea, Button, Cell } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import { formatETB, getLinkPlaceholder, QUANTITY_STEP } from '../../constants';
+import * as api from '../../api';
 import {
     hapticImpact,
     hapticNotification,
@@ -74,39 +75,48 @@ export function OrderForm() {
 
         setSubmitting(true);
         try {
-            // Mock API call
-            await new Promise(r => setTimeout(r, 1200));
-
             const qty = service.type === 'Package' ? service.min : parseInt(quantity);
-            const newOrder = {
-                id: orders.length + 100,
-                api_order_id: 90000 + orders.length,
-                service_id: service.id,
-                service_name: service.name,
+            
+            const response = await api.placeOrder({
+                service: service.id,
                 link,
                 quantity: qty,
-                charge,
-                status: 'pending' as const,
-                remains: qty,
-                start_count: 0,
-                created_at: new Date().toISOString(),
-            };
+                tg_id: user?.id,
+                comments: comments || undefined,
+                answer_number: answerNumber ? parseInt(answerNumber) : undefined,
+            });
 
-            setOrders([newOrder, ...orders]);
-            if (user) setBalance(user.balance - charge);
-            showToast('success', `Order #${newOrder.api_order_id} placed!`);
+            if (response.success) {
+                const newOrder = {
+                    id: response.order_id,
+                    api_order_id: response.order_id,
+                    service_id: service.id,
+                    service_name: service.name,
+                    link,
+                    quantity: qty,
+                    charge,
+                    status: 'pending' as const,
+                    remains: qty,
+                    start_count: 0,
+                    created_at: new Date().toISOString(),
+                };
 
-            // Haptic feedback via SDK
-            hapticImpact('heavy');
-            hapticNotification('success');
+                setOrders([newOrder, ...orders]);
+                if (user) setBalance(response.new_balance);
+                showToast('success', `Order #${response.order_id} placed!`);
+                hapticImpact('heavy');
+                hapticNotification('success');
 
-            // Reset
-            setLink('');
-            setQuantity('');
-            setComments('');
-            setAnswerNumber('');
-        } catch {
-            showToast('error', 'Failed to place order');
+                setLink('');
+                setQuantity('');
+                setComments('');
+                setAnswerNumber('');
+            } else {
+                showToast('error', response.error || 'Failed to place order');
+                hapticNotification('error');
+            }
+        } catch (err: any) {
+            showToast('error', err.message || 'Failed to place order');
             hapticNotification('error');
         } finally {
             setSubmitting(false);

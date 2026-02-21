@@ -34,9 +34,41 @@ export async function authenticateTelegram(initData: string): Promise<AuthRespon
 }
 
 // ─── Services ─────────────────────────────────────────────────
-export async function getServices(refresh = false): Promise<Service[]> {
-    const qs = refresh ? '?refresh=1' : '';
-    return apiFetch<Service[]>(`/get_service.php${qs}`);
+const SERVICES_CACHE_KEY = 'paxyo_services_cache';
+const SERVICES_TIMESTAMP_KEY = 'paxyo_services_timestamp';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+export async function getServices(useCache = true): Promise<Service[]> {
+    if (useCache) {
+        const cached = localStorage.getItem(SERVICES_CACHE_KEY);
+        const timestamp = localStorage.getItem(SERVICES_TIMESTAMP_KEY);
+        if (cached && timestamp) {
+            const age = Date.now() - parseInt(timestamp);
+            if (age < CACHE_DURATION) {
+                return JSON.parse(cached);
+            }
+        }
+    }
+    
+    try {
+        const data = await apiFetch<Service[]>('/get_services.php');
+        localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
+        return data;
+    } catch (err) {
+        const cached = localStorage.getItem(SERVICES_CACHE_KEY);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+        throw err;
+    }
+}
+
+export async function refreshServices(): Promise<Service[]> {
+    const data = await apiFetch<Service[]>('/get_services.php?refresh=1');
+    localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
+    return data;
 }
 
 export async function getRecommended(): Promise<number[]> {
@@ -48,6 +80,7 @@ export interface PlaceOrderPayload {
     service: number;
     link: string;
     quantity: number;
+    tg_id?: number;
     comments?: string;
     answer_number?: number;
 }
