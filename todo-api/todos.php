@@ -1,14 +1,1 @@
-CREATE TABLE IF NOT EXISTS auth (
-    tg_id BIGINT(20) NOT NULL PRIMARY KEY,
-    google_id VARCHAR(255) DEFAULT NULL,
-    email VARCHAR(255) DEFAULT NULL,
-    first_name VARCHAR(255) DEFAULT NULL,
-    last_name VARCHAR(255) DEFAULT NULL,
-    photo_url TEXT DEFAULT NULL,
-    balance DECIMAL(10,2) DEFAULT 0.00,
-    is_blocked TINYINT(1) DEFAULT 0,
-    auth_provider VARCHAR(50) DEFAULT 'telegram',
-    last_login DATETIME DEFAULT NULL,
-    last_seen DATETIME DEFAULT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+-betting app
