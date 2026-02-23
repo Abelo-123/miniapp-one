@@ -70,7 +70,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const [user, setUser] = useState<UserProfile | null>(null);
     const [services, setServices] = useState<Service[]>([]);
-    const [recommendedIds, setRecommendedIds] = useState<number[]>([]);
+    const [recommendedIds, _setRecommendedIds] = useState<number[]>([]);
     const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -82,7 +82,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [unreadAlerts, setUnreadAlerts] = useState(0);
-    const [settings, setSettings] = useState({
+    const [settings, _setSettings] = useState({
         rateMultiplier: 1,
         discountPercent: 0,
         holidayName: '',

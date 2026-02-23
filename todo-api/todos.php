@@ -1,6 +1,6 @@
 <?php
 /**
- * Todo API - Simple CRUD backend
+ * Todo API - Simple CRUD bacsskend
  * Uses SQLite for storage (no MySQL setup needed)
  */
 

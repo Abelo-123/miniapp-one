@@ -1,16 +1,13 @@
 import { Placeholder, AppRoot } from '@telegram-apps/telegram-ui';
-import { retrieveLaunchParams, isColorDark, isRGB } from '@telegram-apps/sdk-react';
 import { useMemo } from 'react';
 
 export function EnvUnsupported() {
   const [platform, isDark] = useMemo(() => {
-    try {
-      const lp = retrieveLaunchParams();
-      const { bg_color: bgColor } = lp.tgWebAppThemeParams;
-      return [lp.tgWebAppPlatform, bgColor && isRGB(bgColor) ? isColorDark(bgColor) : false];
-    } catch {
-      return ['android', false];
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.platform) {
+      return [tg.platform, tg.colorScheme === 'dark'];
     }
+    return ['android', true];
   }, []);
 
   return (
@@ -19,15 +16,24 @@ export function EnvUnsupported() {
       platform={['macos', 'ios'].includes(platform) ? 'ios' : 'base'}
     >
       <Placeholder
-        header="Oops"
-        description="You are using too old Telegram client to run this application"
+        header="Loading..."
+        description="Please wait while we initialize the application"
       >
-        <img
-          alt="Telegram sticker"
-          src="https://xelene.me/telegram.gif"
-          style={{ display: 'block', width: '144px', height: '144px' }}
-        />
+        <div style={{ 
+          display: 'block', 
+          width: '144px', 
+          height: '144px',
+          background: '#5288c1',
+          borderRadius: '50%',
+          animation: 'pulse 1.5s infinite'
+        }} />
       </Placeholder>
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(0.95); }
+        }
+      `}</style>
     </AppRoot>
   );
 }
