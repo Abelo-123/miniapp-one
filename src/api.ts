@@ -5,15 +5,22 @@ import type {
 } from './types';
 import { API_BASE_URL } from './constants';
 
-console.log('[API] Base URL:', API_BASE_URL);
+const isDev = import.meta.env.DEV;
 
-// ─── Base Fetch Helper ────────────────────────────────────────
+function debug(...args: any[]) {
+    if (isDev) console.log(...args);
+}
+
+function debugError(...args: any[]) {
+    if (isDev) console.error(...args);
+}
+
 async function apiFetch<T>(
     endpoint: string,
     options?: RequestInit
 ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    console.log('[API] Fetching:', url);
+    debug('[API] Fetching:', url);
     const res = await fetch(url, {
         headers: {
             'Content-Type': 'application/json',
@@ -23,15 +30,14 @@ async function apiFetch<T>(
     });
     if (!res.ok) {
         const body = await res.text();
-        console.error('[API] Error:', res.status, body);
+        debugError('[API] Error:', res.status, body);
         throw new Error(body || `HTTP ${res.status}`);
     }
     const data = await res.json();
-    console.log('[API] Success:', endpoint, data);
+    debug('[API] Success:', endpoint);
     return data;
 }
 
-// ─── Auth ─────────────────────────────────────────────────────
 export async function authenticateTelegram(initData: string): Promise<AuthResponse> {
     return apiFetch<AuthResponse>('/telegram_auth.php', {
         method: 'POST',
@@ -39,39 +45,38 @@ export async function authenticateTelegram(initData: string): Promise<AuthRespon
     });
 }
 
-// ─── Services ─────────────────────────────────────────────────
 const SERVICES_CACHE_KEY = 'paxyo_services_cache';
 const SERVICES_TIMESTAMP_KEY = 'paxyo_services_timestamp';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const SETTINGS_CACHE_KEY = 'paxyo_settings_cache';
+const SETTINGS_TIMESTAMP_KEY = 'paxyo_settings_timestamp';
+const CACHE_DURATION = 5 * 60 * 1000;
+const SETTINGS_CACHE_DURATION = 15 * 60 * 1000;
 
 export async function getServices(useCache = true): Promise<Service[]> {
-    console.log('[Services] getServices called, useCache:', useCache);
-    
     if (useCache) {
         const cached = localStorage.getItem(SERVICES_CACHE_KEY);
         const timestamp = localStorage.getItem(SERVICES_TIMESTAMP_KEY);
         if (cached && timestamp) {
             const age = Date.now() - parseInt(timestamp);
-            console.log('[Services] Cache age:', age, 'ms');
             if (age < CACHE_DURATION) {
-                console.log('[Services] Using cached data');
+                debug('[Services] Using cached data');
                 return JSON.parse(cached);
             }
         }
     }
     
     try {
-        console.log('[Services] Fetching from API...');
+        debug('[Services] Fetching from API...');
         const data = await apiFetch<Service[]>('/get_service.php');
         localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(data));
         localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
-        console.log('[Services] Got', data.length, 'services');
+        debug('[Services] Got', data.length, 'services');
         return data;
     } catch (err) {
-        console.error('[Services] Error:', err);
+        debugError('[Services] Error:', err);
         const cached = localStorage.getItem(SERVICES_CACHE_KEY);
         if (cached) {
-            console.log('[Services] Falling back to cache after error');
+            debug('[Services] Falling back to cache after error');
             return JSON.parse(cached);
         }
         throw err;
@@ -89,7 +94,6 @@ export async function getRecommended(): Promise<number[]> {
     return apiFetch<number[]>('/get_recommended.php');
 }
 
-// ─── Orders ───────────────────────────────────────────────────
 export interface PlaceOrderPayload {
     service: number;
     link: string;
@@ -121,7 +125,6 @@ export async function requestRefill(orderId: number): Promise<{ success: boolean
     });
 }
 
-// ─── Deposits ─────────────────────────────────────────────────
 export async function processDeposit(amount: number, referenceId: string): Promise<DepositResponse> {
     return apiFetch<DepositResponse>('/deposit_handler.php', {
         method: 'POST',
@@ -133,7 +136,6 @@ export async function getDeposits(): Promise<Deposit[]> {
     return apiFetch<Deposit[]>('/get_deposits.php');
 }
 
-// ─── Alerts ───────────────────────────────────────────────────
 export async function getAlerts(): Promise<AlertsResponse> {
     return apiFetch<AlertsResponse>('/get_alerts.php');
 }
@@ -142,7 +144,6 @@ export async function markAlertsRead(): Promise<{ success: boolean }> {
     return apiFetch('/mark_alerts_read.php');
 }
 
-// ─── Chat ─────────────────────────────────────────────────────
 export async function sendChat(message: string): Promise<{ success: boolean }> {
     return apiFetch('/chat_api.php', {
         method: 'POST',
@@ -157,12 +158,10 @@ export async function fetchChat(): Promise<{ success: boolean; messages: ChatMes
     });
 }
 
-// ─── Heartbeat ────────────────────────────────────────────────
 export async function heartbeat(): Promise<{ ok: number }> {
     return apiFetch('/heartbeat.php');
 }
 
-// ─── Settings ────────────────────────────────────────────────
 export interface AppSettings {
     rateMultiplier: number;
     discountPercent: number;
@@ -172,6 +171,30 @@ export interface AppSettings {
     marqueeText: string;
 }
 
-export async function getSettings(): Promise<AppSettings> {
-    return apiFetch<AppSettings>('/get_settings.php');
+export async function getSettings(useCache = true): Promise<AppSettings> {
+    if (useCache) {
+        const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
+        const timestamp = localStorage.getItem(SETTINGS_TIMESTAMP_KEY);
+        if (cached && timestamp) {
+            const age = Date.now() - parseInt(timestamp);
+            if (age < SETTINGS_CACHE_DURATION) {
+                debug('[Settings] Using cached data');
+                return JSON.parse(cached);
+            }
+        }
+    }
+
+    try {
+        const data = await apiFetch<AppSettings>('/get_settings.php');
+        localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(SETTINGS_TIMESTAMP_KEY, Date.now().toString());
+        return data;
+    } catch (err) {
+        debugError('[Settings] Error:', err);
+        const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+        throw err;
+    }
 }

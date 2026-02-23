@@ -127,7 +127,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const loadData = async () => {
-            await refreshServices();
+            setIsLoading(true);
+            try {
+                const [servicesData, settingsData] = await Promise.all([
+                    api.getServices(true),
+                    api.getSettings(true),
+                ]);
+
+                const transformed: Service[] = servicesData.map((s: any) => ({
+                    id: s.service,
+                    category: s.category,
+                    name: s.name,
+                    type: s.type as Service['type'],
+                    rate: parseFloat(s.rate),
+                    min: s.min,
+                    max: s.max,
+                    averageTime: s.average_time || s.averageTime || '',
+                    refill: s.refill,
+                    cancel: s.cancel,
+                }));
+
+                setServices(transformed);
+                _setSettings({
+                    rateMultiplier: settingsData.rateMultiplier || 1,
+                    discountPercent: settingsData.discountPercent || 0,
+                    holidayName: settingsData.holidayName || '',
+                    maintenanceMode: settingsData.maintenanceMode || false,
+                    userCanOrder: settingsData.userCanOrder !== false,
+                    marqueeText: settingsData.marqueeText || 'Welcome to Paxyo SMM!',
+                });
+
+                api.refreshServices().catch(() => {});
+            } catch (err) {
+                console.error('Failed to fetch initial data:', err);
+            } finally {
+                setIsLoading(false);
+            }
         };
         loadData();
     }, []);
@@ -161,14 +196,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
             const tgUser = getInitDataUser();
             if (tgUser) {
-                setUser({
-                    id: tgUser.id,
-                    first_name: tgUser.first_name,
-                    last_name: tgUser.last_name,
-                    username: tgUser.username,
-                    display_name: [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' '),
-                    photo_url: tgUser.photo_url ?? '',
-                    balance: 0,
+                const initData = (window as any).Telegram?.WebApp?.initData || '';
+                
+                api.authenticateTelegram(initData).then((authResponse) => {
+                    if (authResponse.success && authResponse.user) {
+                        setUser({
+                            id: authResponse.user.id,
+                            first_name: authResponse.user.first_name,
+                            last_name: authResponse.user.last_name,
+                            display_name: [authResponse.user.first_name, authResponse.user.last_name].filter(Boolean).join(' '),
+                            photo_url: authResponse.user.photo_url || '',
+                            balance: authResponse.user.balance,
+                        });
+                    }
+                }).catch(() => {
+                    setUser({
+                        id: tgUser.id,
+                        first_name: tgUser.first_name,
+                        last_name: tgUser.last_name,
+                        username: tgUser.username,
+                        display_name: [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' '),
+                        photo_url: tgUser.photo_url ?? '',
+                        balance: 0,
+                    });
                 });
             }
         } catch (e) {}
