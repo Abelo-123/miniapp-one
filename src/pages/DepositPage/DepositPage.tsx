@@ -23,7 +23,7 @@ export function DepositPage() {
 
         setDepositing(true);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/deposit_handler.php`, {
+            const response = await fetch(`https://paxyo.com/backend/deposit_handler.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
