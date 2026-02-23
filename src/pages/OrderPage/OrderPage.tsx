@@ -7,7 +7,6 @@ import { CategoryModal } from '../../components/CategoryModal/CategoryModal';
 import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
 import { OrderForm } from '../../components/OrderForm/OrderForm';
 import { SearchModal } from '../../components/SearchModal/SearchModal';
-// Styles handled by TUI components
 
 export function OrderPage() {
     const {
@@ -20,7 +19,6 @@ export function OrderPage() {
     const [showServiceModal, setShowServiceModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
 
-    // Filter categories (Memoized)
     const platformCategories = useMemo(() => {
         if (!selectedPlatform) return [];
         if (selectedPlatform === 'top') return ['Top Services'];
@@ -29,9 +27,6 @@ export function OrderPage() {
         if (!platformDef) return [];
 
         const allCategories = [...new Set(services.map(s => s.category))];
-
-        console.log('[OrderPage] services:', services.length);
-        console.log('[OrderPage] categories:', allCategories.slice(0, 5));
 
         if (selectedPlatform === 'other') {
             const majorKeywords = PLATFORMS
@@ -49,7 +44,6 @@ export function OrderPage() {
         });
     }, [selectedPlatform, services]);
 
-    // Filter services (Memoized)
     const categoryServices = useMemo(() => {
         if (!selectedCategory) return [];
         if (selectedCategory === 'Top Services') {
@@ -58,7 +52,6 @@ export function OrderPage() {
         return services.filter(s => s.category === selectedCategory);
     }, [selectedCategory, services, recommendedIds]);
 
-    // Handlers
     const handlePlatformSelect = useCallback((platform: typeof selectedPlatform) => {
         setSelectedPlatform(platform);
         if (platform === 'top') {
@@ -92,7 +85,6 @@ export function OrderPage() {
     return (
         <div className="order-page-wrapper">
             <List>
-                {/* Header Section */}
                 <Section>
                     <Cell
                         before={<Avatar src={user?.photo_url || ''} size={48} fallbackIcon={<span>👤</span>} />}
@@ -107,17 +99,13 @@ export function OrderPage() {
                     </Cell>
                 </Section>
 
-                {/* Marquee Banner */}
                 {marqueeText && (
                     <Banner
                         header="Announcement"
                         description={marqueeText}
-                    >
-                        {/* Optional Action */}
-                    </Banner>
+                    />
                 )}
 
-                {/* Discount Banner */}
                 {discountPercent > 0 && (
                     <Banner
                         header={`${discountPercent}% Discount Active`}
@@ -126,7 +114,6 @@ export function OrderPage() {
                     />
                 )}
 
-                {/* Platform Grid */}
                 <Section header="Select Platform">
                     <div style={{ padding: '0 16px 16px' }}>
                         <PlatformGrid
@@ -136,7 +123,6 @@ export function OrderPage() {
                     </div>
                 </Section>
 
-                {/* Selection Info */}
                 {selectedCategory && (
                     <Section header="Selection">
                         <Cell
@@ -160,11 +146,9 @@ export function OrderPage() {
                     </Section>
                 )}
 
-                {/* Order Form (Returns Fragments of Sections) */}
                 {selectedService && <OrderForm />}
             </List>
 
-            {/* Modals */}
             {showCategoryModal && (
                 <CategoryModal
                     categories={platformCategories}

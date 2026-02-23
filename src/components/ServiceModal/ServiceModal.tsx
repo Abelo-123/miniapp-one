@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { List, Section, Cell, Input, Modal, Placeholder } from '@telegram-apps/telegram-ui';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
@@ -9,8 +9,12 @@ interface Props {
     onClose: () => void;
 }
 
+const BATCH_SIZE = 50;
+
 export function ServiceModal({ services, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
+    const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+    const listRef = useRef<HTMLDivElement>(null);
 
     const filtered = useMemo(() => {
         if (!search.trim()) return services;
@@ -20,6 +24,31 @@ export function ServiceModal({ services, onSelect, onClose }: Props) {
         );
     }, [services, search]);
 
+    const visibleServices = useMemo(() => {
+        return filtered.slice(0, visibleCount);
+    }, [filtered, visibleCount]);
+
+    const hasMore = visibleCount < filtered.length;
+
+    const handleScroll = useCallback(() => {
+        if (!listRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+        if (scrollHeight - scrollTop - clientHeight < 200 && hasMore) {
+            setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filtered.length));
+        }
+    }, [hasMore, filtered.length]);
+
+    useEffect(() => {
+        const el = listRef.current;
+        if (!el) return;
+        el.addEventListener('scroll', handleScroll);
+        return () => el.removeEventListener('scroll', handleScroll);
+    }, [handleScroll]);
+
+    useEffect(() => {
+        setVisibleCount(BATCH_SIZE);
+    }, [search]);
+
     return (
         <Modal
             open
@@ -27,6 +56,7 @@ export function ServiceModal({ services, onSelect, onClose }: Props) {
             header={<Modal.Header>Select Service</Modal.Header>}
             snapPoints={[0.85]}
         >
+            <div ref={listRef} style={{ maxHeight: '60vh', overflow: 'auto' }}>
             <List>
                 <Section>
                     <Input
@@ -39,7 +69,7 @@ export function ServiceModal({ services, onSelect, onClose }: Props) {
                     <Placeholder description="No services found" />
                 ) : (
                     <Section>
-                        {filtered.map(svc => (
+                        {visibleServices.map(svc => (
                             <Cell
                                 key={svc.id}
                                 multiline
@@ -64,9 +94,18 @@ export function ServiceModal({ services, onSelect, onClose }: Props) {
                                 {svc.name}
                             </Cell>
                         ))}
+                        {hasMore && (
+                            <Cell
+                                onClick={() => setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filtered.length))}
+                                style={{ textAlign: 'center', color: 'var(--tg-theme-link-color)' }}
+                            >
+                                Load more ({filtered.length - visibleCount} remaining)
+                            </Cell>
+                        )}
                     </Section>
                 )}
             </List>
+            </div>
         </Modal>
     );
 }
