@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { List, Section, Cell, Button, Banner } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
-import { hapticSelection, hapticImpact, hapticNotification } from '../../helpers/telegram';
+import { hapticSelection, hapticImpact, hapticNotification, getInitDataString } from '../../helpers/telegram';
 
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
 
@@ -23,12 +23,14 @@ export function DepositPage() {
 
         setDepositing(true);
         try {
-            const response = await fetch(`https://paxyo.com/backend/deposit_handler.php`, {
+            const initData = await getInitDataString();
+            
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/deposit_handler.php`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     amount: val,
-                    tg_id: user?.id,
+                    initData: initData,
                 }),
             });
 
