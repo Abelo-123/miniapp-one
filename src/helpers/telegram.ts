@@ -248,10 +248,40 @@ export function getInitDataUser() {
 export function getInitDataRaw(): string | undefined {
     try {
         const state = initData.state();
-        // The raw init data string for backend validation
-        return state?.hash ?? undefined;
+        if (state) {
+            const params = new URLSearchParams();
+            if (state.auth_date) params.append('auth_date', state.auth_date.toString());
+            if (state.hash) params.append('hash', state.hash);
+            if (state.signature) params.append('signature', state.signature);
+            if (state.user) params.append('user', JSON.stringify(state.user));
+            if (state.receiver) params.append('receiver', JSON.stringify(state.receiver));
+            if (state.chat) params.append('chat', JSON.stringify(state.chat));
+            if (state.start_param) params.append('start_param', state.start_param);
+            return params.toString();
+        }
+        return undefined;
     } catch {
         return undefined;
+    }
+}
+
+export async function getInitDataString(): Promise<string> {
+    try {
+        const state = initData.state();
+        if (state) {
+            const params = new URLSearchParams();
+            if (state.auth_date) params.append('auth_date', state.auth_date.toString());
+            if (state.hash) params.append('hash', state.hash);
+            if (state.signature) params.append('signature', state.signature);
+            if (state.user) params.append('user', JSON.stringify(state.user));
+            if (state.receiver) params.append('receiver', JSON.stringify(state.receiver));
+            if (state.chat) params.append('chat', JSON.stringify(state.chat));
+            if (state.start_param) params.append('start_param', state.start_param);
+            return params.toString();
+        }
+        return '';
+    } catch {
+        return '';
     }
 }
 

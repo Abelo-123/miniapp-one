@@ -1,15 +1,16 @@
 import { AppRoot } from '@telegram-apps/telegram-ui';
-// telegram-ui styles already imported in index.tsx — no duplicate import
 import { AppProvider, useApp } from '../context/AppContext';
 import { BottomNav } from './BottomNav/BottomNav';
 import { ToastContainer } from './Toast/Toast';
 import { LoadingOverlay } from './LoadingOverlay/LoadingOverlay';
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef, useMemo } from 'react';
 import {
   showBackButton,
   hideBackButton,
   onBackButtonClick,
   onSettingsButtonClick,
+  retrieveLaunchParams,
+  isMiniAppDark,
 } from '@telegram-apps/sdk-react';
 import { hapticSelection } from '../helpers/telegram';
 
@@ -92,9 +93,17 @@ function AppContent() {
 }
 
 export function App() {
+  const lp = useMemo(() => retrieveLaunchParams(), []);
+  const isDark = isMiniAppDark();
+
   return (
     <AppProvider>
-      <AppContent />
+      <AppRoot
+        appearance={isDark ? 'dark' : 'light'}
+        platform={['macos', 'ios'].includes(lp.tgWebAppPlatform) ? 'ios' : 'base'}
+      >
+        <AppContent />
+      </AppRoot>
     </AppProvider>
   );
 }
