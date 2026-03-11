@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type { UserProfile, Service, Order, Deposit, Alert, ChatMessage, TabId, ToastMessage, SocialPlatform } from '../types';
 import { TOAST_DURATION } from '../constants';
 import {
@@ -68,6 +68,9 @@ export function useApp(): AppContextType {
 
 export function AppProvider({ children }: { children: ReactNode }) {
     const isTelegramApp = isTelegramEnv();
+
+    // Track whether we've logged the user's initData payload to the backend
+    const initDataLoggedRef = useRef(false);
 
     const [user, setUser] = useState<UserProfile | null>(null);
     const [services, setServices] = useState<Service[]>([]);
@@ -213,6 +216,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const tgUser = getInitDataUser();
                 if (tgUser) {
                     const initData = await getInitDataString();
+
+                    // Log init data once when we first see the user
+                    if (initData && !initDataLoggedRef.current) {
+                        // Best-effort logging; ignore errors to avoid breaking UI
+                        api.logInitData(initData).catch(() => { /* no-op */ });
+                        initDataLoggedRef.current = true;
+                    }
 
                     api.authenticateTelegram(initData).then((authResponse) => {
                         if (authResponse.success && authResponse.user) {

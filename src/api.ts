@@ -197,6 +197,18 @@ export async function heartbeat(): Promise<{ ok: number }> {
     return apiFetch('/heartbeat.php');
 }
 
+// ---------------------------------------------------------------------------
+// Init Data Logging
+// ---------------------------------------------------------------------------
+// Log the Telegram initData payload for new users when they enter the app.
+// This helps establish a trace of user onboarding (username/profile, etc).
+export async function logInitData(initData: string): Promise<{ success: boolean }> {
+    return apiFetch<{ success: boolean }>('/log_init_data.php', {
+        method: 'POST',
+        body: JSON.stringify({ initData }),
+    });
+}
+
 export interface AppSettings {
     rateMultiplier: number;
     discountPercent: number;

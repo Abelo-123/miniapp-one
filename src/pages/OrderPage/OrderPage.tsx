@@ -1,10 +1,10 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PLATFORMS, formatETB } from '../../constants';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
 import { CategoryModal } from '../../components/CategoryModal/CategoryModal';
 import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
-import { OrderForm } from '../../components/OrderForm/OrderForm';
+import { OrderForm, type OrderFormHandle } from '../../components/OrderForm/OrderForm';
 import { SearchModal } from '../../components/SearchModal/SearchModal';
 
 export function OrderPage() {
@@ -17,6 +17,7 @@ export function OrderPage() {
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showServiceModal, setShowServiceModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
+    const orderFormRef = useRef<OrderFormHandle | null>(null);
 
     const platformCategories = useMemo(() => {
         if (!selectedPlatform) return [];
@@ -162,7 +163,6 @@ export function OrderPage() {
                         <div
                             className="selection-card"
                             onClick={() => setShowServiceModal(true)}
-                            style={{ animationDelay: '0.05s' }}
                         >
                             <div className="selection-card__left">
                                 <div className="selection-card__label">Service</div>
@@ -175,7 +175,17 @@ export function OrderPage() {
             )}
 
             {/* ─── Order Form ─── */}
-            {selectedService && <OrderForm />}
+            {selectedService && <OrderForm ref={orderFormRef} />}
+            {selectedService && (
+                <div style={{ padding: '0 16px', marginTop: 12 }}>
+                    <button
+                        className="order-page__quick-order"
+                        onClick={() => orderFormRef.current?.submit()}
+                    >
+                        Order Now
+                    </button>
+                </div>
+            )}
 
             {/* ─── Modals ─── */}
             {showCategoryModal && (

@@ -95,16 +95,12 @@ export function HistoryPage() {
                     <div className="paxyo-section-header">
                         Orders ({filtered.length})
                     </div>
-                    {filtered.map((order, i) => {
+                    {filtered.map((order) => {
                         const status = normalizeStatus(order.status);
                         const canRefill = status === 'completed';
 
                         return (
-                            <div
-                                className="order-card"
-                                key={order.id}
-                                style={{ animationDelay: `${i * 0.03}s` }}
-                            >
+                        <div className="order-card" key={order.id}>
                                 <div className="order-card__header">
                                     <div className="order-card__title">
                                         <span className="order-card__id">#{order.api_order_id}</span>

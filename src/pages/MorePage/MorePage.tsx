@@ -84,12 +84,11 @@ export function MorePage() {
                     <div className="empty-state__text">No notifications yet</div>
                 </div>
             ) : (
-                alerts.map((alert, i) => (
+                alerts.map((alert) => (
                     <div
                         className="notification-item"
                         key={alert.id}
                         onClick={markAlertsRead}
-                        style={{ animationDelay: `${i * 0.03}s` }}
                     >
                         {!alert.is_read && <div className="notification-item__dot" />}
                         <div className="notification-item__content">

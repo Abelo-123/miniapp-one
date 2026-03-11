@@ -645,8 +645,8 @@ export function DepositPage() {
                     <div className="empty-state__title">No Deposits Yet</div>
                 </div>
             ) : (
-                recentDeposits.map((d, i) => (
-                    <div className="deposit-card" key={d.id} style={{ animationDelay: `${i * 0.03}s` }}>
+                recentDeposits.map((d) => (
+                    <div className="deposit-card" key={d.id}>
                         <div className="deposit-card__left">
                             <span className={`deposit-card__status deposit-card__status--${d.status}`}>
                                 {d.status === 'completed' || d.status === 'success' ? '✅' : d.status === 'pending' ? '⏳' : '❌'}{' '}
