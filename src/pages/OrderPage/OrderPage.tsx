@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { List, Section, Cell, Avatar, Button, Banner } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
-import { PLATFORMS } from '../../constants';
+import { PLATFORMS, formatETB } from '../../constants';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
 import { CategoryModal } from '../../components/CategoryModal/CategoryModal';
 import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
@@ -84,71 +83,101 @@ export function OrderPage() {
 
     return (
         <div className="order-page-wrapper">
-            <List>
-                <Section>
-                    <Cell
-                        before={<Avatar src={user?.photo_url || ''} size={48} fallbackIcon={<span>👤</span>} />}
-                        description={`Hey ${user?.first_name || 'User'}!`}
-                        after={
-                            <Button mode="plain" size="s" onClick={() => setShowSearchModal(true)}>
-                                🔍 Search
-                            </Button>
-                        }
-                    >
-                        Paxyo SMM
-                    </Cell>
-                </Section>
-
-                {marqueeText && (
-                    <Banner
-                        header="Announcement"
-                        description={marqueeText}
-                    />
-                )}
-
-                {discountPercent > 0 && (
-                    <Banner
-                        header={`${discountPercent}% Discount Active`}
-                        description={`Holiday Special: ${holidayName}`}
-                        type="section"
-                    />
-                )}
-
-                <Section header="Select Platform">
-                    <div style={{ padding: '0 16px 16px' }}>
-                        <PlatformGrid
-                            selectedPlatform={selectedPlatform}
-                            onSelect={handlePlatformSelect}
+            {/* ─── Welcome Header ─── */}
+            <div className="welcome-header">
+                <div className="welcome-header__content">
+                    {user?.photo_url ? (
+                        <img
+                            className="welcome-header__avatar"
+                            src={user.photo_url}
+                            alt={user.first_name}
                         />
+                    ) : (
+                        <div className="welcome-header__avatar-fallback">👤</div>
+                    )}
+                    <div className="welcome-header__text">
+                        <div className="welcome-header__greeting">
+                            Hey {user?.first_name || 'User'}! 👋
+                        </div>
+                        <div className="welcome-header__brand">Paxyo SMM</div>
                     </div>
-                </Section>
+                    <button
+                        className="welcome-header__search"
+                        onClick={() => setShowSearchModal(true)}
+                    >
+                        🔍
+                    </button>
+                </div>
+            </div>
 
-                {selectedCategory && (
-                    <Section header="Selection">
-                        <Cell
-                            onClick={() => setShowCategoryModal(true)}
-                            after={<Button mode="plain" size="s">Change</Button>}
-                            description="Category"
+            {/* ─── Balance Pill ─── */}
+            {user && (
+                <div className="balance-pill">
+                    💎 {formatETB(user.balance)}
+                </div>
+            )}
+
+            {/* ─── Announcement ─── */}
+            {marqueeText && (
+                <div className="announcement-banner">
+                    <span className="announcement-banner__icon">📢</span>
+                    <span className="announcement-banner__text">{marqueeText}</span>
+                </div>
+            )}
+
+            {/* ─── Discount Badge ─── */}
+            {discountPercent > 0 && (
+                <div className="discount-badge">
+                    <span className="discount-badge__icon">🔥</span>
+                    <div>
+                        <span className="discount-badge__text">{discountPercent}% Discount Active</span>
+                        <span className="discount-badge__sub">• {holidayName}</span>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Platform Selection ─── */}
+            <div className="paxyo-section-header">Select Platform</div>
+            <PlatformGrid
+                selectedPlatform={selectedPlatform}
+                onSelect={handlePlatformSelect}
+            />
+
+            {/* ─── Current Selection ─── */}
+            {selectedCategory && (
+                <>
+                    <div className="paxyo-section-header">Selection</div>
+                    <div
+                        className="selection-card"
+                        onClick={() => setShowCategoryModal(true)}
+                    >
+                        <div className="selection-card__left">
+                            <div className="selection-card__label">Category</div>
+                            <div className="selection-card__value">{selectedCategory}</div>
+                        </div>
+                        <span className="selection-card__action">Change ›</span>
+                    </div>
+
+                    {selectedService && (
+                        <div
+                            className="selection-card"
+                            onClick={() => setShowServiceModal(true)}
+                            style={{ animationDelay: '0.05s' }}
                         >
-                            {selectedCategory}
-                        </Cell>
+                            <div className="selection-card__left">
+                                <div className="selection-card__label">Service</div>
+                                <div className="selection-card__value">{selectedService.name}</div>
+                            </div>
+                            <span className="selection-card__action">Change ›</span>
+                        </div>
+                    )}
+                </>
+            )}
 
-                        {selectedService && (
-                            <Cell
-                                onClick={() => setShowServiceModal(true)}
-                                after={<Button mode="plain" size="s">Change</Button>}
-                                description="Service"
-                                multiline
-                            >
-                                {selectedService.name}
-                            </Cell>
-                        )}
-                    </Section>
-                )}
+            {/* ─── Order Form ─── */}
+            {selectedService && <OrderForm />}
 
-                {selectedService && <OrderForm />}
-            </List>
-
+            {/* ─── Modals ─── */}
             {showCategoryModal && (
                 <CategoryModal
                     categories={platformCategories}

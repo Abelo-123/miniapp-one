@@ -5,6 +5,8 @@ import type {
 } from './types';
 import { API_BASE_URL } from './constants';
 
+const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
+
 const isDev = import.meta.env.DEV;
 
 function debug(...args: any[]) {
@@ -38,6 +40,29 @@ async function apiFetch<T>(
     return data;
 }
 
+async function nodeApiFetch<T>(
+    endpoint: string,
+    options?: RequestInit
+): Promise<T> {
+    const url = `${NODE_API_URL}${endpoint}`;
+    debug('[Node API] Fetching:', url);
+    const res = await fetch(url, {
+        headers: {
+            'Content-Type': 'application/json',
+            ...(options?.headers || {}),
+        },
+        ...options,
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        debugError('[Node API] Error:', res.status, body);
+        throw new Error(body || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    debug('[Node API] Success:', endpoint);
+    return data;
+}
+
 export async function authenticateTelegram(initData: string): Promise<AuthResponse> {
     return apiFetch<AuthResponse>('/telegram_auth.php', {
         method: 'POST',
@@ -64,7 +89,7 @@ export async function getServices(useCache = true): Promise<Service[]> {
             }
         }
     }
-    
+
     try {
         debug('[Services] Fetching from API...');
         const data = await apiFetch<Service[]>('/get_service.php');
@@ -126,14 +151,24 @@ export async function requestRefill(orderId: number): Promise<{ success: boolean
 }
 
 export async function processDeposit(amount: number, referenceId: string): Promise<DepositResponse> {
-    return apiFetch<DepositResponse>('/deposit_handler.php', {
+    return nodeApiFetch<DepositResponse>('/deposit', {
         method: 'POST',
-        body: JSON.stringify({ amount, reference_id: referenceId }),
+        body: JSON.stringify({ amount, tx_ref: referenceId }),
     });
 }
 
-export async function getDeposits(): Promise<Deposit[]> {
-    return apiFetch<Deposit[]>('/get_deposits.php');
+export async function getDeposits(initData: string): Promise<Deposit[]> {
+    return nodeApiFetch<Deposit[]>('/deposits', {
+        method: 'POST',
+        body: JSON.stringify({ initData })
+    });
+}
+
+export async function getBalance(initData: string): Promise<{ success: boolean; balance: number }> {
+    return nodeApiFetch<{ success: boolean; balance: number }>('/balance', {
+        method: 'POST',
+        body: JSON.stringify({ initData })
+    });
 }
 
 export async function getAlerts(): Promise<AlertsResponse> {

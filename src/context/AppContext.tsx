@@ -119,7 +119,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const refreshDeposits = useCallback(async () => {
-        // Temporarily disabled
+        try {
+            const initData = await getInitDataString();
+            const data = await api.getDeposits(initData);
+            setDeposits(data);
+        } catch (err) {
+            console.error('Failed to refresh deposits:', err);
+        }
     }, []);
 
     const refreshAlerts = useCallback(async () => {
@@ -130,10 +136,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const loadData = async () => {
             setIsLoading(true);
             try {
-                const [servicesData, settingsData] = await Promise.all([
+                const [servicesData, settingsData, initData] = await Promise.all([
                     api.getServices(true),
                     api.getSettings(true),
+                    getInitDataString(),
                 ]);
+
+                if (initData) {
+                    refreshDeposits();
+                    api.getBalance(initData).then(res => {
+                        if (res.success) setBalance(res.balance);
+                    }).catch(() => { });
+                }
 
                 const transformed: Service[] = servicesData.map((s: any) => ({
                     id: s.service,
@@ -158,7 +172,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     marqueeText: settingsData.marqueeText || 'Welcome to Paxyo SMM!',
                 });
 
-                api.refreshServices().catch(() => {});
+                api.refreshServices().catch(() => { });
             } catch (err) {
                 console.error('Failed to fetch initial data:', err);
             } finally {
@@ -199,7 +213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const tgUser = getInitDataUser();
                 if (tgUser) {
                     const initData = await getInitDataString();
-                    
+
                     api.authenticateTelegram(initData).then((authResponse) => {
                         if (authResponse.success && authResponse.user) {
                             setUser({
@@ -223,7 +237,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         });
                     });
                 }
-            } catch (e) {}
+            } catch (e) { }
         };
         loadUser();
     }, []);

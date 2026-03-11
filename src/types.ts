@@ -47,7 +47,7 @@ export interface Deposit {
     id: number;
     amount: number;
     reference_id: string;
-    status: 'completed' | 'pending' | 'failed';
+    status: 'completed' | 'success' | 'pending' | 'failed' | 'expired';
     method?: string;
     created_at: string;
 }

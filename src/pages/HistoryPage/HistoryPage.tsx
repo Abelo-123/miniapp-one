@@ -1,10 +1,8 @@
 import { useState, useMemo } from 'react';
-import { List, Section, Cell, Input, Button, Placeholder } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
 import { hapticImpact, hapticSelection } from '../../helpers/telegram';
 import type { OrderStatus } from '../../types';
-// Styles handled by TUI components
 
 const STATUS_FILTERS: { id: OrderStatus | 'all'; label: string }[] = [
     { id: 'all', label: 'All' },
@@ -34,12 +32,10 @@ export function HistoryPage() {
     const filtered = useMemo(() => {
         let result = orders;
 
-        // Status filter
         if (filter !== 'all') {
             result = result.filter(o => normalizeStatus(o.status) === filter);
         }
 
-        // Search filter
         if (search.trim()) {
             const q = search.toLowerCase();
             result = result.filter(o =>
@@ -58,99 +54,99 @@ export function HistoryPage() {
     };
 
     return (
-        <List>
-            <Section>
-                <Input
-                    placeholder="Search orders..."
-                    value={search}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                />
+        <div>
+            {/* ─── Search ─── */}
+            <input
+                className="history-search"
+                placeholder="🔍  Search orders..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+            />
 
-                {/* Scrollable Filters */}
-                <div style={{
-                    padding: '12px 16px',
-                    overflowX: 'auto',
-                    display: 'flex',
-                    gap: 8,
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                    background: 'var(--tg-theme-bg-color)'
-                }}>
-                    {STATUS_FILTERS.map(f => (
-                        <Button
-                            key={f.id}
-                            size="s"
-                            mode={filter === f.id ? 'filled' : 'bezeled'}
-                            onClick={() => {
-                                hapticSelection();
-                                setFilter(f.id);
-                            }}
-                        >
-                            {f.label}
-                        </Button>
-                    ))}
-                </div>
-            </Section>
+            {/* ─── Filter Pills ─── */}
+            <div className="filter-row">
+                {STATUS_FILTERS.map(f => (
+                    <button
+                        key={f.id}
+                        className={`filter-pill${filter === f.id ? ' filter-pill--active' : ''}`}
+                        onClick={() => {
+                            hapticSelection();
+                            setFilter(f.id);
+                        }}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
 
+            {/* ─── Orders ─── */}
             {filtered.length === 0 ? (
-                <Placeholder
-                    header="No Orders Found"
-                    description={search.trim() || filter !== 'all' ? "Try adjusting your filters" : "You haven't placed any orders yet."}
-                >
-                    {/* Optional Icon/Image */}
-                </Placeholder>
+                <div className="empty-state">
+                    <div className="empty-state__icon">📦</div>
+                    <div className="empty-state__title">No Orders Found</div>
+                    <div className="empty-state__text">
+                        {search.trim() || filter !== 'all'
+                            ? 'Try adjusting your filters'
+                            : "You haven't placed any orders yet"}
+                    </div>
+                </div>
             ) : (
-                <Section header={`Orders (${filtered.length})`}>
-                    {filtered.map(order => {
+                <>
+                    <div className="paxyo-section-header">
+                        Orders ({filtered.length})
+                    </div>
+                    {filtered.map((order, i) => {
                         const status = normalizeStatus(order.status);
                         const canRefill = status === 'completed';
 
                         return (
-                            <Cell
+                            <div
+                                className="order-card"
                                 key={order.id}
-                                multiline
-                                description={
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                                        <div style={{ fontSize: '13px', color: 'var(--tg-theme-link-color)' }}>{order.link}</div>
-                                        <div style={{ display: 'flex', gap: 12, fontSize: '12px', color: 'var(--tg-theme-hint-color)' }}>
-                                            <span>Qty: {order.quantity}</span>
-                                            <span>Start: {order.start_count}</span>
-                                            <span>Remains: {order.remains}</span>
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)' }}>
-                                            {formatDate(order.created_at)}
-                                        </div>
+                                style={{ animationDelay: `${i * 0.03}s` }}
+                            >
+                                <div className="order-card__header">
+                                    <div className="order-card__title">
+                                        <span className="order-card__id">#{order.api_order_id}</span>
+                                        {order.service_name}
                                     </div>
-                                }
-                                after={
-                                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                        <div style={{ fontWeight: 600 }}>{formatETB(order.charge)}</div>
-                                        <div style={{
-                                            fontSize: '11px',
-                                            padding: '2px 6px',
-                                            borderRadius: '4px',
-                                            backgroundColor: 'var(--tg-theme-secondary-bg-color)',
-                                            color: 'var(--tg-theme-text-color)'
-                                        }}>
-                                            {status.toUpperCase()}
-                                        </div>
+                                    <span className="order-card__charge">{formatETB(order.charge)}</span>
+                                </div>
+
+                                <div className="order-card__link">{order.link}</div>
+
+                                <div className="order-card__meta">
+                                    <div className="order-card__stats">
+                                        <span>Qty: {order.quantity}</span>
+                                        <span>Start: {order.start_count}</span>
+                                        <span>Left: {order.remains}</span>
+                                    </div>
+                                    <span className={`order-card__status order-card__status--${status}`}>
+                                        {status}
+                                    </span>
+                                </div>
+
+                                {(canRefill || true) && (
+                                    <div className="order-card__footer">
+                                        <span className="order-card__date">{formatDate(order.created_at)}</span>
                                         {canRefill && (
-                                            <Button size="s" mode="plain" onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleRefill(order.api_order_id);
-                                            }}>
-                                                Refill
-                                            </Button>
+                                            <button
+                                                className="order-card__refill"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRefill(order.api_order_id);
+                                                }}
+                                            >
+                                                ♻ Refill
+                                            </button>
                                         )}
                                     </div>
-                                }
-                            >
-                                <span style={{ fontWeight: 600 }}>#{order.api_order_id} {order.service_name}</span>
-                            </Cell>
+                                )}
+                            </div>
                         );
                     })}
-                </Section>
+                </>
             )}
-        </List>
+        </div>
     );
 }

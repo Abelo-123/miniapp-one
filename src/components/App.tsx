@@ -22,12 +22,8 @@ const MorePage = lazy(() => import('../pages/MorePage/MorePage').then(m => ({ de
 
 // Minimal fallback to avoid layout shift while lazy chunk loads
 const TabFallback = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-    <div style={{
-      width: 20, height: 20,
-      border: '2px solid #222', borderTopColor: '#3498db',
-      borderRadius: '50%', animation: 'spin .6s linear infinite',
-    }} />
+  <div className="loading-overlay">
+    <div className="loading-overlay__spinner" />
   </div>
 );
 
@@ -76,7 +72,7 @@ function AppContent() {
   }, [setActiveTab]);
 
   return (
-    <AppRoot>
+    <>
       <div className="scroll-wrapper" ref={scrollRef}>
         <Suspense fallback={<TabFallback />}>
           {activeTab === 'order' && <OrderPage />}
@@ -88,7 +84,7 @@ function AppContent() {
       <BottomNav />
       <ToastContainer />
       <LoadingOverlay visible={isLoading} />
-    </AppRoot>
+    </>
   );
 }
 

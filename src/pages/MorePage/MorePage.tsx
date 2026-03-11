@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { List, Section, Cell, Avatar, Input, Button, Placeholder } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 
 export function MorePage() {
@@ -40,107 +39,110 @@ export function MorePage() {
         showToast('info', 'Message sent to support');
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendChat();
+        }
+    };
+
     return (
-        <List>
-            <Section>
-                {user ? (
-                    <Cell
-                        before={<Avatar src={user.photo_url || ''} size={48} fallbackIcon={<span>👤</span>} />}
-                        description={`ID: ${user.id}`}
-                        multiline
+        <div>
+            {/* ─── Profile Card ─── */}
+            {user ? (
+                <div className="profile-card">
+                    {user.photo_url ? (
+                        <img
+                            className="profile-card__avatar"
+                            src={user.photo_url}
+                            alt={user.display_name}
+                        />
+                    ) : (
+                        <div className="profile-card__avatar-fallback">👤</div>
+                    )}
+                    <div className="profile-card__info">
+                        <div className="profile-card__name">{user.display_name}</div>
+                        <div className="profile-card__id">ID: {user.id}</div>
+                    </div>
+                </div>
+            ) : (
+                <div className="profile-card">
+                    <div className="profile-card__avatar-fallback">👤</div>
+                    <div className="profile-card__info">
+                        <div className="profile-card__name">Please log in</div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Notifications ─── */}
+            <div className="paxyo-section-header">
+                Notifications {unreadAlerts > 0 && `(${unreadAlerts})`}
+            </div>
+            {alerts.length === 0 ? (
+                <div className="empty-state" style={{ minHeight: 120 }}>
+                    <div className="empty-state__icon" style={{ fontSize: 32 }}>🔔</div>
+                    <div className="empty-state__text">No notifications yet</div>
+                </div>
+            ) : (
+                alerts.map((alert, i) => (
+                    <div
+                        className="notification-item"
+                        key={alert.id}
+                        onClick={markAlertsRead}
+                        style={{ animationDelay: `${i * 0.03}s` }}
                     >
-                        {user.display_name}
-                    </Cell>
-                ) : (
-                    <Cell>Please log in</Cell>
-                )}
-            </Section>
+                        {!alert.is_read && <div className="notification-item__dot" />}
+                        <div className="notification-item__content">
+                            <div className="notification-item__message">{alert.message}</div>
+                            <div className="notification-item__date">
+                                {new Date(alert.created_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                    </div>
+                ))
+            )}
 
-            <Section header={`Notifications ${unreadAlerts > 0 ? `(${unreadAlerts})` : ''}`}>
-                {alerts.length === 0 ? (
-                    <Placeholder description="No notifications yet" />
-                ) : (
-                    alerts.map(alert => (
-                        <Cell
-                            key={alert.id}
-                            multiline
-                            description={new Date(alert.created_at).toLocaleDateString()}
-                            onClick={markAlertsRead}
-                            before={!alert.is_read && (
-                                <div style={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: '50%',
-                                    background: 'var(--tg-theme-accent-text-color, var(--tg-theme-button-color))',
-                                    marginRight: 8,
-                                }} />
-                            )}
-                        >
-                            {alert.message}
-                        </Cell>
-                    ))
-                )}
-            </Section>
-
-            <Section header="Live Support">
-                <div style={{
-                    height: 300,
-                    overflowY: 'auto',
-                    padding: 10,
-                    background: 'var(--tg-theme-secondary-bg-color)',
-                }}>
+            {/* ─── Live Support Chat ─── */}
+            <div className="paxyo-section-header">Live Support</div>
+            <div className="chat-container">
+                <div className="chat-messages">
                     {chatMessages.length === 0 ? (
-                        <div style={{
-                            textAlign: 'center',
-                            color: 'var(--tg-theme-hint-color)',
-                            padding: 20,
-                        }}>
-                            Start a conversation with support
+                        <div className="chat-empty">
+                            <span className="chat-empty__icon">💬</span>
+                            <span>Start a conversation with support</span>
                         </div>
                     ) : (
                         chatMessages.map(msg => (
                             <div
                                 key={msg.id}
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                                    marginBottom: 8,
-                                }}
+                                className={`chat-bubble chat-bubble--${msg.sender}`}
                             >
-                                <div style={{
-                                    background: msg.sender === 'user'
-                                        ? 'var(--tg-theme-button-color)'
-                                        : 'var(--tg-theme-bg-color)',
-                                    color: msg.sender === 'user'
-                                        ? 'var(--tg-theme-button-text-color)'
-                                        : 'var(--tg-theme-text-color)',
-                                    padding: '8px 12px',
-                                    borderRadius: 12,
-                                    maxWidth: '80%',
-                                    fontSize: 14,
-                                }}>
-                                    {msg.message}
-                                </div>
+                                {msg.message}
                             </div>
                         ))
                     )}
                     <div ref={chatEndRef} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8 }}>
-                    <Input
+                <div className="chat-input-row">
+                    <input
+                        className="chat-input"
                         placeholder="Type a message..."
                         value={chatInput}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChatInput(e.target.value)}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
                     />
-                    <Button
-                        size="s"
+                    <button
+                        className="chat-send-btn"
                         onClick={handleSendChat}
                         disabled={!chatInput.trim()}
                     >
-                        Send
-                    </Button>
+                        ➤
+                    </button>
                 </div>
-            </Section>
-        </List>
+            </div>
+
+            {/* Bottom spacing */}
+            <div style={{ height: 24 }} />
+        </div>
     );
 }

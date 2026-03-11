@@ -1,4 +1,3 @@
-import { Tabbar } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 import type { TabId } from '../../types';
 import { hapticSelection } from '../../helpers/telegram';
@@ -19,20 +18,24 @@ export function BottomNav() {
     };
 
     return (
-        <Tabbar>
-            {TABS.map(tab => (
-                <Tabbar.Item
-                    key={tab.id}
-                    selected={activeTab === tab.id}
-                    text={tab.id === 'more' && unreadAlerts > 0
-                        ? `${tab.label} (${unreadAlerts > 9 ? '9+' : unreadAlerts})`
-                        : tab.label
-                    }
-                    onClick={() => handleTabClick(tab.id)}
-                >
-                    <span style={{ fontSize: 24 }}>{tab.icon}</span>
-                </Tabbar.Item>
-            ))}
-        </Tabbar>
+        <div className="bottom-nav">
+            <div className="bottom-nav__inner">
+                {TABS.map(tab => (
+                    <button
+                        key={tab.id}
+                        className={`bottom-nav__item${activeTab === tab.id ? ' bottom-nav__item--active' : ''}`}
+                        onClick={() => handleTabClick(tab.id)}
+                    >
+                        <span className="bottom-nav__icon">{tab.icon}</span>
+                        <span className="bottom-nav__label">{tab.label}</span>
+                        {tab.id === 'more' && unreadAlerts > 0 && (
+                            <span className="bottom-nav__badge">
+                                {unreadAlerts > 9 ? '9+' : unreadAlerts}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
+        </div>
     );
 }
