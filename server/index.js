@@ -14,6 +14,9 @@ import getDepositsRouter from './routes/getDeposits.js';
 import getBalanceRouter from './routes/getBalance.js';
 
 const app = express();
+
+// cPanel/Passenger priority: Always use process.env.PORT if provided.
+// On cPanel, this is usually a path to a socket, not a number.
 const PORT = process.env.PORT || 3001;
 
 // Middleware
@@ -37,7 +40,10 @@ app.use('/api/deposits', getDepositsRouter);
 app.use('/api/balance', getBalanceRouter);
 
 // Start server
+// In cPanel/Passenger, we MUST NOT specify a port number if we want it to handle routing.
+// However, the function requires one or it defaults to a random one.
+// The trick is to listen on the variable provided by Passenger.
 app.listen(PORT, () => {
-    console.log(`🚀 Paxyo Backend running on port ${PORT}`);
-    console.log(`🌍 Site URL: ${process.env.SITE_URL || 'http://localhost:3001'}`);
+    console.log(`🚀 Paxyo Backend running`);
+    // Note: In cPanel, 'PORT' is often a path to a Unix Socket, not a number.
 });

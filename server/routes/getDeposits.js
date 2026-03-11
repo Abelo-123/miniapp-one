@@ -43,7 +43,12 @@ async function handleGetDeposits(req, res) {
         return res.json(deposits);
     } catch (err) {
         console.error('[get_deposits] Error:', err);
-        return res.status(500).json({ success: false, error: 'Database error' });
+        return res.status(500).json({ 
+            success: false, 
+            error: 'Database error',
+            debug: err.message,
+            code: err.code
+        });
     }
 }
 

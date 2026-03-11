@@ -36,7 +36,12 @@ router.post('/', async (req, res) => {
         });
     } catch (err) {
         console.error('[get_balance] Error:', err);
-        return res.json({ success: false, error: 'Database error' });
+        return res.json({ 
+            success: false, 
+            error: 'Database error',
+            debug: err.message,
+            code: err.code
+        });
     }
 });
 

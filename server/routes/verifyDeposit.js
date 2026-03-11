@@ -147,7 +147,12 @@ router.post('/', async (req, res) => {
         try { await conn.rollback(); } catch {}
         conn.release();
         console.error('[verify_deposit] Error:', err);
-        return res.json({ success: false, message: 'System error during verification' });
+        return res.json({ 
+            success: false, 
+            message: 'System error during verification',
+            debug: err.message,
+            code: err.code
+        });
     }
 });
 

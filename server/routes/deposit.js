@@ -130,7 +130,12 @@ router.post('/', async (req, res) => {
         }
     } catch (err) {
         console.error('[deposit_handler] Error:', err);
-        return res.json({ success: false, error: 'Internal server error' });
+        return res.json({ 
+            success: false, 
+            error: 'Database error',
+            debug: err.message,
+            code: err.code
+        });
     }
 });
 
