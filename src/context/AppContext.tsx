@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import type { UserProfile, Service, Order, Deposit, Alert, ChatMessage, TabId, ToastMessage, SocialPlatform } from '../types';
 import { TOAST_DURATION } from '../constants';
 import {
@@ -280,7 +280,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })();
     }, [isTelegramApp]);
 
-    const value: AppContextType = {
+    const value = useMemo<AppContextType>(() => ({
         user,
         isTelegramApp,
         services,
@@ -320,7 +320,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refreshOrders,
         refreshDeposits,
         refreshAlerts,
-    };
+    }), [
+        user, isTelegramApp, services, recommendedIds, selectedPlatform,
+        selectedCategory, selectedService, orders, deposits, alerts, chatMessages,
+        settings, activeTab, toasts, isLoading, unreadAlerts,
+        handleSetActiveTab, handleSetSelectedPlatform, handleSetSelectedService,
+        showToast, removeToast, refreshServices, refreshOrders, refreshDeposits, refreshAlerts, setBalance
+    ]);
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

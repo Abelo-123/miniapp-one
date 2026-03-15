@@ -265,7 +265,10 @@ export function getInitDataRaw(): string | undefined {
     }
 }
 
+let _cachedInitDataString: string | null = null;
+
 export async function getInitDataString(): Promise<string> {
+    if (_cachedInitDataString !== null) return _cachedInitDataString;
     try {
         const state = initData.state();
         if (state) {
@@ -277,7 +280,8 @@ export async function getInitDataString(): Promise<string> {
             if (state.receiver) params.append('receiver', JSON.stringify(state.receiver));
             if (state.chat) params.append('chat', JSON.stringify(state.chat));
             if (state.start_param) params.append('start_param', state.start_param);
-            return params.toString();
+            _cachedInitDataString = params.toString();
+            return _cachedInitDataString;
         }
         return '';
     } catch {
