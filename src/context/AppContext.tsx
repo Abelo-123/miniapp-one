@@ -138,20 +138,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true);
+            let servicesLoaded = false;
+
+            // Load services (most important - do this first and handle errors gracefully)
             try {
-                const [servicesData, settingsData, initData] = await Promise.all([
-                    api.getServices(true),
-                    api.getSettings(true),
-                    getInitDataString(),
-                ]);
-
-                if (initData) {
-                    refreshDeposits();
-                    api.getBalance(initData).then(res => {
-                        if (res.success) setBalance(res.balance);
-                    }).catch(() => { });
-                }
-
+                const servicesData = await api.getServices(true);
                 const transformed: Service[] = servicesData.map((s: any) => ({
                     id: s.service,
                     category: s.category,
@@ -164,8 +155,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     refill: s.refill,
                     cancel: s.cancel,
                 }));
-
                 setServices(transformed);
+                servicesLoaded = true;
+            } catch (err) {
+                console.error('Failed to load services:', err);
+            }
+
+            // Load settings (independent of services)
+            try {
+                const settingsData = await api.getSettings(true);
                 _setSettings({
                     rateMultiplier: settingsData.rateMultiplier || 1,
                     discountPercent: settingsData.discountPercent || 0,
@@ -174,12 +172,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     userCanOrder: settingsData.userCanOrder !== false,
                     marqueeText: settingsData.marqueeText || 'Welcome to Paxyo SMM!',
                 });
-
-                api.refreshServices().catch(() => { });
             } catch (err) {
-                console.error('Failed to fetch initial data:', err);
-            } finally {
-                setIsLoading(false);
+                console.error('Failed to load settings:', err);
+            }
+
+            // Load user/init data (independent)
+            try {
+                const initData = await getInitDataString();
+                if (initData) {
+                    refreshDeposits();
+                    api.getBalance(initData).then(res => {
+                        if (res.success) setBalance(res.balance);
+                    }).catch(() => { });
+                }
+            } catch (err) {
+                console.error('Failed to load user data:', err);
+            }
+
+            setIsLoading(false);
+
+            // Refresh services in background after initial load
+            if (servicesLoaded) {
+                api.refreshServices().catch(() => { });
             }
         };
         loadData();

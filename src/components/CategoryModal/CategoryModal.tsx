@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
-import { List, Section, Cell, Input, Modal, Placeholder } from '@telegram-apps/telegram-ui';
 
 interface Props {
     categories: string[];
     onSelect: (category: string) => void;
     onClose: () => void;
+    isLoading?: boolean;
 }
 
-export function CategoryModal({ categories, onSelect, onClose }: Props) {
+export function CategoryModal({ categories, onSelect, onClose, isLoading }: Props) {
     const [search, setSearch] = useState('');
 
     const filtered = useMemo(() => {
@@ -17,35 +17,42 @@ export function CategoryModal({ categories, onSelect, onClose }: Props) {
     }, [categories, search]);
 
     return (
-        <Modal
-            open
-            onOpenChange={(open) => { if (!open) onClose(); }}
-            header={<Modal.Header>Select Category</Modal.Header>}
-        >
-            <List>
-                <Section>
-                    <Input
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <span className="modal-title">Select Category</span>
+                    <button className="modal-close" onClick={onClose}>✕</button>
+                </div>
+                
+                <div className="modal-search">
+                    <input
+                        type="text"
+                        className="modal-search-input"
                         placeholder="Search categories..."
                         value={search}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        onChange={(e) => setSearch(e.target.value)}
                     />
-                </Section>
-                {filtered.length === 0 ? (
-                    <Placeholder description="No categories found" />
-                ) : (
-                    <Section>
-                        {filtered.map(cat => (
-                            <Cell
+                </div>
+
+                <div className="modal-list">
+                    {isLoading ? (
+                        <div className="modal-empty">Loading categories...</div>
+                    ) : filtered.length === 0 ? (
+                        <div className="modal-empty">No categories found</div>
+                    ) : (
+                        filtered.map(cat => (
+                            <div
                                 key={cat}
-                                before={<span style={{ fontSize: 18 }}>📂</span>}
+                                className="modal-item"
                                 onClick={() => onSelect(cat)}
                             >
-                                {cat}
-                            </Cell>
-                        ))}
-                    </Section>
-                )}
-            </List>
-        </Modal>
+                                <span className="modal-item-icon">📂</span>
+                                <span className="modal-item-text">{cat}</span>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
     );
 }

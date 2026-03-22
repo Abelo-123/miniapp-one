@@ -11,7 +11,7 @@ export function OrderPage() {
     const {
         services, recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
-        discountPercent, holidayName, marqueeText, user,
+        discountPercent, holidayName, marqueeText, user, isLoading,
     } = useApp();
 
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -193,6 +193,7 @@ export function OrderPage() {
                     categories={platformCategories}
                     onSelect={handleCategorySelect}
                     onClose={() => setShowCategoryModal(false)}
+                    isLoading={isLoading}
                 />
             )}
 
@@ -201,6 +202,7 @@ export function OrderPage() {
                     services={categoryServices}
                     onSelect={handleServiceSelect}
                     onClose={() => setShowServiceModal(false)}
+                    isLoading={isLoading}
                 />
             )}
 

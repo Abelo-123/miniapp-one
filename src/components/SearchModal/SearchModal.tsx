@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { List, Section, Cell, Input, Modal, Placeholder } from '@telegram-apps/telegram-ui';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
 
@@ -7,27 +6,6 @@ interface Props {
     services: Service[];
     onSelect: (service: Service) => void;
     onClose: () => void;
-}
-
-function highlightMatch(text: string, query: string): JSX.Element {
-    if (!query) return <>{text}</>;
-    const idx = text.toLowerCase().indexOf(query.toLowerCase());
-    if (idx === -1) return <>{text}</>;
-    return (
-        <>
-            {text.slice(0, idx)}
-            <mark style={{
-                background: 'var(--tg-theme-accent-text-color, rgba(108,92,231,0.3))',
-                color: 'var(--tg-theme-text-color)',
-                borderRadius: 2,
-                padding: '0 2px',
-                opacity: 0.7,
-            }}>
-                {text.slice(idx, idx + query.length)}
-            </mark>
-            {text.slice(idx + query.length)}
-        </>
-    );
 }
 
 export function SearchModal({ services, onSelect, onClose }: Props) {
@@ -43,7 +21,6 @@ export function SearchModal({ services, onSelect, onClose }: Props) {
         }).slice(0, 30);
     }, [services, search]);
 
-    // Group results by category
     const grouped = useMemo(() => {
         const map = new Map<string, Service[]>();
         for (const s of results) {
@@ -55,46 +32,50 @@ export function SearchModal({ services, onSelect, onClose }: Props) {
     }, [results]);
 
     return (
-        <Modal
-            open
-            onOpenChange={(open) => { if (!open) onClose(); }}
-            header={<Modal.Header>🔍 Search All Services</Modal.Header>}
-            snapPoints={[0.9]}
-        >
-            <List>
-                <Section>
-                    <Input
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-sheet modal-sheet--large" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <span className="modal-title">🔍 Search All Services</span>
+                    <button className="modal-close" onClick={onClose}>✕</button>
+                </div>
+                
+                <div className="modal-search">
+                    <input
+                        type="text"
+                        className="modal-search-input"
                         placeholder="Search by name, ID, or category..."
                         value={search}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        onChange={(e) => setSearch(e.target.value)}
+                        autoFocus
                     />
-                </Section>
+                </div>
 
-                {search.trim() === '' ? (
-                    <Placeholder description="Start typing to search across all services" />
-                ) : results.length === 0 ? (
-                    <Placeholder description="No services match your search" />
-                ) : (
-                    Array.from(grouped.entries()).map(([category, svcs]) => (
-                        <Section key={category} header={category}>
-                            {svcs.map(svc => (
-                                <Cell
-                                    key={svc.id}
-                                    multiline
-                                    onClick={() => onSelect(svc)}
-                                    description={
-                                        <span style={{ fontSize: 12 }}>
-                                            #{svc.id} • {formatETB(svc.rate)}/1K
-                                        </span>
-                                    }
-                                >
-                                    {highlightMatch(svc.name, search.trim())}
-                                </Cell>
-                            ))}
-                        </Section>
-                    ))
-                )}
-            </List>
-        </Modal>
+                <div className="modal-list">
+                    {search.trim() === '' ? (
+                        <div className="modal-empty">Start typing to search across all services</div>
+                    ) : results.length === 0 ? (
+                        <div className="modal-empty">No services match your search</div>
+                    ) : (
+                        Array.from(grouped.entries()).map(([category, svcs]) => (
+                            <div key={category}>
+                                <div className="modal-group-header">{category}</div>
+                                {svcs.map(svc => (
+                                    <div
+                                        key={svc.id}
+                                        className="modal-item"
+                                        onClick={() => onSelect(svc)}
+                                    >
+                                        <div className="modal-item-main">
+                                            <div className="modal-item-name">{svc.name}</div>
+                                            <div className="modal-item-desc">#{svc.id} • {formatETB(svc.rate)}/1K</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
     );
 }

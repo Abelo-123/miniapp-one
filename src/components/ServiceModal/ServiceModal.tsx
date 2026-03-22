@@ -1,5 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { List, Section, Cell, Input, Modal, Placeholder } from '@telegram-apps/telegram-ui';
+import { useState, useMemo } from 'react';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
 
@@ -7,14 +6,14 @@ interface Props {
     services: Service[];
     onSelect: (service: Service) => void;
     onClose: () => void;
+    isLoading?: boolean;
 }
 
 const BATCH_SIZE = 50;
 
-export function ServiceModal({ services, onSelect, onClose }: Props) {
+export function ServiceModal({ services, onSelect, onClose, isLoading }: Props) {
     const [search, setSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
-    const listRef = useRef<HTMLDivElement>(null);
 
     const filtered = useMemo(() => {
         if (!search.trim()) return services;
@@ -30,82 +29,64 @@ export function ServiceModal({ services, onSelect, onClose }: Props) {
 
     const hasMore = visibleCount < filtered.length;
 
-    const handleScroll = useCallback(() => {
-        if (!listRef.current) return;
-        const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-        if (scrollHeight - scrollTop - clientHeight < 200 && hasMore) {
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.currentTarget;
+        if (target.scrollHeight - target.scrollTop - target.clientHeight < 200 && hasMore) {
             setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filtered.length));
         }
-    }, [hasMore, filtered.length]);
-
-    useEffect(() => {
-        const el = listRef.current;
-        if (!el) return;
-        el.addEventListener('scroll', handleScroll);
-        return () => el.removeEventListener('scroll', handleScroll);
-    }, [handleScroll]);
-
-    useEffect(() => {
-        setVisibleCount(BATCH_SIZE);
-    }, [search]);
+    };
 
     return (
-        <Modal
-            open
-            onOpenChange={(open) => { if (!open) onClose(); }}
-            header={<Modal.Header>Select Service</Modal.Header>}
-            snapPoints={[0.85]}
-        >
-            <div ref={listRef} style={{ maxHeight: '60vh', overflow: 'auto' }}>
-            <List>
-                <Section>
-                    <Input
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <span className="modal-title">Select Service</span>
+                    <button className="modal-close" onClick={onClose}>✕</button>
+                </div>
+                
+                <div className="modal-search">
+                    <input
+                        type="text"
+                        className="modal-search-input"
                         placeholder="Search services..."
                         value={search}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        onChange={(e) => setSearch(e.target.value)}
                     />
-                </Section>
-                {filtered.length === 0 ? (
-                    <Placeholder description="No services found" />
-                ) : (
-                    <Section>
-                        {visibleServices.map(svc => (
-                            <Cell
+                </div>
+
+                <div className="modal-list" onScroll={handleScroll}>
+                    {isLoading ? (
+                        <div className="modal-empty">Loading services...</div>
+                    ) : filtered.length === 0 ? (
+                        <div className="modal-empty">No services found</div>
+                    ) : (
+                        visibleServices.map(svc => (
+                            <div
                                 key={svc.id}
-                                multiline
+                                className="modal-item"
                                 onClick={() => onSelect(svc)}
-                                description={
-                                    <span style={{ fontSize: 12 }}>
+                            >
+                                <div className="modal-item-main">
+                                    <div className="modal-item-name">{svc.name}</div>
+                                    <div className="modal-item-desc">
                                         #{svc.id} • {svc.min} – {svc.max.toLocaleString()}
                                         {svc.averageTime && ` • ⏱ ${svc.averageTime}`}
-                                        {svc.refill && ' • ♻ Refill'}
-                                        {svc.cancel && ' • ✕ Cancel'}
-                                    </span>
-                                }
-                                after={
-                                    <span style={{
-                                        fontWeight: 600,
-                                        color: 'var(--tg-theme-link-color)',
-                                    }}>
-                                        {formatETB(svc.rate)}
-                                    </span>
-                                }
-                            >
-                                {svc.name}
-                            </Cell>
-                        ))}
-                        {hasMore && (
-                            <Cell
-                                onClick={() => setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filtered.length))}
-                                style={{ textAlign: 'center', color: 'var(--tg-theme-link-color)' }}
-                            >
-                                Load more ({filtered.length - visibleCount} remaining)
-                            </Cell>
-                        )}
-                    </Section>
-                )}
-            </List>
+                                    </div>
+                                </div>
+                                <div className="modal-item-price">{formatETB(svc.rate)}</div>
+                            </div>
+                        ))
+                    )}
+                    {hasMore && !isLoading && (
+                        <div
+                            className="modal-load-more"
+                            onClick={() => setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filtered.length))}
+                        >
+                            Load more ({filtered.length - visibleCount} remaining)
+                        </div>
+                    )}
+                </div>
             </div>
-        </Modal>
+        </div>
     );
 }

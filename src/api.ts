@@ -23,21 +23,38 @@ async function apiFetch<T>(
 ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     debug('[API] Fetching:', url);
-    const res = await fetch(url, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(options?.headers || {}),
-        },
-        ...options,
-    });
-    if (!res.ok) {
-        const body = await res.text();
-        debugError('[API] Error:', res.status, body);
-        throw new Error(body || `HTTP ${res.status}`);
+    
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
+    try {
+        const res = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...(options?.headers || {}),
+            },
+            ...options,
+            signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!res.ok) {
+            const body = await res.text();
+            debugError('[API] Error:', res.status, body);
+            throw new Error(body || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        debug('[API] Success:', endpoint);
+        return data;
+    } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+            throw new Error('Request timeout - please check your connection');
+        }
+        throw err;
     }
-    const data = await res.json();
-    debug('[API] Success:', endpoint);
-    return data;
 }
 
 async function nodeApiFetch<T>(
@@ -87,6 +104,7 @@ export async function getServices(useCache = true): Promise<Service[]> {
                 debug('[Services] Using cached data');
                 return JSON.parse(cached);
             }
+            // Even if cache is old, use it if API fails later
         }
     }
 
@@ -99,12 +117,15 @@ export async function getServices(useCache = true): Promise<Service[]> {
         return data;
     } catch (err) {
         debugError('[Services] Error:', err);
+        // Try to use ANY cached data, even if old
         const cached = localStorage.getItem(SERVICES_CACHE_KEY);
         if (cached) {
-            debug('[Services] Falling back to cache after error');
+            debug('[Services] Falling back to cache (may be stale)');
             return JSON.parse(cached);
         }
-        throw err;
+        // Return empty array instead of throwing - prevents app crash
+        debug('[Services] No cache available, returning empty');
+        return [];
     }
 }
 
@@ -240,8 +261,18 @@ export async function getSettings(useCache = true): Promise<AppSettings> {
         debugError('[Settings] Error:', err);
         const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
         if (cached) {
+            debug('[Settings] Falling back to cache (may be stale)');
             return JSON.parse(cached);
         }
-        throw err;
+        // Return default settings instead of throwing
+        debug('[Settings] No cache available, returning defaults');
+        return {
+            rateMultiplier: 1,
+            discountPercent: 0,
+            holidayName: '',
+            maintenanceMode: false,
+            userCanOrder: true,
+            marqueeText: 'Welcome to Paxyo SMM!',
+        };
     }
 }
