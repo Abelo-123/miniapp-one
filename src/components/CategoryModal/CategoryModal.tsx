@@ -99,7 +99,7 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
                 }}
             >
                 <div className="modal-header" style={{ flexShrink: 0 }}>
-                    <span className="modal-title">Select Category</span>
+                    <span className="modal-title">Select Cateegory</span>
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
 
