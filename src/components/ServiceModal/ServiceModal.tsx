@@ -38,7 +38,11 @@ export function ServiceModal({ services, onSelect, onClose, isLoading }: Props) 
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+            <div
+                className="modal-sheet"
+                onClick={e => e.stopPropagation()}
+                style={{ minHeight: '40vh' }}
+            >
                 <div className="modal-header">
                     <span className="modal-title">Select Service</span>
                     <button className="modal-close" onClick={onClose}>✕</button>

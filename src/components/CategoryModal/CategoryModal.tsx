@@ -16,11 +16,19 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
         return categories.filter(c => c.toLowerCase().includes(q));
     }, [categories, search]);
 
+    // Determine if we should show loading: either explicitly loading,
+    // or categories are empty (services may not have arrived yet)
+    const showLoading = isLoading || (categories.length === 0 && !search.trim());
+
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+            <div
+                className="modal-sheet"
+                onClick={e => e.stopPropagation()}
+                style={{ minHeight: '40vh' }}
+            >
                 <div className="modal-header">
-                    <span className="modal-title">Select Categorys</span>
+                    <span className="modal-title">Select Categorya</span>
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
 
@@ -35,7 +43,7 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
                 </div>
 
                 <div className="modal-list">
-                    {isLoading ? (
+                    {showLoading ? (
                         <div className="modal-empty">Loading categories...</div>
                     ) : filtered.length === 0 ? (
                         <div className="modal-empty">No categories found</div>
