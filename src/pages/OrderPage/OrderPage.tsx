@@ -56,9 +56,12 @@ export function OrderPage() {
         setSelectedPlatform(platform);
         if (platform === 'top') {
             setSelectedCategory('Top Services');
-            setShowServiceModal(true);
+            // Defer to let React flush the platform state change
+            setTimeout(() => setShowServiceModal(true), 0);
         } else {
-            setShowCategoryModal(true);
+            // Defer modal open to next tick so useEffect resets category and
+            // platformCategories recomputes with the new selectedPlatform
+            setTimeout(() => setShowCategoryModal(true), 0);
         }
     }, [setSelectedPlatform, setSelectedCategory]);
 

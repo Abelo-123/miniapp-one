@@ -36,19 +36,34 @@ export function ServiceModal({ services, onSelect, onClose, isLoading }: Props) 
         }
     };
 
+    // Compute safe pixel heights instead of vh units for WebView compatibility
+    const screenH = window.innerHeight || document.documentElement.clientHeight || 600;
+    const sheetMaxH = Math.min(screenH * 0.75, 600);
+    const listMaxH = Math.max(screenH * 0.45, 200);
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div
+            className="modal-overlay"
+            onClick={onClose}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}
+        >
             <div
                 className="modal-sheet"
                 onClick={e => e.stopPropagation()}
-                style={{ minHeight: '40vh' }}
+                style={{
+                    minHeight: '300px',
+                    maxHeight: `${sheetMaxH}px`,
+                    display: 'flex',
+                    flexDirection: 'column' as const,
+                    overflow: 'hidden',
+                }}
             >
-                <div className="modal-header">
+                <div className="modal-header" style={{ flexShrink: 0 }}>
                     <span className="modal-title">Select Service</span>
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
                 
-                <div className="modal-search">
+                <div className="modal-search" style={{ flexShrink: 0 }}>
                     <input
                         type="text"
                         className="modal-search-input"
@@ -58,19 +73,41 @@ export function ServiceModal({ services, onSelect, onClose, isLoading }: Props) 
                     />
                 </div>
 
-                <div className="modal-list" onScroll={handleScroll}>
+                <div
+                    className="modal-list"
+                    onScroll={handleScroll}
+                    style={{
+                        overflowY: 'auto' as const,
+                        WebkitOverflowScrolling: 'touch' as any,
+                        minHeight: '150px',
+                        maxHeight: `${listMaxH}px`,
+                        display: 'block',
+                        visibility: 'visible' as const,
+                    }}
+                >
                     {isLoading ? (
-                        <div className="modal-empty">Loading services...</div>
+                        <div className="modal-empty" style={{ display: 'block', padding: '40px 20px', textAlign: 'center' }}>
+                            Loading services...
+                        </div>
                     ) : filtered.length === 0 ? (
-                        <div className="modal-empty">No services found</div>
+                        <div className="modal-empty" style={{ display: 'block', padding: '40px 20px', textAlign: 'center' }}>
+                            No services found
+                        </div>
                     ) : (
                         visibleServices.map(svc => (
                             <div
                                 key={svc.id}
                                 className="modal-item"
                                 onClick={() => onSelect(svc)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '14px 16px',
+                                    cursor: 'pointer',
+                                    visibility: 'visible',
+                                }}
                             >
-                                <div className="modal-item-main">
+                                <div className="modal-item-main" style={{ flex: 1, minWidth: 0 }}>
                                     <div className="modal-item-name">{svc.name}</div>
                                     <div className="modal-item-desc">
                                         #{svc.id} • {svc.min} – {svc.max.toLocaleString()}
