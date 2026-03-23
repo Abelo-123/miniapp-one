@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useApp } from '../../context/AppContext';
 
 interface Props {
     categories: string[];
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function CategoryModal({ categories, onSelect, onClose, isLoading }: Props) {
+    const { services } = useApp();
     const [search, setSearch] = useState('');
 
     const filtered = useMemo(() => {
@@ -16,9 +18,11 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
         return categories.filter(c => c.toLowerCase().includes(q));
     }, [categories, search]);
 
-    // Determine if we should show loading: either explicitly loading,
-    // or categories are empty (services may not have arrived yet)
-    const showLoading = isLoading || (categories.length === 0 && !search.trim());
+    // Show loading only when:
+    // 1. Explicitly told to (isLoading prop), OR
+    // 2. Services haven't loaded yet (services array is empty) AND no categories
+    const servicesNotLoaded = services.length === 0;
+    const showLoading = isLoading || (servicesNotLoaded && categories.length === 0);
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -28,7 +32,7 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
                 style={{ minHeight: '40vh' }}
             >
                 <div className="modal-header">
-                    <span className="modal-title">Select Categorya</span>
+                    <span className="modal-title">Select Category</span>
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
 
