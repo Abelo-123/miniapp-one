@@ -20,10 +20,10 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-sheet" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <span className="modal-title">Select Category</span>
+                    <span className="modal-title">Select Categorys</span>
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
-                
+
                 <div className="modal-search">
                     <input
                         type="text"
