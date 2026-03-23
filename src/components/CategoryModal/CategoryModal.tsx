@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PLATFORMS } from '../../constants';
 
@@ -12,34 +12,27 @@ interface Props {
 export function CategoryModal({ categories, onSelect, onClose, isLoading }: Props) {
     const { services, selectedPlatform } = useApp();
     const [search, setSearch] = useState('');
-    const [, forceUpdate] = useState(0);
-    const listRef = useRef<HTMLDivElement>(null);
+    const [ready, setReady] = useState(false);
 
-    // Force a re-render after mount to ensure layout is computed
+    // Delayed ready flag to ensure DOM is painted before showing list
     useEffect(() => {
-        // Use double rAF to ensure the browser has painted
-        const raf1 = requestAnimationFrame(() => {
-            const raf2 = requestAnimationFrame(() => {
-                forceUpdate(c => c + 1);
-            });
-            return () => cancelAnimationFrame(raf2);
-        });
-        return () => cancelAnimationFrame(raf1);
+        const t = setTimeout(() => setReady(true), 50);
+        return () => clearTimeout(t);
     }, []);
 
-    // Derive categories internally as a fallback when prop is empty but services exist
+    // Also re-trigger ready whenever services load
+    useEffect(() => {
+        if (services.length > 0) setReady(true);
+    }, [services]);
+
+    // Derive categories internally as a robust fallback
     const resolvedCategories = useMemo(() => {
-        // If categories prop has data, use it
         if (categories.length > 0) return categories;
-
-        // Fallback: derive from services + selectedPlatform directly
         if (services.length === 0) return [];
-
         if (!selectedPlatform || selectedPlatform === 'top') return ['Top Services'];
 
         const allCategories = [...new Set(services.map(s => s.category))];
         const platformDef = PLATFORMS.find(p => p.id === selectedPlatform);
-
         if (!platformDef) return allCategories;
 
         if (selectedPlatform === 'other') {
@@ -64,84 +57,143 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
         return resolvedCategories.filter(c => c.toLowerCase().includes(q));
     }, [resolvedCategories, search]);
 
-    const showLoading = isLoading || (services.length === 0 && resolvedCategories.length === 0);
+    const showLoading = isLoading || (!ready && services.length === 0);
+    const screenH = typeof window !== 'undefined'
+        ? (window.innerHeight || document.documentElement.clientHeight || 600)
+        : 600;
 
-    // Scroll container height fix for WebViews that don't support vh/dvh
-    const getListStyle = (): React.CSSProperties => {
-        // Use a safe fixed pixel approach instead of viewport units
-        const screenH = window.innerHeight || document.documentElement.clientHeight || 600;
-        const maxListH = Math.max(screenH * 0.45, 200); // 45% of screen, minimum 200px
-        return {
-            overflowY: 'auto' as const,
-            WebkitOverflowScrolling: 'touch' as any,
-            minHeight: '150px',
-            maxHeight: `${maxListH}px`,
-            display: 'block',
-            visibility: 'visible' as const,
-        };
+    // ── ALL styles are inline to avoid WebView CSS bugs ──
+
+    const overlayStyle: React.CSSProperties = {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        background: 'rgba(0,0,0,0.6)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+    };
+
+    const sheetStyle: React.CSSProperties = {
+        position: 'relative',
+        width: '100%',
+        maxWidth: 500,
+        background: 'var(--tg-theme-bg-color, #1a1a2e)',
+        borderRadius: '16px 16px 0 0',
+        overflow: 'hidden',
+    };
+
+    const headerStyle: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px 20px',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+    };
+
+    const searchBoxStyle: React.CSSProperties = {
+        padding: '12px 16px',
+    };
+
+    const inputStyle: React.CSSProperties = {
+        width: '100%',
+        padding: '10px 14px',
+        borderRadius: 10,
+        border: '1px solid rgba(255,255,255,0.1)',
+        background: 'rgba(255,255,255,0.05)',
+        color: 'var(--tg-theme-text-color, #fff)',
+        fontSize: 14,
+        outline: 'none',
+        boxSizing: 'border-box' as const,
+    };
+
+    // The scrollable list — use absolute max-height in px, no flex
+    const listStyle: React.CSSProperties = {
+        position: 'relative', // CRITICAL for older WebKit overflow scrolling
+        overflowY: 'auto',
+        maxHeight: Math.max(screenH * 0.5, 250),
+        minHeight: 150,
+        WebkitOverflowScrolling: 'touch' as any,
+        paddingBottom: 20,
+        display: 'block',
+    };
+
+    const itemStyle: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'center',
+        padding: '14px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
+        color: 'var(--tg-theme-text-color, #fff)',
+        fontSize: 14,
+    };
+
+    const emptyStyle: React.CSSProperties = {
+        padding: '40px 20px',
+        textAlign: 'center' as const,
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 14,
+        lineHeight: 1.5,
     };
 
     return (
-        <div
-            className="modal-overlay"
-            onClick={onClose}
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}
-        >
-            <div
-                className="modal-sheet"
-                onClick={e => e.stopPropagation()}
-                style={{
-                    minHeight: '300px', // Fixed pixel value instead of vh
-                    maxHeight: `${Math.min((window.innerHeight || 600) * 0.75, 600)}px`,
-                    display: 'flex',
-                    flexDirection: 'column' as const,
-                    overflow: 'hidden',
-                }}
-            >
-                <div className="modal-header" style={{ flexShrink: 0 }}>
-                    <span className="modal-title">Select Cateegory</span>
-                    <button className="modal-close" onClick={onClose}>✕</button>
+        <div style={overlayStyle} onClick={onClose}>
+            <div style={sheetStyle} onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div style={headerStyle}>
+                    <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--tg-theme-text-color, #fff)' }}>
+                        Select Category
+                    </span>
+                    <button
+                        onClick={onClose}
+                        style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            border: 'none',
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            fontSize: 16,
+                            color: '#888',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        ✕
+                    </button>
                 </div>
 
-                <div className="modal-search" style={{ flexShrink: 0 }}>
+                {/* Search */}
+                <div style={searchBoxStyle}>
                     <input
                         type="text"
-                        className="modal-search-input"
                         placeholder="Search categories..."
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={e => setSearch(e.target.value)}
+                        style={inputStyle}
                     />
                 </div>
 
-                <div
-                    ref={listRef}
-                    className="modal-list"
-                    style={getListStyle()}
-                >
+                {/* List */}
+                <div style={listStyle} data-count={filtered.length}>
                     {showLoading ? (
-                        <div className="modal-empty" style={{ display: 'block', padding: '40px 20px', textAlign: 'center' }}>
-                            Loading categories...
-                        </div>
+                        <div style={emptyStyle}>Loading categories...</div>
                     ) : filtered.length === 0 ? (
-                        <div className="modal-empty" style={{ display: 'block', padding: '40px 20px', textAlign: 'center' }}>
-                            No categories found
+                        <div style={emptyStyle}>
+                            {services.length === 0
+                                ? 'Loading services...'
+                                : `No categories found.\n(Platform: ${selectedPlatform})\n(Services: ${services.length})\n(Raw: ${categories.length})`}
                         </div>
                     ) : (
-                        filtered.map((cat) => (
-                            <div
-                                key={cat}
-                                className="modal-item"
-                                onClick={() => onSelect(cat)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    padding: '14px 16px',
-                                    cursor: 'pointer',
-                                    visibility: 'visible',
-                                }}
-                            >
-                                <span className="modal-item-icon" style={{ marginRight: '12px', fontSize: '18px' }}>📂</span>
-                                <span className="modal-item-text" style={{ fontSize: '14px' }}>{cat}</span>
+                        filtered.map(cat => (
+                            <div key={cat} style={itemStyle} onClick={() => onSelect(cat)}>
+                                <span style={{ marginRight: 12, fontSize: 18 }}>📂</span>
+                                <span style={{ color: 'var(--tg-theme-text-color, #fff)' }}>{cat}</span>
                             </div>
                         ))
                     )}
