@@ -24,9 +24,17 @@ async function apiFetch<T>(
     const url = `${API_BASE_URL}${endpoint}`;
     debug('[API] Fetching:', url);
     
-    // Create abort controller for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    // Safely create abort controller for older WebViews that lack support
+    let controller: AbortController | undefined;
+    let signal: AbortSignal | undefined;
+    if (typeof AbortController !== 'undefined') {
+        controller = new AbortController();
+        signal = controller.signal;
+    }
+    
+    const timeoutId = setTimeout(() => {
+        if (controller) controller.abort();
+    }, 15000); // 15 second timeout
     
     try {
         const res = await fetch(url, {
@@ -35,7 +43,7 @@ async function apiFetch<T>(
                 ...(options?.headers || {}),
             },
             ...options,
-            signal: controller.signal,
+            signal,
         });
         
         clearTimeout(timeoutId);
@@ -45,6 +53,7 @@ async function apiFetch<T>(
             debugError('[API] Error:', res.status, body);
             throw new Error(body || `HTTP ${res.status}`);
         }
+        
         const data = await res.json();
         debug('[API] Success:', endpoint);
         return data;
@@ -96,44 +105,81 @@ const SETTINGS_CACHE_DURATION = 15 * 60 * 1000;
 
 export async function getServices(useCache = true): Promise<Service[]> {
     if (useCache) {
-        const cached = localStorage.getItem(SERVICES_CACHE_KEY);
-        const timestamp = localStorage.getItem(SERVICES_TIMESTAMP_KEY);
-        if (cached && timestamp) {
-            const age = Date.now() - parseInt(timestamp);
-            if (age < CACHE_DURATION) {
-                debug('[Services] Using cached data');
-                return JSON.parse(cached);
+        try {
+            const cached = localStorage.getItem(SERVICES_CACHE_KEY);
+            const timestamp = localStorage.getItem(SERVICES_TIMESTAMP_KEY);
+            if (cached && timestamp) {
+                const age = Date.now() - parseInt(timestamp);
+                if (age < CACHE_DURATION) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        if (Array.isArray(parsed)) {
+                            debug('[Services] Using cached data');
+                            return parsed;
+                        }
+                    } catch(e) {}
+                }
             }
-            // Even if cache is old, use it if API fails later
+        } catch (e) {
+            debugError('localStorage read error:', e);
         }
     }
 
     try {
         debug('[Services] Fetching from API...');
-        const data = await apiFetch<Service[]>('/get_service.php');
-        localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(data));
-        localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
-        debug('[Services] Got', data.length, 'services');
-        return data;
+        const data = await apiFetch<any>('/get_service.php');
+        
+        // Critical validation: API sometimes returns HTML or JSON objects on error
+        const validData = Array.isArray(data) ? data : [];
+        if (!Array.isArray(data)) {
+            debugError('[Services] API returned non-array:', data);
+        }
+
+        try {
+            localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(validData));
+            localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
+        } catch (e) {
+            debugError('localStorage write error:', e);
+        }
+        
+        debug('[Services] Got', validData.length, 'services');
+        return validData;
     } catch (err) {
         debugError('[Services] Error:', err);
-        // Try to use ANY cached data, even if old
-        const cached = localStorage.getItem(SERVICES_CACHE_KEY);
-        if (cached) {
-            debug('[Services] Falling back to cache (may be stale)');
-            return JSON.parse(cached);
+        try {
+            const cached = localStorage.getItem(SERVICES_CACHE_KEY);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed)) {
+                        debug('[Services] Falling back to cache (may be stale)');
+                        return parsed;
+                    }
+                } catch(e) {}
+            }
+        } catch (e) {
+            debugError('localStorage fallback read error:', e);
         }
-        // Return empty array instead of throwing - prevents app crash
-        debug('[Services] No cache available, returning empty');
+        debug('[Services] No valid cache available, returning empty');
         return [];
     }
 }
 
 export async function refreshServices(): Promise<Service[]> {
-    const data = await apiFetch<Service[]>('/get_service.php?refresh=1');
-    localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
-    return data;
+    try {
+        const data = await apiFetch<any>('/get_service.php?refresh=1');
+        const validData = Array.isArray(data) ? data : [];
+        try {
+            localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(validData));
+            localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
+        } catch (e) {
+            debugError('localStorage write error:', e);
+        }
+        return validData;
+    } catch (err) {
+        debugError('[Services] Refresh Error:', err);
+        return [];
+    }
 }
 
 export async function getRecommended(): Promise<number[]> {
