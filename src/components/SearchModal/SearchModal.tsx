@@ -1,15 +1,71 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
+import { getServices } from '../../api';
 
 interface Props {
-    services: Service[];
     onSelect: (service: Service) => void;
     onClose: () => void;
 }
 
-export function SearchModal({ services, onSelect, onClose }: Props) {
+export function SearchModal({ onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
+    const [rawServices, setRawServices] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [timedOut, setTimedOut] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+    // Fetch services directly on mount — localStorage cache makes this near-instant
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+
+        getServices(true)
+            .then(data => {
+                if (!cancelled) {
+                    setRawServices(Array.isArray(data) ? data : []);
+                    setLoading(false);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, []);
+
+    // Also wait up to 5s if rawServices is empty even after "loading" finishes.
+    useEffect(() => {
+        if (rawServices.length > 0) {
+            if (timerRef.current) clearTimeout(timerRef.current);
+            setTimedOut(false);
+            return;
+        }
+        if (!loading && rawServices.length === 0) {
+            setTimedOut(false);
+            timerRef.current = setTimeout(() => setTimedOut(true), 5000);
+        }
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
+    }, [rawServices.length, loading]);
+
+    // Compute the relevant services
+    const services = useMemo<Service[]>(() => {
+        if (rawServices.length === 0) return [];
+        return rawServices.map((s: any) => ({
+            id: s.service,
+            category: s.category,
+            name: s.name,
+            type: s.type as Service['type'],
+            rate: parseFloat(s.rate),
+            min: s.min,
+            max: s.max,
+            averageTime: s.average_time || s.averageTime || '',
+            refill: s.refill,
+            cancel: s.cancel,
+        }));
+    }, [rawServices]);
 
     const results = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -31,6 +87,18 @@ export function SearchModal({ services, onSelect, onClose }: Props) {
         return map;
     }, [results]);
 
+    const isWaitingForData = (loading || (rawServices.length === 0 && !timedOut));
+    const isTrulyEmpty = !loading && rawServices.length === 0 && timedOut;
+
+    const spinnerStyle: React.CSSProperties = {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px 20px',
+        gap: 12,
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-sheet modal-sheet--large" onClick={e => e.stopPropagation()}>
@@ -51,7 +119,24 @@ export function SearchModal({ services, onSelect, onClose }: Props) {
                 </div>
 
                 <div className="modal-list">
-                    {search.trim() === '' ? (
+                    {isWaitingForData ? (
+                        <div style={spinnerStyle}>
+                            <div style={{
+                                width: 32,
+                                height: 32,
+                                border: '3px solid rgba(255,255,255,0.1)',
+                                borderTopColor: 'var(--tg-theme-link-color, #6ab3f3)',
+                                borderRadius: '50%',
+                                animation: 'searchModalSpin 0.8s linear infinite',
+                            }} />
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                                Loading services...
+                            </span>
+                            <style>{`@keyframes searchModalSpin { to { transform: rotate(360deg); } }`}</style>
+                        </div>
+                    ) : isTrulyEmpty ? (
+                         <div className="modal-empty">Failed to load services. Please try again later.</div>
+                    ) : search.trim() === '' ? (
                         <div className="modal-empty">Start typing to search across all services</div>
                     ) : results.length === 0 ? (
                         <div className="modal-empty">No services match your search</div>

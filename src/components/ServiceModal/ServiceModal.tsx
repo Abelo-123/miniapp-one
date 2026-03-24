@@ -1,34 +1,91 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
+import { getServices } from '../../api';
 
 interface Props {
-    services: Service[];
+    category: string;
+    recommendedIds: number[];
     onSelect: (service: Service) => void;
     onClose: () => void;
-    isLoading?: boolean;
 }
 
 const BATCH_SIZE = 50;
 
-export function ServiceModal({ services, onSelect, onClose, isLoading }: Props) {
+export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
-    const [ready, setReady] = useState(false);
+    
+    const [rawServices, setRawServices] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [timedOut, setTimedOut] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-    // Delayed ready flag to ensure DOM is painted before showing list
+    // Fetch services directly on mount — localStorage cache makes this near-instant
     useEffect(() => {
-        const t = setTimeout(() => setReady(true), 50);
-        return () => clearTimeout(t);
+        let cancelled = false;
+        setLoading(true);
+
+        getServices(true)
+            .then(data => {
+                if (!cancelled) {
+                    setRawServices(Array.isArray(data) ? data : []);
+                    setLoading(false);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => { cancelled = true; };
     }, []);
 
+    // Also wait up to 5s if rawServices is empty even after "loading" finishes.
+    useEffect(() => {
+        if (rawServices.length > 0) {
+            if (timerRef.current) clearTimeout(timerRef.current);
+            setTimedOut(false);
+            return;
+        }
+        if (!loading && rawServices.length === 0) {
+            setTimedOut(false);
+            timerRef.current = setTimeout(() => setTimedOut(true), 5000);
+        }
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
+    }, [rawServices.length, loading]);
+
+    // Compute the relevant services for this category
+    const categoryServices = useMemo<Service[]>(() => {
+        if (rawServices.length === 0) return [];
+        
+        const transformed: Service[] = rawServices.map((s: any) => ({
+            id: s.service,
+            category: s.category,
+            name: s.name,
+            type: s.type as Service['type'],
+            rate: parseFloat(s.rate),
+            min: s.min,
+            max: s.max,
+            averageTime: s.average_time || s.averageTime || '',
+            refill: s.refill,
+            cancel: s.cancel,
+        }));
+
+        if (category === 'Top Services') {
+            return transformed.filter(s => recommendedIds.includes(s.id));
+        }
+        return transformed.filter(s => s.category === category);
+    }, [rawServices, category, recommendedIds]);
+
     const filtered = useMemo(() => {
-        if (!search.trim()) return services;
+        if (!search.trim()) return categoryServices;
         const q = search.toLowerCase();
-        return services.filter(s =>
+        return categoryServices.filter(s =>
             s.name.toLowerCase().includes(q) || s.id.toString().includes(q)
         );
-    }, [services, search]);
+    }, [categoryServices, search]);
 
     const visibleServices = useMemo(() => {
         return filtered.slice(0, visibleCount);
@@ -123,6 +180,18 @@ export function ServiceModal({ services, onSelect, onClose, isLoading }: Props) 
         lineHeight: 1.5,
     };
 
+    const spinnerStyle: React.CSSProperties = {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px 20px',
+        gap: 12,
+    };
+
+    const isWaitingForData = (loading || (rawServices.length === 0 && !timedOut));
+    const isTrulyEmpty = !loading && rawServices.length === 0 && timedOut;
+
     return (
         <div style={overlayStyle} onClick={onClose}>
             <div style={sheetStyle} onClick={e => e.stopPropagation()}>
@@ -152,23 +221,46 @@ export function ServiceModal({ services, onSelect, onClose, isLoading }: Props) 
                 </div>
 
                 {/* Search */}
-                <div style={searchBoxStyle}>
-                    <input
-                        type="text"
-                        placeholder="Search services..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        style={inputStyle}
-                    />
-                </div>
+                {rawServices.length > 0 && categoryServices.length > 0 && (
+                    <div style={searchBoxStyle}>
+                        <input
+                            type="text"
+                            placeholder="Search services..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            style={inputStyle}
+                        />
+                    </div>
+                )}
 
                 {/* List */}
                 <div style={listStyle} onScroll={handleScroll} data-count={filtered.length}>
-                    {isLoading || (!ready && services.length === 0) ? (
-                        <div style={emptyStyle}>Loading services...</div>
+                    {isWaitingForData ? (
+                        <div style={spinnerStyle}>
+                            <div style={{
+                                width: 32,
+                                height: 32,
+                                border: '3px solid rgba(255,255,255,0.1)',
+                                borderTopColor: 'var(--tg-theme-link-color, #6ab3f3)',
+                                borderRadius: '50%',
+                                animation: 'svcModalSpin 0.8s linear infinite',
+                            }} />
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                                Loading services...
+                            </span>
+                            <style>{`@keyframes svcModalSpin { to { transform: rotate(360deg); } }`}</style>
+                        </div>
+                    ) : isTrulyEmpty ? (
+                        <div style={emptyStyle}>
+                            Failed to load services. Please try again later.
+                        </div>
+                    ) : categoryServices.length === 0 ? (
+                        <div style={emptyStyle}>
+                            {`No services found for this category.`}
+                        </div>
                     ) : filtered.length === 0 ? (
                         <div style={emptyStyle}>
-                            {`No services found.\n(Total: ${services.length})`}
+                            No services match your search.
                         </div>
                     ) : (
                         <>
@@ -188,7 +280,7 @@ export function ServiceModal({ services, onSelect, onClose, isLoading }: Props) 
                                     </div>
                                 </div>
                             ))}
-                            {hasMore && !isLoading && (
+                            {hasMore && (
                                 <div
                                     onClick={() => setVisibleCount(prev => Math.min(prev + BATCH_SIZE, filtered.length))}
                                     style={{

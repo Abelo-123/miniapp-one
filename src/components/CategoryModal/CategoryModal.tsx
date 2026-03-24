@@ -1,20 +1,73 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { PLATFORMS } from '../../constants';
+import { getServices } from '../../api';
+import type { SocialPlatform } from '../../types';
 
 interface Props {
-    categories: string[];
+    platform: SocialPlatform;
     onSelect: (category: string) => void;
     onClose: () => void;
 }
 
 /**
- * CategoryModal — pure, stateless display of categories.
- * 
- * All category data is computed by the PARENT (OrderPage) and passed in
- * as a plain string[]. This component does ZERO async work, ZERO context
- * reads, and ZERO delayed-ready tricks. It renders instantly.
+ * CategoryModal — self-contained modal that fetches service data directly.
+ *
+ * On mount it calls getServices(true) which hits localStorage cache first
+ * (near-instant if cached), then falls back to API. This makes it completely
+ * independent of AppContext's loading state.
  */
-export function CategoryModal({ categories, onSelect, onClose }: Props) {
+export function CategoryModal({ platform, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
+    const [rawServices, setRawServices] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch services directly on mount — localStorage cache makes this near-instant
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+
+        getServices(true)
+            .then(data => {
+                if (!cancelled) {
+                    setRawServices(Array.isArray(data) ? data : []);
+                    setLoading(false);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, []);
+
+    // Compute categories from the fetched services + selected platform
+    const categories = useMemo(() => {
+        if (rawServices.length === 0) return [];
+        if (platform === 'top') return ['Top Services'];
+
+        const platformDef = PLATFORMS.find(p => p.id === platform);
+        if (!platformDef) return [];
+
+        // Extract unique category names — works with both raw API and transformed data
+        const allCategories = [...new Set(
+            rawServices.map((s: any) => s.category as string).filter(Boolean)
+        )];
+
+        if (platform === 'other') {
+            const majorKeywords = PLATFORMS
+                .filter(p => p.id !== 'other' && p.id !== 'top')
+                .flatMap(p => p.keywords);
+            return allCategories.filter(cat => {
+                const lower = cat.toLowerCase();
+                return !majorKeywords.some(kw => lower.includes(kw));
+            });
+        }
+
+        return allCategories.filter(cat => {
+            const lower = cat.toLowerCase();
+            return platformDef.keywords.some(kw => lower.includes(kw));
+        });
+    }, [rawServices, platform]);
 
     const filtered = useMemo(() => {
         if (!search.trim()) return categories;
@@ -103,6 +156,15 @@ export function CategoryModal({ categories, onSelect, onClose }: Props) {
         lineHeight: 1.5,
     };
 
+    const spinnerStyle: React.CSSProperties = {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px 20px',
+        gap: 12,
+    };
+
     return (
         <div style={overlayStyle} onClick={onClose}>
             <div style={sheetStyle} onClick={e => e.stopPropagation()}>
@@ -131,24 +193,43 @@ export function CategoryModal({ categories, onSelect, onClose }: Props) {
                     </button>
                 </div>
 
-                {/* Search */}
-                <div style={searchBoxStyle}>
-                    <input
-                        type="text"
-                        placeholder="Search categories..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        style={inputStyle}
-                    />
-                </div>
+                {/* Search — only show when we have categories */}
+                {!loading && categories.length > 0 && (
+                    <div style={searchBoxStyle}>
+                        <input
+                            type="text"
+                            placeholder="Search categories..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            style={inputStyle}
+                        />
+                    </div>
+                )}
 
                 {/* List */}
                 <div style={listStyle} data-count={filtered.length}>
-                    {filtered.length === 0 ? (
+                    {loading ? (
+                        <div style={spinnerStyle}>
+                            <div style={{
+                                width: 32,
+                                height: 32,
+                                border: '3px solid rgba(255,255,255,0.1)',
+                                borderTopColor: 'var(--tg-theme-link-color, #6ab3f3)',
+                                borderRadius: '50%',
+                                animation: 'catModalSpin 0.8s linear infinite',
+                            }} />
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                                Loading categories...
+                            </span>
+                            <style>{`@keyframes catModalSpin { to { transform: rotate(360deg); } }`}</style>
+                        </div>
+                    ) : categories.length === 0 ? (
                         <div style={emptyStyle}>
-                            {categories.length === 0
-                                ? 'No categories available for this platform.'
-                                : 'No categories match your search.'}
+                            No categories available for this platform.
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div style={emptyStyle}>
+                            No categories match your search.
                         </div>
                     ) : (
                         filtered.map(cat => (

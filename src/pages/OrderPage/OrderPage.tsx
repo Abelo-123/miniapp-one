@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PLATFORMS, formatETB } from '../../constants';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
@@ -11,46 +11,13 @@ export function OrderPage() {
     const {
         services, recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
-        discountPercent, holidayName, marqueeText, user, isLoading,
+        discountPercent, holidayName, marqueeText, user,
     } = useApp();
 
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showServiceModal, setShowServiceModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const orderFormRef = useRef<OrderFormHandle | null>(null);
-
-    const platformCategories = useMemo(() => {
-        if (!selectedPlatform) return [];
-        if (selectedPlatform === 'top') return ['Top Services'];
-
-        const platformDef = PLATFORMS.find(p => p.id === selectedPlatform);
-        if (!platformDef) return [];
-
-        const allCategories = [...new Set(services.map(s => s.category))];
-
-        if (selectedPlatform === 'other') {
-            const majorKeywords = PLATFORMS
-                .filter(p => p.id !== 'other' && p.id !== 'top')
-                .flatMap(p => p.keywords);
-            return allCategories.filter(cat => {
-                const lower = cat.toLowerCase();
-                return !majorKeywords.some(kw => lower.includes(kw));
-            });
-        }
-
-        return allCategories.filter(cat => {
-            const lower = cat.toLowerCase();
-            return platformDef.keywords.some(kw => lower.includes(kw));
-        });
-    }, [selectedPlatform, services]);
-
-    const categoryServices = useMemo(() => {
-        if (!selectedCategory) return [];
-        if (selectedCategory === 'Top Services') {
-            return services.filter(s => recommendedIds.includes(s.id));
-        }
-        return services.filter(s => s.category === selectedCategory);
-    }, [selectedCategory, services, recommendedIds]);
 
     const handlePlatformSelect = useCallback((platform: typeof selectedPlatform) => {
         setSelectedPlatform(platform);
@@ -190,26 +157,25 @@ export function OrderPage() {
             )}
 
             {/* ─── Modals ─── */}
-            {showCategoryModal && (
+            {showCategoryModal && selectedPlatform && (
                 <CategoryModal
-                    categories={platformCategories}
+                    platform={selectedPlatform}
                     onSelect={handleCategorySelect}
                     onClose={() => setShowCategoryModal(false)}
                 />
             )}
 
-            {showServiceModal && (
+            {showServiceModal && selectedCategory && (
                 <ServiceModal
-                    services={categoryServices}
+                    category={selectedCategory}
+                    recommendedIds={recommendedIds}
                     onSelect={handleServiceSelect}
                     onClose={() => setShowServiceModal(false)}
-                    isLoading={isLoading}
                 />
             )}
 
             {showSearchModal && (
                 <SearchModal
-                    services={services}
                     onSelect={handleSearchResultSelect}
                     onClose={() => setShowSearchModal(false)}
                 />
