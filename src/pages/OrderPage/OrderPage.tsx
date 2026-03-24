@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PLATFORMS, formatETB } from '../../constants';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
@@ -18,6 +18,16 @@ export function OrderPage() {
     const [showServiceModal, setShowServiceModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const orderFormRef = useRef<OrderFormHandle | null>(null);
+    // Track if user tapped a platform before services loaded
+    const pendingCategoryOpen = useRef(false);
+
+    // Auto-open category modal once services arrive (if pending)
+    useEffect(() => {
+        if (pendingCategoryOpen.current && services.length > 0 && selectedPlatform && selectedPlatform !== 'top') {
+            pendingCategoryOpen.current = false;
+            setShowCategoryModal(true);
+        }
+    }, [services.length, selectedPlatform]);
 
     const platformCategories = useMemo(() => {
         if (!selectedPlatform) return [];
@@ -56,14 +66,15 @@ export function OrderPage() {
         setSelectedPlatform(platform);
         if (platform === 'top') {
             setSelectedCategory('Top Services');
-            // Defer to let React flush the platform state change
             setTimeout(() => setShowServiceModal(true), 0);
-        } else {
-            // Defer modal open to next tick so useEffect resets category and
-            // platformCategories recomputes with the new selectedPlatform
+        } else if (services.length > 0) {
+            // Services already loaded — open modal immediately
             setTimeout(() => setShowCategoryModal(true), 0);
+        } else {
+            // Services not loaded yet — defer opening until they arrive
+            pendingCategoryOpen.current = true;
         }
-    }, [setSelectedPlatform, setSelectedCategory]);
+    }, [setSelectedPlatform, setSelectedCategory, services.length]);
 
     const handleCategorySelect = useCallback((category: string) => {
         setSelectedCategory(category);
@@ -196,7 +207,6 @@ export function OrderPage() {
                     categories={platformCategories}
                     onSelect={handleCategorySelect}
                     onClose={() => setShowCategoryModal(false)}
-                    isLoading={isLoading}
                 />
             )}
 

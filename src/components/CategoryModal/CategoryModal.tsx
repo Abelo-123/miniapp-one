@@ -1,63 +1,27 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
-import { PLATFORMS } from '../../constants';
+import { useState, useMemo } from 'react';
 
 interface Props {
     categories: string[];
     onSelect: (category: string) => void;
     onClose: () => void;
-    isLoading?: boolean;
 }
 
-export function CategoryModal({ categories, onSelect, onClose, isLoading }: Props) {
-    const { services, selectedPlatform } = useApp();
+/**
+ * CategoryModal — pure, stateless display of categories.
+ * 
+ * All category data is computed by the PARENT (OrderPage) and passed in
+ * as a plain string[]. This component does ZERO async work, ZERO context
+ * reads, and ZERO delayed-ready tricks. It renders instantly.
+ */
+export function CategoryModal({ categories, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
-    const [ready, setReady] = useState(false);
-
-    // Delayed ready flag to ensure DOM is painted before showing list
-    useEffect(() => {
-        const t = setTimeout(() => setReady(true), 50);
-        return () => clearTimeout(t);
-    }, []);
-
-    // Also re-trigger ready whenever services load
-    useEffect(() => {
-        if (services.length > 0) setReady(true);
-    }, [services]);
-
-    // Derive categories internally as a robust fallback
-    const resolvedCategories = useMemo(() => {
-        if (categories.length > 0) return categories;
-        if (services.length === 0) return [];
-        if (!selectedPlatform || selectedPlatform === 'top') return ['Top Services'];
-
-        const allCategories = [...new Set(services.map(s => s.category))];
-        const platformDef = PLATFORMS.find(p => p.id === selectedPlatform);
-        if (!platformDef) return allCategories;
-
-        if (selectedPlatform === 'other') {
-            const majorKeywords = PLATFORMS
-                .filter(p => p.id !== 'other' && p.id !== 'top')
-                .flatMap(p => p.keywords);
-            return allCategories.filter(cat => {
-                const lower = cat.toLowerCase();
-                return !majorKeywords.some(kw => lower.includes(kw));
-            });
-        }
-
-        return allCategories.filter(cat => {
-            const lower = cat.toLowerCase();
-            return platformDef.keywords.some(kw => lower.includes(kw));
-        });
-    }, [categories, services, selectedPlatform]);
 
     const filtered = useMemo(() => {
-        if (!search.trim()) return resolvedCategories;
+        if (!search.trim()) return categories;
         const q = search.toLowerCase();
-        return resolvedCategories.filter(c => c.toLowerCase().includes(q));
-    }, [resolvedCategories, search]);
+        return categories.filter(c => c.toLowerCase().includes(q));
+    }, [categories, search]);
 
-    const showLoading = isLoading || (!ready && services.length === 0);
     const screenH = typeof window !== 'undefined'
         ? (window.innerHeight || document.documentElement.clientHeight || 600)
         : 600;
@@ -110,9 +74,8 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
         boxSizing: 'border-box' as const,
     };
 
-    // The scrollable list — use absolute max-height in px, no flex
     const listStyle: React.CSSProperties = {
-        position: 'relative', // CRITICAL for older WebKit overflow scrolling
+        position: 'relative',
         overflowY: 'auto',
         maxHeight: Math.max(screenH * 0.5, 250),
         minHeight: 150,
@@ -146,7 +109,7 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
                 {/* Header */}
                 <div style={headerStyle}>
                     <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--tg-theme-text-color, #fff)' }}>
-                        Select Category
+                        Select Categorry
                     </span>
                     <button
                         onClick={onClose}
@@ -181,13 +144,11 @@ export function CategoryModal({ categories, onSelect, onClose, isLoading }: Prop
 
                 {/* List */}
                 <div style={listStyle} data-count={filtered.length}>
-                    {showLoading ? (
-                        <div style={emptyStyle}>Loading categories...</div>
-                    ) : filtered.length === 0 ? (
+                    {filtered.length === 0 ? (
                         <div style={emptyStyle}>
-                            {services.length === 0
-                                ? 'Loading services...'
-                                : `No categories found.\n(Platform: ${selectedPlatform})\n(Services: ${services.length})\n(Raw: ${categories.length})`}
+                            {categories.length === 0
+                                ? 'No categories available for this platform.'
+                                : 'No categories match your search.'}
                         </div>
                     ) : (
                         filtered.map(cat => (
