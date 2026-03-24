@@ -109,7 +109,7 @@ export function CategoryModal({ categories, onSelect, onClose }: Props) {
                 {/* Header */}
                 <div style={headerStyle}>
                     <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--tg-theme-text-color, #fff)' }}>
-                        Select Categorry
+                        Select Category
                     </span>
                     <button
                         onClick={onClose}

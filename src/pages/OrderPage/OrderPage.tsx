@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PLATFORMS, formatETB } from '../../constants';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
@@ -18,16 +18,6 @@ export function OrderPage() {
     const [showServiceModal, setShowServiceModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const orderFormRef = useRef<OrderFormHandle | null>(null);
-    // Track if user tapped a platform before services loaded
-    const pendingCategoryOpen = useRef(false);
-
-    // Auto-open category modal once services arrive (if pending)
-    useEffect(() => {
-        if (pendingCategoryOpen.current && services.length > 0 && selectedPlatform && selectedPlatform !== 'top') {
-            pendingCategoryOpen.current = false;
-            setShowCategoryModal(true);
-        }
-    }, [services.length, selectedPlatform]);
 
     const platformCategories = useMemo(() => {
         if (!selectedPlatform) return [];
@@ -66,15 +56,13 @@ export function OrderPage() {
         setSelectedPlatform(platform);
         if (platform === 'top') {
             setSelectedCategory('Top Services');
-            setTimeout(() => setShowServiceModal(true), 0);
-        } else if (services.length > 0) {
-            // Services already loaded — open modal immediately
-            setTimeout(() => setShowCategoryModal(true), 0);
+            setShowServiceModal(true);
         } else {
-            // Services not loaded yet — defer opening until they arrive
-            pendingCategoryOpen.current = true;
+            // Open the category modal immediately — it's a pure component
+            // that handles empty categories gracefully
+            setShowCategoryModal(true);
         }
-    }, [setSelectedPlatform, setSelectedCategory, services.length]);
+    }, [setSelectedPlatform, setSelectedCategory]);
 
     const handleCategorySelect = useCallback((category: string) => {
         setSelectedCategory(category);
