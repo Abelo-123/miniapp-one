@@ -19,6 +19,8 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 router.get('/', async (req, res) => {
     try {
         const forceRefresh = req.query.refresh === '1';
+        const reqCategory = req.query.category || null;
+        const reqIds = req.query.ids ? req.query.ids.split(',').map(id => parseInt(id, 10)) : null;
         const apiKey = process.env.GODOFPANEL_API_KEY;
 
         if (!apiKey) {
@@ -27,7 +29,10 @@ router.get('/', async (req, res) => {
 
         const now = Date.now();
         if (!forceRefresh && cachedServices && (now - lastCacheTime) < CACHE_TTL_MS) {
-            return res.json(cachedServices);
+            let result = cachedServices;
+            if (reqCategory) result = result.filter(s => s.category === reqCategory);
+            if (reqIds) result = result.filter(s => reqIds.includes(s.service));
+            return res.json(result);
         }
 
         // 1. Fetch raw services from GodOfPanel
@@ -90,15 +95,23 @@ router.get('/', async (req, res) => {
         // Update Cache
         cachedServices = finalServices;
         lastCacheTime = now;
+        
+        // Filter result before sending
+        let result = finalServices;
+        if (reqCategory) result = result.filter(s => s.category === reqCategory);
+        if (reqIds) result = result.filter(s => reqIds.includes(s.service));
 
-        return res.json(finalServices);
+        return res.json(result);
     } catch (err) {
         console.error('[get_services] Error:', err);
         
         // Fallback to cache if request fails but we have stale data
         if (cachedServices) {
             console.log('[get_services] Serving stale cache due to upstream error.');
-            return res.json(cachedServices);
+            let result = cachedServices;
+            if (reqCategory) result = result.filter(s => s.category === reqCategory);
+            if (reqIds) result = result.filter(s => reqIds.includes(s.service));
+            return res.json(result);
         }
 
         return res.status(500).json({ error: 'Failed to fetch services from provider' });

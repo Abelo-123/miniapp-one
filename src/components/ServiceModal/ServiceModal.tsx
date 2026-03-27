@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
-import { useServices } from '../../hooks/useServices';
+import { useCategoryServices } from '../../hooks/useCategoryServices';
 
 interface Props {
     category: string;
@@ -21,18 +21,8 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
     const [search, setSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
     
-    // Use the unified useServices hook
-    const { data: rawServices = [], isLoading: loading, isError } = useServices();
-
-    // Compute the relevant services for this category
-    const categoryServices = useMemo<Service[]>(() => {
-        if (rawServices.length === 0) return [];
-        
-        if (category === 'Top Services') {
-            return rawServices.filter(s => recommendedIds.includes(s.id));
-        }
-        return rawServices.filter(s => s.category === category);
-    }, [rawServices, category, recommendedIds]);
+    // Use the optimized category-specific hook
+    const { data: categoryServices = [], isLoading: loading, isError } = useCategoryServices(category, recommendedIds);
 
     const filtered = useMemo(() => {
         if (!search.trim()) return categoryServices;
@@ -172,7 +162,7 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                 </div>
 
                 {/* Search */}
-                {rawServices.length > 0 && categoryServices.length > 0 && (
+                {categoryServices.length > 0 && (
                     <div style={searchBoxStyle}>
                         <input
                             type="text"
@@ -186,7 +176,7 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
 
                 {/* List */}
                 <div style={listStyle} onScroll={handleScroll} data-count={filtered.length}>
-                    {loading && rawServices.length === 0 ? (
+                    {loading && categoryServices.length === 0 ? (
                         <div style={spinnerStyle}>
                             <div style={{
                                 width: 32,

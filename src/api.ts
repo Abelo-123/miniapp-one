@@ -160,6 +160,15 @@ export async function refreshServices(): Promise<Service[]> {
     }
 }
 
+export async function getServicesByCategory(category?: string, ids?: number[]): Promise<Service[]> {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (ids && ids.length > 0) params.append('ids', ids.join(','));
+    
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const data = await nodeApiFetch<any>(`/services${qs}`);
+    return Array.isArray(data) ? data : [];
+}
 export interface CategoriesResponse {
     success: boolean;
     categories: string[];
