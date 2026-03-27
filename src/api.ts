@@ -3,7 +3,7 @@ import type {
     AuthResponse, OrderResponse, OrdersListResponse,
     DepositResponse, AlertsResponse, StatusSyncResponse,
 } from './types';
-import { API_BASE_URL } from './constants';
+import { getInitDataRaw } from './helpers/telegram';
 
 const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
 
@@ -17,14 +17,41 @@ function debugError(...args: any[]) {
     if (isDev) console.error(...args);
 }
 
-async function apiFetch<T>(
+async function nodeApiFetch<T>(
     endpoint: string,
     options?: RequestInit
 ): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`;
-    debug('[API] Fetching:', url);
+    let url = `${NODE_API_URL}${endpoint}`;
     
-    // Safely create abort controller for older WebViews that lack support
+    // Prepare headers
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options?.headers as Record<string, string> || {}),
+    };
+
+    const initData = getInitDataRaw() || '';
+    let body = options?.body;
+
+    // Auto-inject initData
+    if (options?.method === 'POST' || options?.method === 'PUT') {
+        if (typeof body === 'string') {
+            try {
+                const parsed = JSON.parse(body);
+                if (!parsed.initData) parsed.initData = initData;
+                body = JSON.stringify(parsed);
+            } catch(e) {}
+        } else if (!body) {
+            body = JSON.stringify({ initData });
+        }
+    } else {
+        // GET requests: append initData to query params
+        const sep = url.includes('?') ? '&' : '?';
+        url += `${sep}initData=${encodeURIComponent(initData)}`;
+    }
+
+    debug('[API] Fetching:', url);
+
+    // Safely create abort controller for older WebViews
     let controller: AbortController | undefined;
     let signal: AbortSignal | undefined;
     if (typeof AbortController !== 'undefined') {
@@ -34,26 +61,24 @@ async function apiFetch<T>(
     
     const timeoutId = setTimeout(() => {
         if (controller) controller.abort();
-    }, 15000); // 15 second timeout
-    
+    }, 15000);
+
     try {
         const res = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...(options?.headers || {}),
-            },
             ...options,
+            headers,
+            body,
             signal,
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!res.ok) {
-            const body = await res.text();
-            debugError('[API] Error:', res.status, body);
-            throw new Error(body || `HTTP ${res.status}`);
+            const errorText = await res.text();
+            debugError('[API] Error:', res.status, errorText);
+            throw new Error(errorText || `HTTP ${res.status}`);
         }
-        
+
         const data = await res.json();
         debug('[API] Success:', endpoint);
         return data;
@@ -66,31 +91,12 @@ async function apiFetch<T>(
     }
 }
 
-async function nodeApiFetch<T>(
-    endpoint: string,
-    options?: RequestInit
-): Promise<T> {
-    const url = `${NODE_API_URL}${endpoint}`;
-    debug('[Node API] Fetching:', url);
-    const res = await fetch(url, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(options?.headers || {}),
-        },
-        ...options,
-    });
-    if (!res.ok) {
-        const body = await res.text();
-        debugError('[Node API] Error:', res.status, body);
-        throw new Error(body || `HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    debug('[Node API] Success:', endpoint);
-    return data;
-}
+// ---------------------------------------------------------------------------
+// Endpoints directly via Node API
+// ---------------------------------------------------------------------------
 
 export async function authenticateTelegram(initData: string): Promise<AuthResponse> {
-    return apiFetch<AuthResponse>('/telegram_auth.php', {
+    return nodeApiFetch<AuthResponse>('/app/auth', {
         method: 'POST',
         body: JSON.stringify({ initData }),
     });
@@ -113,77 +119,49 @@ export async function getServices(useCache = true): Promise<Service[]> {
                 if (age < CACHE_DURATION) {
                     try {
                         const parsed = JSON.parse(cached);
-                        if (Array.isArray(parsed)) {
-                            debug('[Services] Using cached data');
-                            return parsed;
-                        }
+                        if (Array.isArray(parsed)) return parsed;
                     } catch(e) {}
                 }
             }
-        } catch (e) {
-            debugError('localStorage read error:', e);
-        }
+        } catch (e) {}
     }
 
     try {
-        debug('[Services] Fetching from API...');
-        const data = await apiFetch<any>('/get_service.php');
-        
-        // Critical validation: API sometimes returns HTML or JSON objects on error
+        const data = await nodeApiFetch<any>('/services');
         const validData = Array.isArray(data) ? data : [];
-        if (!Array.isArray(data)) {
-            debugError('[Services] API returned non-array:', data);
-        }
-
-        try {
+        if (validData.length > 0) {
             localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(validData));
             localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
-        } catch (e) {
-            debugError('localStorage write error:', e);
         }
-        
-        debug('[Services] Got', validData.length, 'services');
         return validData;
     } catch (err) {
-        debugError('[Services] Error:', err);
-        try {
-            const cached = localStorage.getItem(SERVICES_CACHE_KEY);
-            if (cached) {
-                try {
-                    const parsed = JSON.parse(cached);
-                    if (Array.isArray(parsed)) {
-                        debug('[Services] Falling back to cache (may be stale)');
-                        return parsed;
-                    }
-                } catch(e) {}
-            }
-        } catch (e) {
-            debugError('localStorage fallback read error:', e);
+        const cached = localStorage.getItem(SERVICES_CACHE_KEY);
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed)) return parsed;
+            } catch(e) {}
         }
-        debug('[Services] No valid cache available, returning empty');
         return [];
     }
 }
 
 export async function refreshServices(): Promise<Service[]> {
     try {
-        const data = await apiFetch<any>('/get_service.php?refresh=1');
+        const data = await nodeApiFetch<any>('/services?refresh=1');
         const validData = Array.isArray(data) ? data : [];
-        try {
+        if (validData.length > 0) {
             localStorage.setItem(SERVICES_CACHE_KEY, JSON.stringify(validData));
             localStorage.setItem(SERVICES_TIMESTAMP_KEY, Date.now().toString());
-        } catch (e) {
-            debugError('localStorage write error:', e);
         }
         return validData;
     } catch (err) {
-        debugError('[Services] Refresh Error:', err);
         return [];
     }
 }
 
 export async function getRecommended(): Promise<number[]> {
-    return apiFetch<number[]>('/get_recommended.php');
+    return nodeApiFetch<number[]>('/app/recommended');
 }
 
 export interface PlaceOrderPayload {
@@ -196,24 +174,24 @@ export interface PlaceOrderPayload {
 }
 
 export async function placeOrder(payload: PlaceOrderPayload): Promise<OrderResponse> {
-    return apiFetch<OrderResponse>('/process_order.php', {
+    return nodeApiFetch<OrderResponse>('/orders/place', {
         method: 'POST',
         body: JSON.stringify(payload),
     });
 }
 
 export async function getOrders(): Promise<OrdersListResponse> {
-    return apiFetch<OrdersListResponse>('/get_orders.php');
+    return nodeApiFetch<OrdersListResponse>('/orders/list', { method: 'POST' });
 }
 
 export async function checkOrderStatus(): Promise<StatusSyncResponse> {
-    return apiFetch<StatusSyncResponse>('/check_order_status.php');
+    return nodeApiFetch<StatusSyncResponse>('/orders/status', { method: 'POST' });
 }
 
 export async function requestRefill(orderId: number): Promise<{ success: boolean; message: string }> {
-    return apiFetch('/user_actions.php', {
+    return nodeApiFetch('/orders/refill', {
         method: 'POST',
-        body: JSON.stringify({ action: 'refill', order_id: orderId }),
+        body: JSON.stringify({ order_id: orderId }),
     });
 }
 
@@ -239,38 +217,33 @@ export async function getBalance(initData: string): Promise<{ success: boolean; 
 }
 
 export async function getAlerts(): Promise<AlertsResponse> {
-    return apiFetch<AlertsResponse>('/get_alerts.php');
+    return nodeApiFetch<AlertsResponse>('/app/alerts', { method: 'POST' });
 }
 
 export async function markAlertsRead(): Promise<{ success: boolean }> {
-    return apiFetch('/mark_alerts_read.php');
+    return nodeApiFetch('/app/alerts/mark-read', { method: 'POST' });
 }
 
 export async function sendChat(message: string): Promise<{ success: boolean }> {
-    return apiFetch('/chat_api.php', {
+    return nodeApiFetch('/chat', {
         method: 'POST',
         body: JSON.stringify({ action: 'send', message }),
     });
 }
 
 export async function fetchChat(): Promise<{ success: boolean; messages: ChatMessage[] }> {
-    return apiFetch('/chat_api.php', {
+    return nodeApiFetch('/chat', {
         method: 'POST',
         body: JSON.stringify({ action: 'fetch' }),
     });
 }
 
 export async function heartbeat(): Promise<{ ok: number }> {
-    return apiFetch('/heartbeat.php');
+    return nodeApiFetch('/app/heartbeat');
 }
 
-// ---------------------------------------------------------------------------
-// Init Data Logging
-// ---------------------------------------------------------------------------
-// Log the Telegram initData payload for new users when they enter the app.
-// This helps establish a trace of user onboarding (username/profile, etc).
 export async function logInitData(initData: string): Promise<{ success: boolean }> {
-    return apiFetch<{ success: boolean }>('/log_init_data.php', {
+    return nodeApiFetch<{ success: boolean }>('/app/log-init-data', {
         method: 'POST',
         body: JSON.stringify({ initData }),
     });
@@ -292,26 +265,19 @@ export async function getSettings(useCache = true): Promise<AppSettings> {
         if (cached && timestamp) {
             const age = Date.now() - parseInt(timestamp);
             if (age < SETTINGS_CACHE_DURATION) {
-                debug('[Settings] Using cached data');
                 return JSON.parse(cached);
             }
         }
     }
 
     try {
-        const data = await apiFetch<AppSettings>('/get_settings.php');
+        const data = await nodeApiFetch<AppSettings>('/app/settings');
         localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(data));
         localStorage.setItem(SETTINGS_TIMESTAMP_KEY, Date.now().toString());
         return data;
     } catch (err) {
-        debugError('[Settings] Error:', err);
         const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
-        if (cached) {
-            debug('[Settings] Falling back to cache (may be stale)');
-            return JSON.parse(cached);
-        }
-        // Return default settings instead of throwing
-        debug('[Settings] No cache available, returning defaults');
+        if (cached) return JSON.parse(cached);
         return {
             rateMultiplier: 1,
             discountPercent: 0,

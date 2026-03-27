@@ -4,6 +4,7 @@ import { BottomNav } from './BottomNav/BottomNav';
 import { ToastContainer } from './Toast/Toast';
 import { LoadingOverlay } from './LoadingOverlay/LoadingOverlay';
 import { lazy, Suspense, useEffect, useRef, useMemo } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   showBackButton,
   hideBackButton,
@@ -88,18 +89,30 @@ function AppContent() {
   );
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000,    // 10 minutes
+      retry: 2,
+    },
+  },
+});
+
 export function App() {
   const lp = useMemo(() => retrieveLaunchParams(), []);
   const isDark = isMiniAppDark();
 
   return (
-    <AppProvider>
-      <AppRoot
-        appearance={isDark ? 'dark' : 'light'}
-        platform={['macos', 'ios'].includes(lp.tgWebAppPlatform) ? 'ios' : 'base'}
-      >
-        <AppContent />
-      </AppRoot>
-    </AppProvider>
+    <QueryClientProvider client={queryClient}>
+      <AppProvider>
+        <AppRoot
+          appearance={isDark ? 'dark' : 'light'}
+          platform={['macos', 'ios'].includes(lp.tgWebAppPlatform) ? 'ios' : 'base'}
+        >
+          <AppContent />
+        </AppRoot>
+      </AppProvider>
+    </QueryClientProvider>
   );
 }

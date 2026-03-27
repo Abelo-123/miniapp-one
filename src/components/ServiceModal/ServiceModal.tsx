@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
-import { getServices } from '../../api';
+import { useServices } from '../../hooks/useServices';
 
 interface Props {
     category: string;
@@ -12,71 +12,26 @@ interface Props {
 
 const BATCH_SIZE = 50;
 
+/**
+ * ServiceModal — self-contained modal that fetches service data directly.
+ * 
+ * Re-built using TanStack Query for instant caching and unified data.
+ */
 export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
     
-    const [rawServices, setRawServices] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [timedOut, setTimedOut] = useState(false);
-    const timerRef = useRef<ReturnType<typeof setTimeout>>();
-
-    // Fetch services directly on mount — localStorage cache makes this near-instant
-    useEffect(() => {
-        let cancelled = false;
-        setLoading(true);
-
-        getServices(true)
-            .then(data => {
-                if (!cancelled) {
-                    setRawServices(Array.isArray(data) ? data : []);
-                    setLoading(false);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setLoading(false);
-            });
-
-        return () => { cancelled = true; };
-    }, []);
-
-    // Also wait up to 5s if rawServices is empty even after "loading" finishes.
-    useEffect(() => {
-        if (rawServices.length > 0) {
-            if (timerRef.current) clearTimeout(timerRef.current);
-            setTimedOut(false);
-            return;
-        }
-        if (!loading && rawServices.length === 0) {
-            setTimedOut(false);
-            timerRef.current = setTimeout(() => setTimedOut(true), 5000);
-        }
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
-    }, [rawServices.length, loading]);
+    // Use the unified useServices hook
+    const { data: rawServices = [], isLoading: loading, isError } = useServices();
 
     // Compute the relevant services for this category
     const categoryServices = useMemo<Service[]>(() => {
         if (rawServices.length === 0) return [];
         
-        const transformed: Service[] = rawServices.map((s: any) => ({
-            id: s.service,
-            category: s.category,
-            name: s.name,
-            type: s.type as Service['type'],
-            rate: parseFloat(s.rate),
-            min: s.min,
-            max: s.max,
-            averageTime: s.average_time || s.averageTime || '',
-            refill: s.refill,
-            cancel: s.cancel,
-        }));
-
         if (category === 'Top Services') {
-            return transformed.filter(s => recommendedIds.includes(s.id));
+            return rawServices.filter(s => recommendedIds.includes(s.id));
         }
-        return transformed.filter(s => s.category === category);
+        return rawServices.filter(s => s.category === category);
     }, [rawServices, category, recommendedIds]);
 
     const filtered = useMemo(() => {
@@ -152,7 +107,6 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
         boxSizing: 'border-box' as const,
     };
 
-    // The scrollable list — use absolute max-height in px, no flex, overflowY: scroll
     const listStyle: React.CSSProperties = {
         position: 'relative',
         overflowY: 'auto',
@@ -188,9 +142,6 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
         padding: '40px 20px',
         gap: 12,
     };
-
-    const isWaitingForData = (loading || (rawServices.length === 0 && !timedOut));
-    const isTrulyEmpty = !loading && rawServices.length === 0 && timedOut;
 
     return (
         <div style={overlayStyle} onClick={onClose}>
@@ -235,7 +186,7 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
 
                 {/* List */}
                 <div style={listStyle} onScroll={handleScroll} data-count={filtered.length}>
-                    {isWaitingForData ? (
+                    {loading && rawServices.length === 0 ? (
                         <div style={spinnerStyle}>
                             <div style={{
                                 width: 32,
@@ -250,17 +201,13 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                             </span>
                             <style>{`@keyframes svcModalSpin { to { transform: rotate(360deg); } }`}</style>
                         </div>
-                    ) : isTrulyEmpty ? (
+                    ) : isError ? (
                         <div style={emptyStyle}>
                             Failed to load services. Please try again later.
                         </div>
                     ) : categoryServices.length === 0 ? (
                         <div style={emptyStyle}>
                             {`No services found for this category.`}
-                        </div>
-                    ) : filtered.length === 0 ? (
-                        <div style={emptyStyle}>
-                            No services match your search.
                         </div>
                     ) : (
                         <>
@@ -292,6 +239,11 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                                     }}
                                 >
                                     Load more ({filtered.length - visibleCount} remaining)
+                                </div>
+                            )}
+                            {filtered.length === 0 && search && (
+                                <div style={emptyStyle}>
+                                    No services match your search.
                                 </div>
                             )}
                         </>

@@ -5,13 +5,16 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 
-// Import Routes
 import depositRouter from './routes/deposit.js';
 import completeDepositRouter from './routes/completeDeposit.js';
 import verifyDepositRouter from './routes/verifyDeposit.js';
 import chapaCallbackRouter from './routes/chapaCallback.js';
 import getDepositsRouter from './routes/getDeposits.js';
 import getBalanceRouter from './routes/getBalance.js';
+import getServicesRouter from './routes/getServices.js';
+import ordersRouter from './routes/orders.js';
+import appRouter from './routes/app.js';
+import chatRouter from './routes/chat.js';
 
 const app = express();
 
@@ -38,6 +41,10 @@ app.use('/api/chapa-callback', chapaCallbackRouter);
 // User Data Routes
 app.use('/api/deposits', getDepositsRouter);
 app.use('/api/balance', getBalanceRouter);
+app.use('/api/services', getServicesRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/api/app', appRouter);
+app.use('/api/chat', chatRouter);
 
 // Start server
 // In cPanel/Passenger, we MUST NOT specify a port number if we want it to handle routing.

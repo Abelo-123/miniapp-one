@@ -99,7 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
             const data = await api.getServices(false);
             const transformed: Service[] = data.map((s: any) => ({
-                id: s.service,
+                id: s.service || s.id,
                 category: s.category,
                 name: s.name,
                 type: s.type as Service['type'],
@@ -111,7 +111,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 cancel: s.cancel,
             }));
             setServices(transformed);
-            api.refreshServices().catch(console.error);
         } catch (err) {
             console.error('Failed to fetch services:', err);
         }
@@ -138,13 +137,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true);
-            let servicesLoaded = false;
-
-            // Load services (most important - do this first and handle errors gracefully)
+            // Load services (most important)
             try {
                 const servicesData = await api.getServices(true);
                 const transformed: Service[] = servicesData.map((s: any) => ({
-                    id: s.service,
+                    id: s.service || s.id,
                     category: s.category,
                     name: s.name,
                     type: s.type as Service['type'],
@@ -156,7 +153,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     cancel: s.cancel,
                 }));
                 setServices(transformed);
-                servicesLoaded = true;
             } catch (err) {
                 console.error('Failed to load services:', err);
             }
@@ -190,14 +186,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
 
             setIsLoading(false);
-
-            // Refresh services in background after initial load
-            if (servicesLoaded) {
-                api.refreshServices().catch(() => { });
-            }
         };
         loadData();
-    }, []);
+    }, [refreshServices, refreshDeposits]);
 
     const setBalance = useCallback((balance: number) => {
         setUser(prev => prev ? { ...prev, balance } : prev);

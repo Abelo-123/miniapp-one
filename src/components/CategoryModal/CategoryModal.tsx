@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { PLATFORMS } from '../../constants';
-import { getServices } from '../../api';
 import type { SocialPlatform } from '../../types';
+import { useServices } from '../../hooks/useServices';
 
 interface Props {
     platform: SocialPlatform;
@@ -11,34 +11,12 @@ interface Props {
 
 /**
  * CategoryModal — self-contained modal that fetches service data directly.
- *
- * On mount it calls getServices(true) which hits localStorage cache first
- * (near-instant if cached), then falls back to API. This makes it completely
- * independent of AppContext's loading state.
+ * 
+ * Re-built using TanStack Query for instant caching across modals.
  */
 export function CategoryModal({ platform, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
-    const [rawServices, setRawServices] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    // Fetch services directly on mount — localStorage cache makes this near-instant
-    useEffect(() => {
-        let cancelled = false;
-        setLoading(true);
-
-        getServices(true)
-            .then(data => {
-                if (!cancelled) {
-                    setRawServices(Array.isArray(data) ? data : []);
-                    setLoading(false);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setLoading(false);
-            });
-
-        return () => { cancelled = true; };
-    }, []);
+    const { data: rawServices = [], isLoading: loading } = useServices();
 
     // Compute categories from the fetched services + selected platform
     const categories = useMemo(() => {
@@ -48,7 +26,7 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
         const platformDef = PLATFORMS.find(p => p.id === platform);
         if (!platformDef) return [];
 
-        // Extract unique category names — works with both raw API and transformed data
+        // Extract unique category names
         const allCategories = [...new Set(
             rawServices.map((s: any) => s.category as string).filter(Boolean)
         )];
@@ -193,7 +171,7 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
                     </button>
                 </div>
 
-                {/* Search — only show when we have categories */}
+                {/* Search */}
                 {!loading && categories.length > 0 && (
                     <div style={searchBoxStyle}>
                         <input
@@ -208,7 +186,7 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
 
                 {/* List */}
                 <div style={listStyle} data-count={filtered.length}>
-                    {loading ? (
+                    {loading && rawServices.length === 0 ? (
                         <div style={spinnerStyle}>
                             <div style={{
                                 width: 32,
@@ -227,17 +205,20 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
                         <div style={emptyStyle}>
                             No categories available for this platform.
                         </div>
-                    ) : filtered.length === 0 ? (
-                        <div style={emptyStyle}>
-                            No categories match your search.
-                        </div>
                     ) : (
-                        filtered.map(cat => (
-                            <div key={cat} style={itemStyle} onClick={() => onSelect(cat)}>
-                                <span style={{ marginRight: 12, fontSize: 18 }}>📂</span>
-                                <span style={{ color: 'var(--tg-theme-text-color, #fff)' }}>{cat}</span>
-                            </div>
-                        ))
+                        <>
+                            {filtered.map(cat => (
+                                <div key={cat} style={itemStyle} onClick={() => onSelect(cat)}>
+                                    <span style={{ marginRight: 12, fontSize: 18 }}>📂</span>
+                                    <span style={{ color: 'var(--tg-theme-text-color, #fff)' }}>{cat}</span>
+                                </div>
+                            ))}
+                            {filtered.length === 0 && search && (
+                                <div style={emptyStyle}>
+                                    No categories match your search.
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
