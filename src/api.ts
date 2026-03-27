@@ -160,6 +160,19 @@ export async function refreshServices(): Promise<Service[]> {
     }
 }
 
+export interface CategoriesResponse {
+    success: boolean;
+    categories: string[];
+    total: number;
+    cached?: boolean;
+}
+
+export async function getCategories(platform?: string): Promise<string[]> {
+    const query = platform ? `?platform=${encodeURIComponent(platform)}` : '';
+    const data = await nodeApiFetch<CategoriesResponse>(`/categories${query}`);
+    return data.categories || [];
+}
+
 export async function getRecommended(): Promise<number[]> {
     return nodeApiFetch<number[]>('/app/recommended');
 }

@@ -15,6 +15,7 @@ import getServicesRouter from './routes/getServices.js';
 import ordersRouter from './routes/orders.js';
 import appRouter from './routes/app.js';
 import chatRouter from './routes/chat.js';
+import getCategoriesRouter from './routes/getCategories.js';
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/services', getServicesRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/app', appRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/categories', getCategoriesRouter);
 
 // Start server
 // In cPanel/Passenger, we MUST NOT specify a port number if we want it to handle routing.

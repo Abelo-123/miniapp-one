@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
-import { PLATFORMS } from '../../constants';
 import type { SocialPlatform } from '../../types';
-import { useServices } from '../../hooks/useServices';
+import { useCategories } from '../../hooks/useCategories';
 
 interface Props {
     platform: SocialPlatform;
@@ -16,36 +15,12 @@ interface Props {
  */
 export function CategoryModal({ platform, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
-    const { data: rawServices = [], isLoading: loading } = useServices();
+    const { data: rawCategories = [], isLoading: loading } = useCategories(platform);
 
-    // Compute categories from the fetched services + selected platform
     const categories = useMemo(() => {
-        if (rawServices.length === 0) return [];
         if (platform === 'top') return ['Top Services'];
-
-        const platformDef = PLATFORMS.find(p => p.id === platform);
-        if (!platformDef) return [];
-
-        // Extract unique category names
-        const allCategories = [...new Set(
-            rawServices.map((s: any) => s.category as string).filter(Boolean)
-        )];
-
-        if (platform === 'other') {
-            const majorKeywords = PLATFORMS
-                .filter(p => p.id !== 'other' && p.id !== 'top')
-                .flatMap(p => p.keywords);
-            return allCategories.filter(cat => {
-                const lower = cat.toLowerCase();
-                return !majorKeywords.some(kw => lower.includes(kw));
-            });
-        }
-
-        return allCategories.filter(cat => {
-            const lower = cat.toLowerCase();
-            return platformDef.keywords.some(kw => lower.includes(kw));
-        });
-    }, [rawServices, platform]);
+        return rawCategories;
+    }, [rawCategories, platform]);
 
     const filtered = useMemo(() => {
         if (!search.trim()) return categories;
@@ -186,7 +161,7 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
 
                 {/* List */}
                 <div style={listStyle} data-count={filtered.length}>
-                    {loading && rawServices.length === 0 ? (
+                    {loading && categories.length === 0 ? (
                         <div style={spinnerStyle}>
                             <div style={{
                                 width: 32,
