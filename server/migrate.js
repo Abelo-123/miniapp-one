@@ -21,10 +21,29 @@ async function migrate() {
             email VARCHAR(255),
             first_name VARCHAR(255),
             last_name VARCHAR(255),
+            username VARCHAR(255),
+            last_deposit DATETIME,
+            last_order DATETIME,
             UNIQUE KEY (tg_id)
         )`;
         await conn.execute(createAuth);
         console.log('Auth table checked/created.');
+
+        // Add new columns if they don't exist
+        const newColumns = [
+            { name: 'username', sql: 'ALTER TABLE auth ADD COLUMN username VARCHAR(255) AFTER last_name' },
+            { name: 'last_deposit', sql: 'ALTER TABLE auth ADD COLUMN last_deposit DATETIME AFTER username' },
+            { name: 'last_order', sql: 'ALTER TABLE auth ADD COLUMN last_order DATETIME AFTER last_deposit' },
+        ];
+
+        for (const col of newColumns) {
+            try {
+                await conn.execute(col.sql);
+                console.log(`Added ${col.name} column to auth table`);
+            } catch (e) {
+                // Column might already exist
+            }
+        }
 
         // 2. Ensure `deposits` table exists and is optimized
         const createDeposits = `
@@ -55,16 +74,25 @@ async function migrate() {
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id VARCHAR(255) NOT NULL,
             service_id INT NOT NULL,
-            target_link TEXT NOT NULL,
+            link TEXT NOT NULL,
+            target_link TEXT,
             quantity INT NOT NULL,
-            provider_order_id VARCHAR(255),
-            cost DECIMAL(10, 2) NOT NULL,
+            api_order_id VARCHAR(255),
+            charge DECIMAL(10, 2) NOT NULL,
             status VARCHAR(50) DEFAULT 'pending',
             start_count INT DEFAULT 0,
             remains INT DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`;
         await conn.execute(createOrders);
+        
+        // Add target_link column if it doesn't exist (for existing tables)
+        try {
+            await conn.execute('ALTER TABLE orders ADD COLUMN target_link TEXT AFTER service_id');
+            console.log('Added target_link column to orders table');
+        } catch (e) {
+            // Column might already exist
+        }
 
         try {
             await conn.execute('CREATE INDEX idx_orders_user_id ON orders(user_id)');
@@ -148,6 +176,19 @@ async function migrate() {
             service_id INT NOT NULL UNIQUE
         )`;
         await conn.execute(createRec);
+
+        // 9. Ensure `service_custom` table for disabled services
+        const createServiceCustom = `
+        CREATE TABLE IF NOT EXISTS service_custom (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            service_id INT NOT NULL UNIQUE,
+            is_enabled TINYINT DEFAULT 1,
+            custom_rate DECIMAL(10, 2),
+            profit_margin DECIMAL(5, 2),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`;
+        await conn.execute(createServiceCustom);
+        console.log('service_custom table ready');
 
         conn.release();
         console.log('--- Migration & Optimization Complete! ---');

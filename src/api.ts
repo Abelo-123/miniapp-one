@@ -3,9 +3,9 @@ import type {
     AuthResponse, OrderResponse, OrdersListResponse,
     DepositResponse, AlertsResponse, StatusSyncResponse,
 } from './types';
-import { getInitDataRaw } from './helpers/telegram';
+import { getInitDataRaw, getInitDataString } from './helpers/telegram';
 
-const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
+export const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
 
 const isDev = import.meta.env.DEV;
 
@@ -247,16 +247,18 @@ export async function markAlertsRead(): Promise<{ success: boolean }> {
 }
 
 export async function sendChat(message: string): Promise<{ success: boolean }> {
+    const initData = await getInitDataString();
     return nodeApiFetch('/chat', {
         method: 'POST',
-        body: JSON.stringify({ action: 'send', message }),
+        body: JSON.stringify({ initData, action: 'send', message }),
     });
 }
 
 export async function fetchChat(): Promise<{ success: boolean; messages: ChatMessage[] }> {
+    const initData = await getInitDataString();
     return nodeApiFetch('/chat', {
         method: 'POST',
-        body: JSON.stringify({ action: 'fetch' }),
+        body: JSON.stringify({ initData, action: 'fetch' }),
     });
 }
 
@@ -278,6 +280,7 @@ export interface AppSettings {
     maintenanceMode: boolean;
     userCanOrder: boolean;
     marqueeText: string;
+    topServicesIds: string;
 }
 
 export async function getSettings(useCache = true): Promise<AppSettings> {
@@ -307,6 +310,7 @@ export async function getSettings(useCache = true): Promise<AppSettings> {
             maintenanceMode: false,
             userCanOrder: true,
             marqueeText: 'Welcome to Paxyo SMM!',
+            topServicesIds: '',
         };
     }
 }

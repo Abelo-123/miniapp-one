@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Section, Input, Textarea, Button, Cell } from '@telegram-apps/telegram-ui';
+import Swal from 'sweetalert2';
 import { useApp } from '../../context/AppContext';
 import { formatETB, getLinkPlaceholder, QUANTITY_STEP } from '../../constants';
 import * as api from '../../api';
@@ -23,11 +24,12 @@ function isValidUrl(str: string): boolean {
 }
 
 export type OrderFormHandle = { submit: () => Promise<void> };
-export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_props, ref) {
+export type OrderFormProps = { onClose?: () => void };
+export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function OrderForm({ onClose }, ref) {
     const {
         selectedService, selectedPlatform, selectedCategory,
         rateMultiplier, discountPercent,
-        user, userCanOrder, isTelegramApp, showToast,
+        user, userCanOrder, isTelegramApp,
         setBalance, setOrders, orders,
     } = useApp();
 
@@ -73,21 +75,19 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
     const showQuantity = service.type !== 'Package';
     const showPoll = service.type === 'Poll';
 
-    // Validation with error messages - only show errors for touched fields
+    // Validation with error messages
     const validation = useMemo(() => {
         const errs: typeof errors = {};
         
-        // Link validation (only show if user has interacted with field)
-        if (touched.link) {
-            if (!link.trim()) {
-                errs.link = 'Link is required';
-            } else if (!isValidUrl(link.trim())) {
-                errs.link = 'Please enter a valid URL or username';
-            }
+        // Link validation
+        if (!link.trim()) {
+            errs.link = 'Link is required';
+        } else if (!isValidUrl(link.trim())) {
+            errs.link = 'Please enter a valid URL or username';
         }
         
-        // Quantity validation (only show if user has interacted with field)
-        if (touched.quantity && showQuantity && !showComments) {
+        // Quantity validation
+        if (showQuantity && !showComments) {
             const qty = parseInt(quantity);
             if (!quantity || isNaN(qty)) {
                 errs.quantity = 'Quantity is required';
@@ -100,8 +100,8 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
             }
         }
         
-        // Comments validation (only show if user has interacted with field)
-        if (touched.comments && showComments) {
+        // Comments validation
+        if (showComments) {
             const lines = comments.split('\n').filter((l: string) => l.trim());
             if (lines.length === 0) {
                 errs.comments = 'Please enter at least one comment';
@@ -112,8 +112,8 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
             }
         }
         
-        // Answer number validation for polls (only show if user has interacted with field)
-        if (touched.answerNumber && showPoll) {
+        // Answer number validation for polls
+        if (showPoll) {
             const ans = parseInt(answerNumber);
             if (!answerNumber || isNaN(ans)) {
                 errs.answerNumber = 'Answer number is required';
@@ -129,10 +129,18 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
         if (!userCanOrder) {
             errs.general = 'Ordering is currently disabled. Please try again later.';
         }
+
+        const visibleErrs: typeof errors = {};
+        if (errs.general) visibleErrs.general = errs.general;
+        if (touched.link && errs.link) visibleErrs.link = errs.link;
+        if (touched.quantity && errs.quantity) visibleErrs.quantity = errs.quantity;
+        if (touched.comments && errs.comments) visibleErrs.comments = errs.comments;
+        if (touched.answerNumber && errs.answerNumber) visibleErrs.answerNumber = errs.answerNumber;
         
         return {
-            isValid: Object.keys(errs).length === 0,
-            errors: errs,
+            isValid: Object.keys(errs).length === 0, // raw
+            errors: visibleErrs, // filtered for UI
+            rawErrors: errs, // raw state
         };
     }, [link, quantity, comments, answerNumber, service, charge, user, userCanOrder, showComments, showQuantity, showPoll, touched]);
 
@@ -141,15 +149,22 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
 
     // Submit Handler
     const handleSubmit = async () => {
-        // First, mark all fields as touched so validation errors show
+        // Mark all fields as touched to show errors visually
         setTouched({ link: true, quantity: true, comments: true, answerNumber: true });
         
-        // Then validate (after touching, errors will show)
-        if (!validation.isValid) {
-            // Provide haptic feedback for error
+        // Validate payload based on raw errors, ignoring UI visibility
+        if (Object.keys(validation.rawErrors).length > 0) {
             if (isTelegramApp) {
                 hapticNotification('error');
             }
+            // Get the first error to show in Swal
+            const firstError = Object.values(validation.rawErrors)[0];
+            Swal.fire({
+                title: 'Invalid Order',
+                text: firstError,
+                icon: 'warning',
+                confirmButtonColor: '#f39c12'
+            });
             return;
         }
 
@@ -184,7 +199,19 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
 
                 setOrders([newOrder, ...orders]);
                 if (user) setBalance(response.new_balance);
-                showToast('success', `Order #${response.order_id} placed!`);
+                
+                // Show success message with Swal
+                Swal.fire({
+                    title: 'Order Placed!',
+                    text: response.verified 
+                        ? `Your order #${response.order_id} has been confirmed!`
+                        : `Your order #${response.order_id} is being processed.`,
+                    icon: 'success',
+                    confirmButtonColor: '#2ecc71',
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
+                
                 hapticImpact('heavy');
                 hapticNotification('success');
 
@@ -192,18 +219,31 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
                 setQuantity('');
                 setComments('');
                 setAnswerNumber('');
+                setTouched({});
+                
+                if (onClose) onClose();
             } else {
                 // Handle API error response
                 const errorMsg = response.error || 'Failed to place order';
                 setErrors({ general: errorMsg });
-                showToast('error', errorMsg);
+                Swal.fire({
+                    title: 'Order Failed',
+                    text: errorMsg,
+                    icon: 'error',
+                    confirmButtonColor: '#ff4757'
+                });
                 hapticNotification('error');
             }
         } catch (err: any) {
             // Handle network/connection errors
             const errorMsg = err.message || 'Network error. Please check your connection and try again.';
             setErrors({ general: errorMsg });
-            showToast('error', errorMsg);
+            Swal.fire({
+                title: 'Connection Error',
+                text: errorMsg,
+                icon: 'error',
+                confirmButtonColor: '#ff4757'
+            });
             hapticNotification('error');
         } finally {
             setSubmitting(false);
@@ -269,11 +309,28 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
         return () => disableClosingConfirmation();
     }, [link, quantity, submitting]);
 
+    // Auto-scroll to form when service changes (e.g. from search)
+    const containerRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (containerRef.current) {
+            setTimeout(() => {
+                containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+    }, [service.id]);
+
     return (
-        <>
-            <Section
-                header={`Selected Service: ${service.name} `}
-                footer={user && charge > user.balance ? `Insufficient Balance(Have: ${formatETB(user.balance)})` : `Total Charge: ${formatETB(charge)} `}
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-sheet modal-sheet--large" style={{ paddingBottom: '24px' }} onClick={e => e.stopPropagation()}>
+                <div className="modal-header" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--tg-theme-bg-color, #1a1a2e)' }}>
+                    <span className="modal-title">Configure Order</span>
+                    <Button mode="plain" style={{ padding: 0 }} onClick={onClose}>✕</Button>
+                </div>
+                
+                <div style={{ maxHeight: '80vh', overflowY: 'auto', paddingBottom: '80px' }} ref={containerRef}>
+                    <Section
+                header={`Selected Service: ${service.name}`}
+                footer={user && charge > user.balance ? `Insufficient Balance (Have: ${formatETB(user.balance)})` : `Total Charge: ${formatETB(charge)}`}
             >
                 <Cell
                     subtitle={`${service.min} - ${service.max.toLocaleString()} • Rate: ${formatETB(service.rate)} `}
@@ -296,8 +353,6 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
                     value={link}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         setLink(e.target.value);
-                        setTouched(prev => ({ ...prev, link: true }));
-                        setErrors(prev => ({ ...prev, link: undefined }));
                     }}
                     status={validation.errors.link ? 'error' : 'default'}
                 />
@@ -314,8 +369,6 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
                             value={quantity}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 setQuantity(e.target.value);
-                                setTouched(prev => ({ ...prev, quantity: true }));
-                                setErrors(prev => ({ ...prev, quantity: undefined }));
                             }}
                             status={validation.errors.quantity ? 'error' : 'default'}
                         />
@@ -333,8 +386,6 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
                             value={comments}
                             onChange={(e: any) => {
                                 setComments(e.target.value);
-                                setTouched(prev => ({ ...prev, comments: true }));
-                                setErrors(prev => ({ ...prev, comments: undefined }));
                             }}
                             status={validation.errors.comments ? 'error' : 'default'}
                         />
@@ -355,8 +406,6 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
                             value={answerNumber}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 setAnswerNumber(e.target.value);
-                                setTouched(prev => ({ ...prev, answerNumber: true }));
-                                setErrors(prev => ({ ...prev, answerNumber: undefined }));
                             }}
                             status={validation.errors.answerNumber ? 'error' : 'default'}
                         />
@@ -374,20 +423,20 @@ export const OrderForm = forwardRef<OrderFormHandle, {}>(function OrderForm(_pro
                 </div>
             )}
 
-            {/* Fallback Button for Non-Telegram Environment */}
-            {!isTelegramApp && (
-                <Section>
-                    <Button
-                        size="l"
-                        stretched
-                        disabled={!isValid || submitting}
-                        onClick={handleSubmit}
-                        loading={submitting}
-                    >
-                        {submitting ? 'Ordering...' : `Pay ${formatETB(charge)} `}
-                    </Button>
-                </Section>
-            )}
-        </>
+            {/* Fallback Button for Modal */}
+            <Section>
+                <Button
+                    size="l"
+                    stretched
+                    disabled={submitting}
+                    onClick={handleSubmit}
+                    loading={submitting}
+                >
+                    {submitting ? 'Ordering...' : `Pay ${formatETB(charge)} `}
+                </Button>
+            </Section>
+            </div>
+        </div>
+    </div>
     );
 });

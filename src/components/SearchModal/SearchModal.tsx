@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
+import { List, Section, Cell, Input, Placeholder } from '@telegram-apps/telegram-ui';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
-import { getServices } from '../../api';
+import { useAllServices } from '../../hooks/useAllServices';
 
 interface Props {
     onSelect: (service: Service) => void;
@@ -10,62 +11,7 @@ interface Props {
 
 export function SearchModal({ onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
-    const [rawServices, setRawServices] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [timedOut, setTimedOut] = useState(false);
-    const timerRef = useRef<ReturnType<typeof setTimeout>>();
-
-    // Fetch services directly on mount — localStorage cache makes this near-instant
-    useEffect(() => {
-        let cancelled = false;
-        setLoading(true);
-
-        getServices(true)
-            .then(data => {
-                if (!cancelled) {
-                    setRawServices(Array.isArray(data) ? data : []);
-                    setLoading(false);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setLoading(false);
-            });
-
-        return () => { cancelled = true; };
-    }, []);
-
-    // Also wait up to 5s if rawServices is empty even after "loading" finishes.
-    useEffect(() => {
-        if (rawServices.length > 0) {
-            if (timerRef.current) clearTimeout(timerRef.current);
-            setTimedOut(false);
-            return;
-        }
-        if (!loading && rawServices.length === 0) {
-            setTimedOut(false);
-            timerRef.current = setTimeout(() => setTimedOut(true), 5000);
-        }
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
-    }, [rawServices.length, loading]);
-
-    // Compute the relevant services
-    const services = useMemo<Service[]>(() => {
-        if (rawServices.length === 0) return [];
-        return rawServices.map((s: any) => ({
-            id: s.service,
-            category: s.category,
-            name: s.name,
-            type: s.type as Service['type'],
-            rate: parseFloat(s.rate),
-            min: s.min,
-            max: s.max,
-            averageTime: s.average_time || s.averageTime || '',
-            refill: s.refill,
-            cancel: s.cancel,
-        }));
-    }, [rawServices]);
+    const { data: services = [], isLoading } = useAllServices();
 
     const results = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -87,79 +33,94 @@ export function SearchModal({ onSelect, onClose }: Props) {
         return map;
     }, [results]);
 
-    const isWaitingForData = (loading || (rawServices.length === 0 && !timedOut));
-    const isTrulyEmpty = !loading && rawServices.length === 0 && timedOut;
-
-    const spinnerStyle: React.CSSProperties = {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '40px 20px',
-        gap: 12,
-    };
-
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-sheet modal-sheet--large" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <span className="modal-title">🔍 Search All Services</span>
-                    <button className="modal-close" onClick={onClose}>✕</button>
-                </div>
-                
-                <div className="modal-search">
-                    <input
-                        type="text"
-                        className="modal-search-input"
-                        placeholder="Search by name, ID, or category..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        autoFocus
-                    />
-                </div>
+        <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'var(--tg-theme-bg-color, #ffffff)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'slideUp 0.3s ease-out'
+        }}>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px',
+                borderBottom: '1px solid var(--tg-theme-hint-color, #e0e0e0)'
+            }}>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>🔍 Search</h2>
+                <button 
+                    onClick={onClose}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--tg-theme-text-color, #000)',
+                        cursor: 'pointer',
+                        padding: '4px'
+                    }}
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingTop: '0px' }}>
+                <List>
+                    <Section>
+                        <Input
+                            placeholder="Type name, ID, or category..."
+                            value={search}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        />
+                    </Section>
 
-                <div className="modal-list">
-                    {isWaitingForData ? (
-                        <div style={spinnerStyle}>
-                            <div style={{
-                                width: 32,
-                                height: 32,
-                                border: '3px solid rgba(255,255,255,0.1)',
-                                borderTopColor: 'var(--tg-theme-link-color, #6ab3f3)',
-                                borderRadius: '50%',
-                                animation: 'searchModalSpin 0.8s linear infinite',
-                            }} />
-                            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
-                                Loading services...
-                            </span>
-                            <style>{`@keyframes searchModalSpin { to { transform: rotate(360deg); } }`}</style>
-                        </div>
-                    ) : isTrulyEmpty ? (
-                         <div className="modal-empty">Failed to load services. Please try again later.</div>
+                    {isLoading ? (
+                        <Placeholder description="Loading services..." />
                     ) : search.trim() === '' ? (
-                        <div className="modal-empty">Start typing to search across all services</div>
+                        <Placeholder description="Start typing to search" />
                     ) : results.length === 0 ? (
-                        <div className="modal-empty">No services match your search</div>
+                        <Placeholder description="No services match your search" />
                     ) : (
                         Array.from(grouped.entries()).map(([category, svcs]) => (
-                            <div key={category}>
-                                <div className="modal-group-header">{category}</div>
+                            <Section key={category} header={category}>
                                 {svcs.map(svc => (
-                                    <div
+                                    <Cell
                                         key={svc.id}
-                                        className="modal-item"
+                                        multiline
                                         onClick={() => onSelect(svc)}
+                                        description={
+                                            <span style={{ fontSize: 12, color: 'var(--tg-theme-hint-color, #999)' }}>
+                                                {svc.category}
+                                            </span>
+                                        }
+                                        after={
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                                <span style={{ 
+                                                    fontSize: 11, 
+                                                    fontWeight: 600, 
+                                                    color: 'var(--accent, #7c5cfc)',
+                                                    background: 'rgba(124, 92, 252, 0.1)',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '8px'
+                                                }}>
+                                                    ID: {svc.id}
+                                                </span>
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tg-theme-text-color)' }}>
+                                                    {formatETB(svc.rate)}
+                                                </span>
+                                            </div>
+                                        }
                                     >
-                                        <div className="modal-item-main">
-                                            <div className="modal-item-name">{svc.name}</div>
-                                            <div className="modal-item-desc">#{svc.id} • {formatETB(svc.rate)}/1K</div>
-                                        </div>
-                                    </div>
+                                        {svc.name}
+                                    </Cell>
                                 ))}
-                            </div>
+                            </Section>
                         ))
                     )}
-                </div>
+                </List>
             </div>
         </div>
     );

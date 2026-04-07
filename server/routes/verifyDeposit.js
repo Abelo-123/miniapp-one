@@ -133,14 +133,20 @@ router.post('/', async (req, res) => {
             await conn.commit();
             conn.release();
 
+            // Extract the true status and message. If a transaction fails (e.g., Wrong PIN, Insufficient Funds),
+            // Chapa might return { message: "Insufficient balance", status: "failed", data: null }
+            const realStatus = result.data?.status || result.raw?.status || 'pending';
+            const realMessage = result.data?.charge_message || result.data?.payment_message || result.message || result.raw?.message || 'Payment declined by bank or provider.';
+
             console.log(
-                `[verify_deposit] Chapa Verification for ${txRef}: ${result.data?.status ?? 'No status'} (Success: ${result.success})`
+                `[verify_deposit] Chapa Verification for ${txRef}: Status=${realStatus}, Msg=${realMessage} (Success: ${result.success})`
             );
 
             return res.json({
                 success: false,
-                message: `Payment status: ${result.data?.status ?? 'pending'}`,
-                chapa_status: result.data?.status ?? 'not_found',
+                message: `Payment status: ${realStatus}`,
+                chapa_status: realStatus,
+                bank_message: realMessage
             });
         }
     } catch (err) {

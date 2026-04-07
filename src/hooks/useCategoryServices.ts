@@ -7,7 +7,7 @@ export function useCategoryServices(category?: string, ids?: number[]) {
         queryKey: ['services', 'category', category, ids?.join(',')],
         queryFn: async () => {
             const data = await getServicesByCategory(
-                category === 'Top Services' ? undefined : category,
+                category,
                 category === 'Top Services' ? ids : undefined
             );
             

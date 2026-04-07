@@ -8,8 +8,10 @@ import {
     cloudGet,
     getInitDataUser,
     getInitDataString,
+    getInitDataRaw,
 } from '../helpers/telegram';
 import * as api from '../api';
+import Swal from 'sweetalert2';
 
 interface AppState {
     user: UserProfile | null;
@@ -74,7 +76,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const [user, setUser] = useState<UserProfile | null>(null);
     const [services, setServices] = useState<Service[]>([]);
-    const [recommendedIds, _setRecommendedIds] = useState<number[]>([]);
+    const [recommendedIds, setRecommendedIds] = useState<number[]>([]);
     const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -93,6 +95,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         maintenanceMode: false,
         userCanOrder: true,
         marqueeText: 'Welcome to Paxyo SMM!',
+        topServicesIds: '',
     });
 
     const refreshServices = useCallback(async () => {
@@ -117,7 +120,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const refreshOrders = useCallback(async () => {
-        // Temporarily disabled
+        try {
+            const data = await api.getOrders();
+            if (data && data.orders) {
+                setOrders(data.orders);
+            }
+        } catch (err) {
+            console.error('Failed to refresh orders:', err);
+        }
     }, []);
 
     const refreshDeposits = useCallback(async () => {
@@ -131,8 +141,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const refreshAlerts = useCallback(async () => {
-        // Temporarily disabled
-    }, []);
+        try {
+            const initData = await getInitDataString();
+            if (initData) {
+                const data = await api.getAlerts();
+                if (data) {
+                    setAlerts(data.alerts || []);
+                    setUnreadAlerts(data.unread_count ?? 0);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to refresh alerts:', err);
+        }
+    }, [setAlerts, setUnreadAlerts]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -157,9 +178,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 console.error('Failed to load services:', err);
             }
 
-            // Load settings (independent of services)
+            // Load settings (independent of services) - always fetch fresh
             try {
-                const settingsData = await api.getSettings(true);
+                localStorage.removeItem('paxyo_settings_cache');
+                localStorage.removeItem('paxyo_settings_timestamp');
+                const settingsData = await api.getSettings(false);
                 _setSettings({
                     rateMultiplier: settingsData.rateMultiplier || 1,
                     discountPercent: settingsData.discountPercent || 0,
@@ -167,7 +190,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     maintenanceMode: settingsData.maintenanceMode || false,
                     userCanOrder: settingsData.userCanOrder !== false,
                     marqueeText: settingsData.marqueeText || 'Welcome to Paxyo SMM!',
+                    topServicesIds: settingsData.topServicesIds || '',
                 });
+                
+                if (settingsData.topServicesIds) {
+                    const parsedIds = settingsData.topServicesIds
+                        .split(',')
+                        .map(s => parseInt(s.trim(), 10))
+                        .filter(n => !isNaN(n));
+                    setRecommendedIds(parsedIds);
+                } else {
+                    setRecommendedIds([]);
+                }
             } catch (err) {
                 console.error('Failed to load settings:', err);
             }
@@ -177,6 +211,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const initData = await getInitDataString();
                 if (initData) {
                     refreshDeposits();
+                    refreshOrders();
                     api.getBalance(initData).then(res => {
                         if (res.success) setBalance(res.balance);
                     }).catch(() => { });
@@ -188,7 +223,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
         };
         loadData();
-    }, [refreshServices, refreshDeposits]);
+    }, [refreshServices, refreshDeposits, refreshOrders]);
 
     const setBalance = useCallback((balance: number) => {
         setUser(prev => prev ? { ...prev, balance } : prev);
@@ -206,14 +241,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
-    useEffect(() => {
-        setSelectedCategory(null);
-        setSelectedService(null);
-    }, [selectedPlatform]);
-
-    useEffect(() => {
-        setSelectedService(null);
-    }, [selectedCategory]);
+    // Cascading state resets were moved to explicit UI handlers (OrderPage)
+    // to prevent race conditions during unified programmatic selection (SearchPanel).
 
     useEffect(() => {
         const loadUser = async () => {
@@ -228,6 +257,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         api.logInitData(initData).catch(() => { /* no-op */ });
                         initDataLoggedRef.current = true;
                     }
+                    
+                    refreshAlerts();
 
                     api.authenticateTelegram(initData).then((authResponse) => {
                         if (authResponse.success && authResponse.user) {
@@ -235,6 +266,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 id: authResponse.user.id,
                                 first_name: authResponse.user.first_name,
                                 last_name: authResponse.user.last_name,
+                                username: authResponse.user.username,
                                 display_name: [authResponse.user.first_name, authResponse.user.last_name].filter(Boolean).join(' '),
                                 photo_url: authResponse.user.photo_url || '',
                                 balance: authResponse.user.balance,
@@ -256,6 +288,113 @@ export function AppProvider({ children }: { children: ReactNode }) {
         };
         loadUser();
     }, []);
+
+    // REALTIME STATUS SYNCING (via Server-Sent Events)
+    const esRef = useRef<EventSource | null>(null);
+
+    useEffect(() => {
+        const initData = getInitDataRaw();
+        if (!initData) {
+            console.warn('[SSE] No initData available, skipping stream');
+            return;
+        }
+
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let cancelled = false;
+
+        function connect() {
+            if (cancelled) return;
+            // Close any existing connection 
+            if (esRef.current) {
+                esRef.current.close();
+                esRef.current = null;
+            }
+
+            const url = `${api.NODE_API_URL}/orders/stream?initData=${encodeURIComponent(initData!)}`;
+            console.log('[SSE] Connecting to', url);
+            const es = new EventSource(url);
+            esRef.current = es;
+
+            es.onopen = () => {
+                console.log('[SSE] Connected successfully');
+            };
+
+            es.onmessage = (event) => {
+                console.log('[SSE] Received:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'ORDER_PLACED' && data.order) {
+                        // Instantly insert the server-verified order into state
+                        setOrders(prev => {
+                            // Avoid duplicates (optimistic update may already exist)
+                            const exists = prev.some(o => String(o.id) === String(data.order.id) || String(o.api_order_id) === String(data.order.api_order_id));
+                            if (exists) {
+                                // Replace the optimistic entry with real data
+                                return prev.map(o =>
+                                    (String(o.id) === String(data.order.id) || String(o.api_order_id) === String(data.order.api_order_id))
+                                        ? data.order : o
+                                );
+                            }
+                            return [data.order, ...prev];
+                        });
+                        if (data.new_balance !== undefined) {
+                            setBalance(data.new_balance);
+                        }
+                    }
+
+                    if (data.type === 'ORDER_UPDATED' && data.order) {
+                        // Inline-patch the specific order — no full refresh needed
+                        setOrders(prev => prev.map(o =>
+                            (String(o.id) === String(data.order.id) || String(o.api_order_id) === String(data.order.api_order_id))
+                                ? { ...o, status: data.order.status, start_count: data.order.start_count, remains: data.order.remains }
+                                : o
+                        ));
+
+                        if (data.refunded) {
+                            // Refresh balance after refund
+                            getInitDataString().then(initStr => {
+                                if (initStr) {
+                                    api.getBalance(initStr).then(b => {
+                                        if (b.success) setBalance(b.balance);
+                                    }).catch(() => {});
+                                }
+                            });
+
+                            Swal.fire({
+                                title: 'Order Updated',
+                                text: 'An order was refunded. The amount has been credited to your balance!',
+                                icon: 'info',
+                                confirmButtonColor: '#3498db'
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error('[SSE] Parse error:', e);
+                }
+            };
+
+            es.onerror = (err) => {
+                console.warn('[SSE] Connection error, will reconnect in 3s', err);
+                es.close();
+                esRef.current = null;
+                if (!cancelled) {
+                    reconnectTimer = setTimeout(connect, 3000);
+                }
+            };
+        }
+
+        connect();
+
+        return () => {
+            cancelled = true;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            if (esRef.current) {
+                esRef.current.close();
+                esRef.current = null;
+            }
+        };
+    }, [setBalance]);
 
     const handleSetActiveTab = useCallback((tab: TabId) => {
         setActiveTab(tab);

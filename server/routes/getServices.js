@@ -11,45 +11,199 @@ import pool from '../config/database.js';
 
 const router = Router();
 
-// In-memory cache to prevent spamming GodOfPanel
-let cachedServices = null;
+// In-memory cache - preloaded at startup
+let cachedServices = [];
 let lastCacheTime = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// Preload services on server start
+async function preloadServices() {
+    const apiKey = process.env.GODOFPANEL_API_KEY;
+    if (!apiKey) {
+        console.log('[get_services] No API key, skipping preload');
+        return;
+    }
+    
+    try {
+        console.log('[get_services] Preloading services...');
+        
+        // Fetch disabled services first
+        let disabledServiceIds = new Set();
+        try {
+            const [disabledRows] = await pool.execute('SELECT service_id FROM service_custom WHERE is_enabled = 0');
+            disabledRows.forEach(row => disabledServiceIds.add(row.service_id));
+            if (disabledServiceIds.size > 0) {
+                console.log(`[get_services] Will exclude ${disabledServiceIds.size} disabled services`);
+            }
+        } catch (e) {
+            // Table might not exist yet
+        }
+        
+        let response, rawServices;
+        for (let i = 0; i < 3; i++) {
+            try {
+                response = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=services`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        rawServices = data;
+                        break;
+                    }
+                }
+            } catch (e) {}
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        if (!rawServices) throw new Error("GodOfPanel failed after 3 retries");
+        
+        if (Array.isArray(rawServices)) {
+            // Filter disabled services
+            cachedServices = rawServices.filter(s => !disabledServiceIds.has(parseInt(s.service)));
+            lastCacheTime = Date.now();
+            console.log(`[get_services] Preloaded ${cachedServices.length} services (${rawServices.length - cachedServices.length} disabled)`);
+        }
+    } catch(e) {
+        console.error('[get_services] Preload failed:', e.message);
+    }
+}
+
+preloadServices();
 
 router.get('/', async (req, res) => {
-    try {
-        const forceRefresh = req.query.refresh === '1';
-        const reqCategory = req.query.category || null;
-        const reqIds = req.query.ids ? req.query.ids.split(',').map(id => parseInt(id, 10)) : null;
-        const apiKey = process.env.GODOFPANEL_API_KEY;
+    const forceRefresh = req.query.refresh === '1';
+    const reqCategory = req.query.category || null;
+    const reqIds = req.query.ids ? req.query.ids.split(',').map(id => parseInt(id, 10)) : null;
+    const apiKey = process.env.GODOFPANEL_API_KEY;
 
+    try {
         if (!apiKey) {
             return res.status(500).json({ error: 'GODOFPANEL_API_KEY not configured in backend .env' });
         }
 
+        // If "top" category requested, get services from top_services_ids setting
+        if (reqCategory === 'Top Services') {
+            // Fetch top_services_ids from settings
+            let topServicesIds = '';
+            try {
+                const [settingRows] = await pool.execute('SELECT setting_value FROM settings WHERE setting_key = "top_services_ids"');
+                if (settingRows.length > 0) {
+                    topServicesIds = settingRows[0].setting_value || '';
+                }
+            } catch (e) { /* ignore */ }
+
+            if (!topServicesIds) {
+                return res.json([]);
+            }
+
+            // Parse comma-separated IDs
+            const recommendedIds = topServicesIds.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+            
+            if (recommendedIds.length === 0) {
+                return res.json([]);
+            }
+            
+            // Use cached services filtered to recommended IDs (maintain exact order)
+            if (cachedServices && cachedServices.length > 0) {
+                const [settingsRows] = await pool.execute(
+                    'SELECT setting_value FROM settings WHERE setting_key = "rate_multiplier"'
+                );
+                const rateMultiplier = settingsRows.length > 0 
+                    ? parseFloat(settingsRows[0].setting_value) || 55.0 
+                    : 55.0;
+                
+                // Filter and maintain exact order from top_services_ids
+                const filtered = recommendedIds
+                    .map(id => cachedServices.find(s => parseInt(s.service) === id))
+                    .filter(Boolean);
+
+                const transformed = filtered.map(svc => ({
+                    service: svc.service,
+                    category: svc.category,
+                    name: svc.name,
+                    type: svc.type,
+                    rate: (parseFloat(svc.rate) * rateMultiplier).toFixed(2),
+                    min: svc.min,
+                    max: svc.max,
+                    average_time: svc.average_time || '',
+                    refill: svc.refill,
+                    cancel: svc.cancel,
+                }));
+                return res.json(transformed);
+            }
+        }
+
         const now = Date.now();
-        if (!forceRefresh && cachedServices && (now - lastCacheTime) < CACHE_TTL_MS) {
+        
+        // Always fetch latest disabled services from DB for instant filtering
+        let disabledServiceIds = new Set();
+        try {
+            const [disabledRows] = await pool.execute('SELECT service_id FROM service_custom WHERE is_enabled = 0');
+            disabledRows.forEach(row => disabledServiceIds.add(row.service_id));
+        } catch (e) { /* table may not exist */ }
+
+        // If we have preloaded cache, use it instantly
+        if (!forceRefresh && cachedServices && cachedServices.length > 0) {
             let result = cachedServices;
             if (reqCategory) result = result.filter(s => s.category === reqCategory);
             if (reqIds) result = result.filter(s => reqIds.includes(s.service));
-            return res.json(result);
+            
+            // Transform with rate multiplier (cached, fast)
+            const [settingsRows] = await pool.execute(
+                'SELECT setting_value FROM settings WHERE setting_key = "rate_multiplier"'
+            );
+            let rateMultiplier = 55.0;
+            if (settingsRows.length > 0) {
+                rateMultiplier = parseFloat(settingsRows[0].setting_value) || 55.0;
+            }
+
+            const transformed = cachedServices
+                .filter(svc => !disabledServiceIds.has(parseInt(svc.service))) // Filter disabled
+                .map(svc => ({
+                    service: svc.service,
+                    category: svc.category,
+                    name: svc.name,
+                    type: svc.type,
+                    rate: (parseFloat(svc.rate) * rateMultiplier).toFixed(2),
+                    min: svc.min,
+                    max: svc.max,
+                    average_time: svc.average_time || '',
+                    drip: svc.drip,
+                    refill: svc.refill,
+                    cancel: svc.cancel,
+                }));
+
+            // Filter by category/ids
+            let finalResult = transformed;
+            if (reqCategory) finalResult = finalResult.filter(s => s.category === reqCategory);
+            if (reqIds) finalResult = finalResult.filter(s => reqIds.includes(s.service));
+
+            return res.json(finalResult);
         }
 
-        // 1. Fetch raw services from GodOfPanel
-        const response = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=services`);
-        if (!response.ok) {
-            throw new Error(`GodOfPanel returned ${response.status}`);
+        // Fallback: fetch fresh if cache is empty
+        let response, rawServices, lastProviderError = null;
+        for (let i = 0; i < 3; i++) {
+            try {
+                response = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=services`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        rawServices = data;
+                        break;
+                    } else if (data.error) {
+                        lastProviderError = data.error;
+                    }
+                }
+            } catch (e) {}
+            await new Promise(r => setTimeout(r, 1000));
         }
-        
-        const rawServices = await response.json();
-        
-        if (!Array.isArray(rawServices)) {
-            // GodOfPanel might return { error: "..." } if key is invalid
-            if (rawServices.error) {
-                console.error('[get_services] Provider Error:', rawServices.error);
-                return res.status(502).json({ error: rawServices.error });
+
+        if (!rawServices) {
+            if (lastProviderError) {
+                console.error('[get_services] Provider Error:', lastProviderError);
+                return res.status(502).json({ error: lastProviderError });
             }
-            throw new Error('Invalid response format from provider');
+            throw new Error('Invalid response format or provider timeout after 3 retries');
         }
 
         // 2. Fetch rate multiplier from DB
@@ -61,7 +215,7 @@ router.get('/', async (req, res) => {
             rateMultiplier = parseFloat(settingsRows[0].setting_value) || 55.0;
         }
 
-        // 3. Fetch manual service adjustments from DB (average times, etc)
+        // Fetch manual service adjustments from DB (average times, etc)
         // Table might not exist yet, we wrap in try-catch to not break completely if missing
         let adjustmentsMap = {};
         try {
@@ -73,8 +227,10 @@ router.get('/', async (req, res) => {
             console.log('[get_services] Note: service_adjustments table might be missing or empty. Skipping adjustments.');
         }
 
-        // 4. Transform services
-        const finalServices = rawServices.map(svc => {
+        // 4. Transform services (filtering out disabled ones)
+        const finalServices = rawServices
+            .filter(svc => !disabledServiceIds.has(parseInt(svc.service))) // Filter disabled
+            .map(svc => {
             const numericRate = parseFloat(svc.rate) || 0;
             const finalRate = (numericRate * rateMultiplier).toFixed(2);
             
@@ -106,7 +262,7 @@ router.get('/', async (req, res) => {
         console.error('[get_services] Error:', err);
         
         // Fallback to cache if request fails but we have stale data
-        if (cachedServices) {
+        if (cachedServices && cachedServices.length > 0) {
             console.log('[get_services] Serving stale cache due to upstream error.');
             let result = cachedServices;
             if (reqCategory) result = result.filter(s => s.category === reqCategory);

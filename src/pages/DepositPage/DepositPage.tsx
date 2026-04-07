@@ -1,7 +1,9 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import Swal from 'sweetalert2';
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
 import { hapticSelection, hapticImpact, hapticNotification, getInitDataString } from '../../helpers/telegram';
+import { Button, Input } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
 
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
@@ -312,6 +314,33 @@ export function DepositPage() {
                     return;
                 }
 
+                const statusStr = String(data.chapa_status || '').toLowerCase();
+                const isFailed = statusStr.includes('fail') || statusStr.includes('reject') || statusStr.includes('cancel');
+
+                // If Chapa reports the payment as failed (e.g. they typed the wrong PIN on their phone)
+                // Stop polling immediately and show the exact reason from the bank
+                if (isFailed) {
+                    setStep('amount');
+                    activeTxRefRef.current = null;
+                    
+                    let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
+                    // If the bank message is just generic API success text, rewrite it to make sense
+                    if (declinedReason.toLowerCase().includes('fetched successfully')) {
+                        declinedReason = 'Payment was failed or cancelled by user.';
+                    }
+                    
+                    Swal.fire({
+                        title: 'Payment Declined',
+                        html: `<div style="color: #e74c3c; font-weight: 500;">${declinedReason}</div>`,
+                        icon: 'error',
+                        confirmButtonColor: '#6c5ce7',
+                        confirmButtonText: 'Try Again'
+                    });
+                    
+                    hapticNotification('error');
+                    return; // Stop polling
+                }
+
                 // Otherwise continue polling — show progress to user
                 const elapsed = delays.slice(0, attempt + 1).reduce((a, b) => a + b, 0);
                 const elapsedSec = Math.round(elapsed / 1000);
@@ -377,17 +406,22 @@ export function DepositPage() {
 
                 onPaymentFailure: (error: any) => {
                     console.log('[chapa] onPaymentFailure:', error);
-                    const errStr = String(error?.message || error).toLowerCase();
+                    let rawMsg = error?.message || error?.error || String(error) || 'Payment failed';
+                    
+                    // Sometimes Chapa returns a stringified JSON wrapper
+                    try {
+                        if (typeof rawMsg === 'string' && rawMsg.startsWith('{')) {
+                            const parsed = JSON.parse(rawMsg);
+                            rawMsg = parsed.message || parsed.error || rawMsg;
+                        }
+                    } catch (e) { }
 
-                    // Suppress false positives from Chapa SDK
+                    const errStr = rawMsg.toLowerCase();
+
+                    // Only suppress actual network / CORS false positives that sometimes occur 
+                    // even when the backend charge was successful.
                     const isFalsePositive = (
-                        errStr.includes('phone') ||
-                        errStr.includes('mobile') ||
-                        errStr.includes('valid') ||
-                        errStr.includes('format') ||
-                        errStr.includes('insert') ||
                         errStr.includes('cors') ||
-                        errStr.includes('network') ||
                         errStr.includes('fetch') ||
                         errStr.includes('502') ||
                         errStr.includes('bad gateway')
@@ -402,10 +436,52 @@ export function DepositPage() {
                             verifyDeposit(txRef);
                         }, 2000);
                     } else {
-                        // Real failure
+                        // Real failure (e.g. Invalid PIN, Insufficient Funds, etc)
                         setStep('amount');
-                        showToast('error', 'Payment failed. Please try again.');
-                        hapticNotification('error');
+                        
+                        // The error object thrown by the Chapa SDK is often generic (e.g., "Payment failed").
+                        // To get the EXACT reason (like "Insufficient balance" or "Invalid PIN"), 
+                        // we MUST ask the backend verification endpoint.
+                        Swal.fire({
+                            title: 'Checking Status',
+                            text: 'Fetching details from provider...',
+                            icon: 'info',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            didOpen: async () => {
+                                Swal.showLoading();
+                                try {
+                                    const initData = await getInitDataString();
+                                    const verifyRes = await fetch(`${NODE_API_URL}/verify-deposit`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ tx_ref: txRef, initData }),
+                                    });
+                                    const data = await verifyRes.json();
+                                    
+                                    const exactReason = data?.bank_message || data?.message || rawMsg;
+                                    
+                                    Swal.fire({
+                                        title: 'Payment Declined',
+                                        html: `<div style="color: #e74c3c; font-weight: 500;">${exactReason}</div>`,
+                                        icon: 'error',
+                                        confirmButtonColor: '#6c5ce7',
+                                        confirmButtonText: 'Try Again'
+                                    });
+                                    hapticNotification('error');
+                                } catch (e) {
+                                    // Fallback to the generic error if the network fails
+                                    Swal.fire({
+                                        title: 'Payment Declined',
+                                        html: `<div style="color: #e74c3c; font-weight: 500;">${rawMsg}</div>`,
+                                        icon: 'error',
+                                        confirmButtonColor: '#6c5ce7',
+                                        confirmButtonText: 'Try Again'
+                                    });
+                                    hapticNotification('error');
+                                }
+                            }
+                        });
                     }
                 },
 
@@ -473,41 +549,37 @@ export function DepositPage() {
     return (
         <div className="deposit-page-wrapper">
             {/* ─── Hero Balance Card ─── */}
-            <div className="deposit-hero">
-                <div className="deposit-hero__glow" />
+            <div className="deposit-hero deposit-hero--dark">
                 <div className="deposit-hero__label">Current Balance</div>
                 <div className="deposit-hero__amount">
                     {balDisplay.whole}
                     <span style={{ fontSize: '0.6em', opacity: 0.7 }}>{balDisplay.decimal}</span>
                     <span className="deposit-hero__currency">ETB</span>
                 </div>
-                <div className="sdk-badge sdk-badge--ready">
-                    <span className="sdk-badge__dot" />
-                    Secure Checkout
-                </div>
             </div>
 
             {/* ─── Amount Input Section ─── */}
             {step === 'amount' && (
                 <>
-                    <div className="paxyo-section-header">Deposit Funds</div>
+                    <div className="paxyo-section-header">AMOUNT TO ADD</div>
                     <div className="deposit-input-group">
                         <span className="deposit-input-group__prefix">ETB</span>
-                        <input
+                        <Input
                             className="deposit-input-group__input"
                             type="number"
                             inputMode="decimal"
                             pattern="[0-9]*"
-                            placeholder="Enter amount..."
+                            placeholder="0"
                             value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
+                            onChange={(e: any) => setAmount(e.target.value)}
                         />
                     </div>
 
                     <div className="preset-grid">
                         {PRESET_AMOUNTS.map(amt => (
-                            <button
+                            <Button
                                 key={amt}
+                                mode="plain"
                                 className={`preset-btn${amount === String(amt) ? ' preset-btn--active' : ''}`}
                                 onClick={() => {
                                     hapticSelection();
@@ -515,7 +587,7 @@ export function DepositPage() {
                                 }}
                             >
                                 +{amt >= 1000 ? `${amt / 1000}k` : amt}
-                            </button>
+                            </Button>
                         ))}
                     </div>
 
@@ -525,13 +597,17 @@ export function DepositPage() {
                         </div>
                     )}
 
-                    <button
-                        className="deposit-submit"
-                        onClick={handleDeposit}
-                        disabled={!amount || parseFloat(amount) < 10}
-                    >
-                        💳 Deposit with Chapa
-                    </button>
+                    <div style={{ padding: '0 16px', marginBottom: 16 }}>
+                        <Button
+                            size="l"
+                            stretched
+                            onClick={handleDeposit}
+                            disabled={!amount || parseFloat(amount) < 10}
+                            style={{ background: 'var(--accent-primary)', color: '#fff' }}
+                        >
+                            💳 Deposit with Chapa
+                        </Button>
+                    </div>
 
                     <div className="deposit-secured">
                         <span className="deposit-secured__lock">🔒</span>
@@ -544,13 +620,18 @@ export function DepositPage() {
             {step === 'chapa' && (
                 <div className="chapa-section">
                     <div className="chapa-section__header">
-                        <button className="chapa-section__back" onClick={() => {
-                            pollAbortRef.current = true;
-                            activeTxRefRef.current = null;
-                            setStep('amount');
-                        }}>
+                        <Button
+                            mode="plain"
+                            className="chapa-section__back"
+                            onClick={() => {
+                                pollAbortRef.current = true;
+                                activeTxRefRef.current = null;
+                                setStep('amount');
+                            }}
+                            style={{ padding: 0 }}
+                        >
                             ← Cancel
-                        </button>
+                        </Button>
                         <div className="chapa-section__title">Secure Payment</div>
                         <div className="sdk-badge sdk-badge--ready">
                             <span className="sdk-badge__dot" />
@@ -589,7 +670,8 @@ export function DepositPage() {
                         <p style={{ fontSize: '12px', marginBottom: 8 }}>
                             ✅ If you already confirmed on your phone, just wait — we're checking automatically.
                         </p>
-                        <button
+                        <Button
+                            mode="outline"
                             className="deposit-fallback-btn"
                             onClick={() => {
                                 if (activeTxRefRef.current) {
@@ -598,7 +680,7 @@ export function DepositPage() {
                             }}
                         >
                             🔄 Check Again Now
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
@@ -612,7 +694,8 @@ export function DepositPage() {
 
                     {/* If txRef still active, offer manual re-check */}
                     {activeTxRefRef.current && (
-                        <button
+                        <Button
+                            mode="outline"
                             className="deposit-fallback-btn"
                             style={{ marginBottom: 16 }}
                             onClick={() => {
@@ -622,16 +705,21 @@ export function DepositPage() {
                             }}
                         >
                             🔄 Balance not updated? Tap to re-check
-                        </button>
+                        </Button>
                     )}
 
-                    <button className="deposit-submit" onClick={() => {
-                        setStep('amount');
-                        setAmount('');
-                        activeTxRefRef.current = null;
-                    }}>
+                    <Button 
+                        size="l"
+                        stretched
+                        style={{ marginTop: 24 }}
+                        onClick={() => {
+                            setStep('amount');
+                            setAmount('');
+                            activeTxRefRef.current = null;
+                        }}
+                    >
                         Make Another Deposit
-                    </button>
+                    </Button>
                 </div>
             )}
 

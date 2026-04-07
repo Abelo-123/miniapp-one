@@ -1,15 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
-import { formatETB } from '../../constants';
 import { hapticImpact, hapticSelection } from '../../helpers/telegram';
+import { Section, Cell, Button, Input } from '@telegram-apps/telegram-ui';
 import type { OrderStatus } from '../../types';
 
 const STATUS_FILTERS: { id: OrderStatus | 'all'; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'pending', label: 'Pending' },
     { id: 'processing', label: 'Processing' },
-    { id: 'completed', label: 'Completed' },
-    { id: 'cancelled', label: 'Cancelled' },
+    { id: 'completed', label: 'Compl' },
 ];
 
 function normalizeStatus(status: string): OrderStatus {
@@ -19,15 +18,11 @@ function normalizeStatus(status: string): OrderStatus {
     return s as OrderStatus;
 }
 
-function formatDate(dateStr: string): string {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
 export function HistoryPage() {
-    const { orders, showToast } = useApp();
+    const { orders, showToast, refreshOrders } = useApp();
     const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
     const [search, setSearch] = useState('');
+    const [showSearch, setShowSearch] = useState(false);
 
     const filtered = useMemo(() => {
         let result = orders;
@@ -39,110 +34,121 @@ export function HistoryPage() {
         if (search.trim()) {
             const q = search.toLowerCase();
             result = result.filter(o =>
-                o.service_name.toLowerCase().includes(q) ||
-                o.api_order_id.toString().includes(q) ||
-                o.link.toLowerCase().includes(q)
+                (o.service_name || '').toLowerCase().includes(q) ||
+                (o.api_order_id || '').toString().includes(q) ||
+                (o.link || '').toLowerCase().includes(q)
             );
         }
 
         return result;
     }, [orders, filter, search]);
 
-    const handleRefill = (orderId: number) => {
+    const handleRefresh = useCallback(() => {
         hapticImpact('medium');
-        showToast('info', `Refill request sent for order #${orderId}`);
-    };
+        refreshOrders();
+        showToast('info', 'Refreshing orders...');
+    }, [refreshOrders, showToast]);
 
     return (
-        <div>
-            {/* ─── Search ─── */}
-            <input
-                className="history-search"
-                placeholder="🔍  Search orders..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-            />
-
-            {/* ─── Filter Pills ─── */}
-            <div className="filter-row">
-                {STATUS_FILTERS.map(f => (
-                    <button
-                        key={f.id}
-                        className={`filter-pill${filter === f.id ? ' filter-pill--active' : ''}`}
-                        onClick={() => {
-                            hapticSelection();
-                            setFilter(f.id);
-                        }}
+        <div className="history-page">
+            {/* ─── Filter Row with Search & Refresh ─── */}
+            <div className="history-filter-row">
+                <div className="filter-row">
+                    {STATUS_FILTERS.map(f => (
+                        <Button
+                            key={f.id}
+                            size="s"
+                            mode={filter === f.id ? 'filled' : 'outline'}
+                            onClick={() => {
+                                hapticSelection();
+                                setFilter(f.id);
+                            }}
+                            style={filter === f.id ? { background: 'var(--accent-primary)', color: '#fff', border: 'none' } : {}}
+                        >
+                            {f.label}
+                        </Button>
+                    ))}
+                </div>
+                <div className="history-actions">
+                    <Button
+                        mode="plain"
+                        onClick={() => setShowSearch(!showSearch)}
+                        style={{ padding: 8 }}
                     >
-                        {f.label}
-                    </button>
-                ))}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                    </Button>
+                    <Button
+                        mode="plain"
+                        onClick={handleRefresh}
+                        style={{ padding: 8 }}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="23 4 23 10 17 10" />
+                            <polyline points="1 20 1 14 7 14" />
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                        </svg>
+                    </Button>
+                </div>
             </div>
 
-            {/* ─── Orders ─── */}
-            {filtered.length === 0 ? (
-                <div className="empty-state">
-                    <div className="empty-state__icon">📦</div>
-                    <div className="empty-state__title">No Orders Found</div>
-                    <div className="empty-state__text">
-                        {search.trim() || filter !== 'all'
-                            ? 'Try adjusting your filters'
-                            : "You haven't placed any orders yet"}
-                    </div>
+            {/* ─── Inline Search ─── */}
+            {showSearch && (
+                <div style={{ margin: '0 16px 12px' }}>
+                    <Input
+                        type="text"
+                        placeholder="Search by API order ID, service name, or link..."
+                        value={search}
+                        onChange={(e: any) => setSearch(e.target.value)}
+                        autoFocus
+                    />
                 </div>
-            ) : (
-                <>
-                    <div className="paxyo-section-header">
-                        Orders ({filtered.length})
-                    </div>
-                    {filtered.map((order) => {
-                        const status = normalizeStatus(order.status);
-                        const canRefill = status === 'completed';
-
-                        return (
-                        <div className="order-card" key={order.id}>
-                                <div className="order-card__header">
-                                    <div className="order-card__title">
-                                        <span className="order-card__id">#{order.api_order_id}</span>
-                                        {order.service_name}
-                                    </div>
-                                    <span className="order-card__charge">{formatETB(order.charge)}</span>
-                                </div>
-
-                                <div className="order-card__link">{order.link}</div>
-
-                                <div className="order-card__meta">
-                                    <div className="order-card__stats">
-                                        <span>Qty: {order.quantity}</span>
-                                        <span>Start: {order.start_count}</span>
-                                        <span>Left: {order.remains}</span>
-                                    </div>
-                                    <span className={`order-card__status order-card__status--${status}`}>
-                                        {status}
-                                    </span>
-                                </div>
-
-                                {(canRefill || true) && (
-                                    <div className="order-card__footer">
-                                        <span className="order-card__date">{formatDate(order.created_at)}</span>
-                                        {canRefill && (
-                                            <button
-                                                className="order-card__refill"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleRefill(order.api_order_id);
-                                                }}
-                                            >
-                                                ♻ Refill
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </>
             )}
+
+            {/* ─── Orders ─── */}
+            <Section style={{ margin: '0 16px', background: 'var(--surface-glass)', border: '1px solid var(--surface-glass-border)' }}>
+                {filtered.length === 0 ? (
+                    <div className="empty-state">
+                        <div className="empty-state__icon">📦</div>
+                        <div className="empty-state__title">No Orders Found</div>
+                        <div className="empty-state__text">
+                            {search.trim() || filter !== 'all'
+                                ? 'Try adjusting your filters'
+                                : "You haven't placed any orders yet"}
+                        </div>
+                    </div>
+                ) : (
+                    filtered.map((order) => {
+                        const status = normalizeStatus(order.status);
+                        const serviceName = (order.service_name || '').length > 25
+                            ? (order.service_name || '').substring(0, 25) + '...'
+                            : (order.service_name || '');
+                        const linkName = (order.link || '').length > 30
+                            ? (order.link || '').substring(0, 30) + '...'
+                            : (order.link || '');
+                            
+                        return (
+                            <Cell
+                                key={order.id}
+                                before={<span style={{fontSize: 12, fontWeight: 700, opacity: 0.5}}>#{order.api_order_id}</span>}
+                                subtitle={<span style={{color: 'var(--accent-secondary)'}}>{linkName}</span>}
+                                after={
+                                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4}}>
+                                        <span style={{fontWeight: 700}}>{order.quantity} qty</span>
+                                        <span className={`history-table__status history-table__status--${status}`}>
+                                            {status.toUpperCase()}
+                                        </span>
+                                    </div>
+                                }
+                            >
+                                <span style={{fontWeight: 600, fontSize: 14}}>{serviceName}</span>
+                            </Cell>
+                        );
+                    })
+                )}
+            </Section>
         </div>
     );
 }

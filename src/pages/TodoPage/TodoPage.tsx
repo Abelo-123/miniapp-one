@@ -8,6 +8,7 @@ import {
     hapticNotification,
     showConfirm
 } from '../../helpers/telegram';
+import { Button, Input } from '@telegram-apps/telegram-ui';
 import './TodoPage.css';
 
 // ═══════════════════════════════════════════════════════════════
@@ -131,7 +132,7 @@ const HabitRow = memo(({
                     </div>
                 );
             })}
-            <button className="del-btn" onClick={() => onDelete(habit.id)}>×</button>
+            <Button mode="plain" style={{ padding: 0 }} className="del-btn" onClick={() => onDelete(habit.id)}>×</Button>
         </li>
     );
 });
@@ -275,20 +276,20 @@ export const TodoPage: FC = () => {
             <header className="habits-header">
                 <h1 className="habits-title">Habits</h1>
                 <div className="header-actions">
-                    <button className="header-btn" onClick={() => setShowMembersModal(true)}>
+                    <Button mode="plain" style={{ padding: 4 }} className="header-btn" onClick={() => setShowMembersModal(true)}>
                         <span className="member-count">{members.length}</span> 👥
-                    </button>
+                    </Button>
                     <div className="filter-wrapper">
-                        <button className={`header-btn ${filterMode !== 'all' ? 'active' : ''}`} onClick={() => setShowFilterMenu(!showFilterMenu)}>
+                        <Button mode="plain" style={{ padding: 4 }} className={`header-btn ${filterMode !== 'all' ? 'active' : ''}`} onClick={() => setShowFilterMenu(!showFilterMenu)}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                             </svg>
-                        </button>
+                        </Button>
                         {showFilterMenu && (
                             <div className="filter-menu">
-                                <button className={`filter-option ${filterMode === 'all' ? 'selected' : ''}`} onClick={() => { setFilterMode('all'); setShowFilterMenu(false); }}>All</button>
-                                <button className={`filter-option ${filterMode === 'completed' ? 'selected' : ''}`} onClick={() => { setFilterMode('completed'); setShowFilterMenu(false); }}>Done</button>
-                                <button className={`filter-option ${filterMode === 'incomplete' ? 'selected' : ''}`} onClick={() => { setFilterMode('incomplete'); setShowFilterMenu(false); }}>Todo</button>
+                                <Button mode="plain" style={{ padding: 8 }} className={`filter-option ${filterMode === 'all' ? 'selected' : ''}`} onClick={() => { setFilterMode('all'); setShowFilterMenu(false); }}>All</Button>
+                                <Button mode="plain" style={{ padding: 8 }} className={`filter-option ${filterMode === 'completed' ? 'selected' : ''}`} onClick={() => { setFilterMode('completed'); setShowFilterMenu(false); }}>Done</Button>
+                                <Button mode="plain" style={{ padding: 8 }} className={`filter-option ${filterMode === 'incomplete' ? 'selected' : ''}`} onClick={() => { setFilterMode('incomplete'); setShowFilterMenu(false); }}>Todo</Button>
                             </div>
                         )}
                     </div>
@@ -306,9 +307,9 @@ export const TodoPage: FC = () => {
                 <div className="del-col"></div>
             </div>
 
-            <div className="add-section">
-                <input className="add-input" placeholder="New habit..." value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddHabit()} />
-                <button className="add-btn" onClick={handleAddHabit} disabled={!inputValue.trim()}>+</button>
+            <div className="add-section" style={{ alignItems: 'center' }}>
+                <Input style={{ flex: 1, marginRight: 8 }} className="add-input" placeholder="New habit..." value={inputValue} onChange={(e: any) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddHabit()} />
+                <Button size="s" mode="filled" className="add-btn" onClick={handleAddHabit} disabled={!inputValue.trim()}>+</Button>
             </div>
 
             {isLoading ? <div className="loading"><div className="spinner" /></div> : (
@@ -325,7 +326,7 @@ export const TodoPage: FC = () => {
                     <div className="modal">
                         <div className="modal-header">
                             <h2>Members ({members.length})</h2>
-                            <button className="close-btn" onClick={() => setShowMembersModal(false)}>×</button>
+                            <Button mode="plain" style={{ padding: 0 }} className="close-btn" onClick={() => setShowMembersModal(false)}>×</Button>
                         </div>
                         <ul className="members-list">
                             {members.map(member => (

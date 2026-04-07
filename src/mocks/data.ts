@@ -57,7 +57,7 @@ export const MOCK_ALERTS: Alert[] = [
 
 // ─── Mock Chat ────────────────────────────────────────────────
 export const MOCK_CHAT: ChatMessage[] = [
-    { id: 1, sender: 'admin', message: 'Hello! Welcome to Paxyo support. How can I help you?', created_at: '2026-02-11T08:00:00Z' },
+    { id: 1, user_id: 'admin', message: 'Hello! Welcome to Paxyo support. How can I help you?', is_admin: 1, created_at: '2026-02-11T08:00:00Z' },
 ];
 
 // ─── Mock Settings ────────────────────────────────────────────

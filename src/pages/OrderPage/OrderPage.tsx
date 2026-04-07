@@ -1,162 +1,142 @@
 import { useState, useCallback, useRef } from 'react';
+import Swal from 'sweetalert2';
 import { useApp } from '../../context/AppContext';
-import { PLATFORMS, formatETB } from '../../constants';
+import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
 import { CategoryModal } from '../../components/CategoryModal/CategoryModal';
 import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
 import { OrderForm, type OrderFormHandle } from '../../components/OrderForm/OrderForm';
-import { SearchModal } from '../../components/SearchModal/SearchModal';
+import { NewsTicker } from '../../components/NewsTicker/NewsTicker';
 
 export function OrderPage() {
     const {
-        services, recommendedIds, selectedPlatform, selectedCategory, selectedService,
+        recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
-        discountPercent, holidayName, marqueeText, user,
     } = useApp();
 
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showServiceModal, setShowServiceModal] = useState(false);
-    const [showSearchModal, setShowSearchModal] = useState(false);
+    const [showOrderModal, setShowOrderModal] = useState(false);
     const orderFormRef = useRef<OrderFormHandle | null>(null);
 
     const handlePlatformSelect = useCallback((platform: typeof selectedPlatform) => {
         setSelectedPlatform(platform);
+        setSelectedService(null);
         if (platform === 'top') {
             setSelectedCategory('Top Services');
             setShowServiceModal(true);
         } else {
-            // Open the category modal immediately — it's a pure component
-            // that handles empty categories gracefully
+            setSelectedCategory(null);
             setShowCategoryModal(true);
         }
-    }, [setSelectedPlatform, setSelectedCategory]);
+    }, [setSelectedPlatform, setSelectedCategory, setSelectedService]);
 
     const handleCategorySelect = useCallback((category: string) => {
         setSelectedCategory(category);
+        setSelectedService(null);
         setShowCategoryModal(false);
         setShowServiceModal(true);
-    }, [setSelectedCategory]);
+    }, [setSelectedCategory, setSelectedService]);
 
     const handleServiceSelect = useCallback((service: typeof selectedService) => {
         setSelectedService(service);
         setShowServiceModal(false);
     }, [setSelectedService]);
 
-    const handleSearchResultSelect = useCallback((service: typeof services[0]) => {
-        const cat = service.category.toLowerCase();
-        const platform = PLATFORMS.find(p => p.keywords.some(kw => cat.includes(kw)));
-        setSelectedPlatform(platform?.id || 'other');
-        setSelectedCategory(service.category);
-        setSelectedService(service);
-        setShowSearchModal(false);
-    }, [setSelectedPlatform, setSelectedCategory, setSelectedService]);
-
     return (
         <div className="order-page-wrapper">
-            {/* ─── Welcome Header ─── */}
-            <div className="welcome-header">
-                <div className="welcome-header__content">
-                    {user?.photo_url ? (
-                        <img
-                            className="welcome-header__avatar"
-                            src={user.photo_url}
-                            alt={user.first_name}
-                        />
-                    ) : (
-                        <div className="welcome-header__avatar-fallback">👤</div>
-                    )}
-                    <div className="welcome-header__text">
-                        <div className="welcome-header__greeting">
-                            Hey {user?.first_name || 'User'}! 👋
-                        </div>
-                        <div className="welcome-header__brand">Paxyo SMM</div>
-                    </div>
-                    <button
-                        className="welcome-header__search"
-                        onClick={() => setShowSearchModal(true)}
-                    >
-                        🔍
-                    </button>
-                </div>
-            </div>
+            {/* ─── Global Marquee Banner ─── */}
+            <NewsTicker />
 
-            {/* ─── Balance Pill ─── */}
-            {user && (
-                <div className="balance-pill">
-                    💎 {formatETB(user.balance)}
-                </div>
-            )}
-
-            {/* ─── Announcement ─── */}
-            {marqueeText && (
-                <div className="announcement-banner">
-                    <span className="announcement-banner__icon">📢</span>
-                    <span className="announcement-banner__text">{marqueeText}</span>
-                </div>
-            )}
-
-            {/* ─── Discount Badge ─── */}
-            {discountPercent > 0 && (
-                <div className="discount-badge">
-                    <span className="discount-badge__icon">🔥</span>
-                    <div>
-                        <span className="discount-badge__text">{discountPercent}% Discount Active</span>
-                        <span className="discount-badge__sub">• {holidayName}</span>
-                    </div>
-                </div>
-            )}
-
-            {/* ─── Platform Selection ─── */}
-            <div className="paxyo-section-header">Select Platform</div>
+            {/* ─── Platform Selection Grid ─── */}
             <PlatformGrid
                 selectedPlatform={selectedPlatform}
                 onSelect={handlePlatformSelect}
             />
 
-            {/* ─── Current Selection ─── */}
-            {selectedCategory && (
-                <>
-                    <div className="paxyo-section-header">Selection</div>
-                    <div
-                        className="selection-card"
-                        onClick={() => setShowCategoryModal(true)}
-                    >
-                        <div className="selection-card__left">
-                            <div className="selection-card__label">Category</div>
-                            <div className="selection-card__value">{selectedCategory}</div>
-                        </div>
-                        <span className="selection-card__action">Change ›</span>
-                    </div>
+            {/* ─── Category Selection ─── */}
+            <Section>
+                <Cell
+                    subtitle={selectedCategory || 'Select a category'}
+                    onClick={() => {
+                        if (selectedPlatform) {
+                            setShowCategoryModal(true);
+                        } else {
+                            Swal.fire({
+                                title: 'Select Platform',
+                                text: 'Please tap a social platform (YouTube, TikTok, etc.) above before picking a category.',
+                                icon: 'info',
+                                confirmButtonColor: '#7c5cfc'
+                            });
+                        }
+                    }}
+                    after={<span style={{ color: 'var(--tg-theme-hint-color)' }}>{'>'}</span>}
+                >
+                    Category
+                </Cell>
+            </Section>
 
-                    {selectedService && (
-                        <div
-                            className="selection-card"
-                            onClick={() => setShowServiceModal(true)}
-                        >
-                            <div className="selection-card__left">
-                                <div className="selection-card__label">Service</div>
-                                <div className="selection-card__value">{selectedService.name}</div>
-                            </div>
-                            <span className="selection-card__action">Change ›</span>
-                        </div>
-                    )}
-                </>
-            )}
+            <Section>
+                <Cell
+                    subtitle={selectedService?.name || 'Select a service'}
+                    onClick={() => {
+                        if (selectedCategory) {
+                            setShowServiceModal(true);
+                        } else if (!selectedPlatform) {
+                            Swal.fire({
+                                title: 'Start with Platform',
+                                text: 'Select a social platform and category first!',
+                                icon: 'info',
+                                confirmButtonColor: '#7c5cfc'
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Select Category',
+                                text: 'Please choose a category from the list before selecting a specific service.',
+                                icon: 'info',
+                                confirmButtonColor: '#7c5cfc'
+                            });
+                        }
+                    }}
+                    after={<span style={{ color: 'var(--tg-theme-hint-color)' }}>{'>'}</span>}
+                >
+                    Service
+                </Cell>
+            </Section>
 
-            {/* ─── Order Form ─── */}
-            {selectedService && <OrderForm ref={orderFormRef} />}
-            {selectedService && (
-                <div style={{ padding: '0 16px', marginTop: 12 }}>
-                    <button
-                        className="order-page__quick-order"
-                        onClick={() => orderFormRef.current?.submit()}
-                    >
-                        Order Now
-                    </button>
-                </div>
-            )}
+            {/* ─── Order Trigger ─── */}
+            <div style={{ padding: '20px 16px' }}>
+                <Button
+                    size="l"
+                    stretched
+                    onClick={() => {
+                        if (!selectedPlatform) {
+                            Swal.fire({ title: 'Hold On!', text: 'Please select a platform (e.g., Telegram, TikTok) first.', icon: 'warning', confirmButtonColor: '#f39c12' });
+                            return;
+                        }
+                        if (!selectedCategory) {
+                            Swal.fire({ title: 'Hold On!', text: 'Please select a category.', icon: 'warning', confirmButtonColor: '#f39c12' });
+                            return;
+                        }
+                        if (!selectedService) {
+                            Swal.fire({ title: 'Hold On!', text: 'Please select a specific service to order.', icon: 'warning', confirmButtonColor: '#f39c12' });
+                            return;
+                        }
+                        setShowOrderModal(true);
+                    }}
+                    style={{ background: 'linear-gradient(135deg, #7c5cfc 0%, #5b8def 100%)', color: '#fff' }}
+                >
+                    Configure Order
+                </Button>
+            </div>
 
             {/* ─── Modals ─── */}
+            {showOrderModal && selectedService && (
+                <OrderForm 
+                    ref={orderFormRef} 
+                    onClose={() => setShowOrderModal(false)}
+                />
+            )}
             {showCategoryModal && selectedPlatform && (
                 <CategoryModal
                     platform={selectedPlatform}
@@ -171,13 +151,6 @@ export function OrderPage() {
                     recommendedIds={recommendedIds}
                     onSelect={handleServiceSelect}
                     onClose={() => setShowServiceModal(false)}
-                />
-            )}
-
-            {showSearchModal && (
-                <SearchModal
-                    onSelect={handleSearchResultSelect}
-                    onClose={() => setShowSearchModal(false)}
                 />
             )}
         </div>

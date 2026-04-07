@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../config/database.js';
-import { getTelegramUserId } from '../lib/auth.js';
+import { getTelegramUserId, getTelegramUser } from '../lib/auth.js';
 
 const router = Router();
 
@@ -14,7 +14,8 @@ router.get('/settings', async (req, res) => {
             holidayName: '',
             maintenanceMode: false,
             userCanOrder: true,
-            marqueeText: 'Welcome to Paxyo SMM!'
+            marqueeText: 'Welcome to Paxyo SMM!',
+            topServicesIds: ''
         };
         
         rows.forEach(row => {
@@ -24,12 +25,13 @@ router.get('/settings', async (req, res) => {
             if (row.setting_key === 'maintenance_mode') settings.maintenanceMode = (row.setting_value === '1' || row.setting_value === 'true');
             if (row.setting_key === 'user_can_order') settings.userCanOrder = (row.setting_value === '1' || row.setting_value === 'true');
             if (row.setting_key === 'marquee_text') settings.marqueeText = row.setting_value;
+            if (row.setting_key === 'top_services_ids') settings.topServicesIds = row.setting_value || '';
         });
 
         return res.json(settings);
     } catch (err) {
         console.error(err);
-        return res.json({ rateMultiplier: 55, discountPercent: 0, holidayName: '', maintenanceMode: false, userCanOrder: true, marqueeText: '' });
+        return res.json({ rateMultiplier: 55, discountPercent: 0, holidayName: '', maintenanceMode: false, userCanOrder: true, marqueeText: '', topServicesIds: '' });
     }
 });
 
@@ -79,24 +81,41 @@ router.post('/alerts/mark-read', async (req, res) => {
 // auth (for telegram_auth.php)
 router.post('/auth', async (req, res) => {
     const { initData } = req.body;
-    const tgId = getTelegramUserId(initData);
+    const tgUser = getTelegramUser(initData);
+    const tgId = tgUser?.id ? String(tgUser.id) : null;
+    
     if (!tgId) return res.status(401).json({ success: false });
+
+    const firstName = tgUser.first_name || '';
+    const lastName = tgUser.last_name || '';
+    const username = tgUser.username || '';
+    const photoUrl = tgUser.photo_url || '';
 
     try {
         let [users] = await pool.execute('SELECT * FROM auth WHERE tg_id = ?', [tgId]);
         if (users.length === 0) {
-            await pool.execute("INSERT INTO auth (tg_id, balance, auth_provider, last_login) VALUES (?, 0.00, 'telegram', NOW())", [tgId]);
+            await pool.execute(
+                "INSERT INTO auth (tg_id, username, first_name, last_name, photo_url, balance, auth_provider, last_login) VALUES (?, ?, ?, ?, ?, 0.00, 'telegram', NOW())", 
+                [tgId, username, firstName, lastName, photoUrl]
+            );
             [users] = await pool.execute('SELECT * FROM auth WHERE tg_id = ?', [tgId]);
         } else {
-            await pool.execute('UPDATE auth SET last_login = NOW() WHERE tg_id = ?', [tgId]);
+            await pool.execute(
+                'UPDATE auth SET username = ?, first_name = ?, last_name = ?, photo_url = ?, last_login = NOW() WHERE tg_id = ?', 
+                [username, firstName, lastName, photoUrl, tgId]
+            );
         }
         const user = users[0];
         
         return res.json({ 
             success: true, 
             user: {
-                id: user.id,
+                id: user.tg_id, // we return tg_id as id for frontend compatibility
                 tg_id: user.tg_id,
+                username: user.username || username,
+                first_name: user.first_name || firstName,
+                last_name: user.last_name || lastName,
+                photo_url: user.photo_url || photoUrl,
                 balance: parseFloat(user.balance),
                 role: user.role || 'user'
             }
@@ -109,16 +128,9 @@ router.post('/auth', async (req, res) => {
 
 // log-init-data
 router.post('/log-init-data', async (req, res) => {
-    const { initData } = req.body;
-    const tgId = getTelegramUserId(initData);
-    if (tgId) {
-        try {
-            // we could save user details such as username, etc.
-            // for now just success
-            return res.json({ success: true });
-        } catch {}
-    }
-    return res.json({ success: false });
+    // This endpoint can be phased out as /auth handles all user info now,
+    // but returning success to ensure backward compatibility.
+    return res.json({ success: true });
 });
 
 // heartbeat

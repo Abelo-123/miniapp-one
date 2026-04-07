@@ -61,8 +61,9 @@ export interface Alert {
 
 export interface ChatMessage {
     id: number;
-    sender: 'user' | 'admin';
+    user_id: string;
     message: string;
+    is_admin: number | boolean;
     created_at: string;
 }
 
@@ -115,7 +116,10 @@ export interface AuthResponse {
 export interface OrderResponse {
     success: boolean;
     order_id: number;
+    api_order_id?: number;
     new_balance: number;
+    verified?: boolean;
+    provider_status?: string;
     error?: string;
 }
 
@@ -140,13 +144,19 @@ export interface StatusSyncResponse {
     updates: Order[];
 }
 
-export interface SSEUpdate {
-    type: 'update' | 'heartbeat';
-    changes?: string[];
-    data?: {
-        orders?: Order[];
-        alerts?: Alert[];
-        balance?: number;
-        maintenance?: boolean;
-    };
+export interface SSEOrderPlaced {
+    type: 'ORDER_PLACED';
+    order: Order;
+    new_balance?: number;
 }
+
+export interface SSEOrderUpdated {
+    type: 'ORDER_UPDATED';
+    order: Pick<Order, 'id' | 'api_order_id' | 'status' | 'start_count' | 'remains'>;
+    refunded?: boolean;
+}
+
+export type SSEEvent =
+    | { type: 'CONNECTED' }
+    | SSEOrderPlaced
+    | SSEOrderUpdated;
