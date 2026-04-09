@@ -634,7 +634,24 @@ export function DepositPage() {
                         </div>
                     )}
 
-                    {/* ─── LEGACY HTML BUTTON REMOVED IN FAVOR OF NATIVE MAIN BUTTON ─── */}
+                    {/* RESTORED DEPOSIT BUTTON */}
+                    <div style={{ padding: '16px', marginTop: '8px' }}>
+                        <Button
+                            size="l"
+                            stretched
+                            onClick={handleDeposit}
+                            disabled={!amount || parseFloat(amount) < 10}
+                            style={{ 
+                                background: 'var(--tg-theme-button-color)', 
+                                color: 'var(--tg-theme-button-text-color)',
+                                fontWeight: 600,
+                                fontSize: '16px',
+                                padding: '14px'
+                            }}
+                        >
+                            Deposit {amount ? `${amount} ETB` : ''}
+                        </Button>
+                    </div>
 
                     <div className="deposit-secured">
                         <span className="deposit-secured__lock">🔒</span>

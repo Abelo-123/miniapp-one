@@ -30,11 +30,11 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
             open
             onOpenChange={(open) => { if (!open) onClose(); }}
             header={<Modal.Header>Select Category</Modal.Header>}
+            snapPoints={[0.5, 0.9]} 
         >
-            <List style={{ maxHeight: '60vh', overflow: 'auto' }}>
+            <List style={{ height: 'auto' }}>
                 <Section>
                     <Input
-                        autoFocus
                         placeholder="Search categories..."
                         value={search}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}

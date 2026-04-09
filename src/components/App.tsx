@@ -57,18 +57,17 @@ function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
     try {
         const twa = (window as any).Telegram?.WebApp;
         if (twa) {
-            twa.expand();
-            const isDark = isMiniAppDark();
-            const bgColor = isDark ? '#000000' : '#ffffff';
-            const secondaryBg = isDark ? '#000000' : '#f4f4f5';
+            twa.expand(); // Expand to full screen
             
-            twa.setHeaderColor(bgColor);
-            twa.setBackgroundColor(secondaryBg);
+            // Tell Telegram to make the top header and bottom background
+            // match the "Secondary Background" (the standard iOS/Telegram base gray)
+            twa.setHeaderColor('secondary_bg_color');
+            twa.setBackgroundColor('secondary_bg_color');
         }
     } catch (e) {
-        console.log('Telegram SDK Viewport/Color setup failed', e);
+        console.log('Telegram SDK Color setup failed', e);
     }
-  }, [activeTab]);
+  }, []); // Run once on mount
 
   // Combined Back Button logic for Modals and Tabs
   useEffect(() => {

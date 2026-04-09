@@ -80,9 +80,11 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                     </div>
                     <div style={{ 
                         display: 'flex', 
+                        gap: '8px', /* THIS FIXES THE SQUISHING */
                         background: 'var(--tg-theme-secondary-bg-color)', 
-                        padding: '4px', 
-                        borderRadius: '8px' 
+                        padding: '6px', 
+                        borderRadius: '12px',
+                        width: '100%' 
                     }}>
                         {['auto', 'light', 'dark'].map((t) => (
                             <button
@@ -94,13 +96,13 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                                 }}
                                 style={{
                                     flex: 1,
-                                    padding: '6px 0',
+                                    padding: '8px 0',
                                     background: themeOverride === t ? 'var(--tg-theme-bg-color)' : 'transparent',
                                     color: themeOverride === t ? 'var(--tg-theme-text-color)' : 'var(--tg-theme-hint-color)',
                                     border: 'none',
-                                    borderRadius: '6px',
+                                    borderRadius: '8px',
                                     fontWeight: themeOverride === t ? 600 : 500,
-                                    boxShadow: themeOverride === t ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+                                    boxShadow: themeOverride === t ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
                                     transition: 'all 0.2s ease',
                                     textTransform: 'capitalize'
                                 }}
@@ -156,12 +158,21 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                                 chatMessages.map(msg => {
                                     const isAdmin = msg.is_admin === 1 || msg.is_admin === true;
                                     return (
-                                        <div
-                                            key={msg.id}
-                                            className={`chat-bubble ${isAdmin ? 'chat-bubble--admin' : 'chat-bubble--user'}`}
-                                        >
-                                            {msg.message}
-                                        </div>
+                                <div key={msg.id} style={{
+                                    alignSelf: isAdmin ? 'flex-start' : 'flex-end',
+                                    background: isAdmin ? 'var(--tg-theme-secondary-bg-color)' : 'var(--tg-theme-button-color)',
+                                    color: isAdmin ? 'var(--tg-theme-text-color)' : 'var(--tg-theme-button-text-color)',
+                                    padding: '10px 14px',
+                                    borderRadius: '16px',
+                                    borderBottomLeftRadius: isAdmin ? '4px' : '16px',
+                                    borderBottomRightRadius: isAdmin ? '16px' : '4px',
+                                    maxWidth: '80%',
+                                    marginBottom: '8px',
+                                    fontSize: '14px',
+                                    lineHeight: '1.4'
+                                }}>
+                                    {msg.message}
+                                </div>
                                     );
                                 })
                             )}

@@ -46,13 +46,12 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
             open
             onOpenChange={(open) => { if (!open) onClose(); }}
             header={<Modal.Header>Select Service</Modal.Header>}
-            snapPoints={[0.85]}
+            snapPoints={[0.5, 0.9]}
         >
-            <div style={{ maxHeight: '60vh', overflow: 'auto' }} onScroll={handleScroll}>
+            <div style={{ height: 'auto' }} onScroll={handleScroll}>
                 <List>
                     <Section>
                         <Input
-                            autoFocus
                             placeholder="Search services..."
                             value={search}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}

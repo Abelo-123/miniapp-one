@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { formatETB } from '../../constants';
 
 import { useApp } from '../../context/AppContext';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
@@ -52,6 +53,19 @@ export function OrderPage() {
             {/* ─── Global Marquee Banner ─── */}
             <NewsTicker />
 
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                padding: '0 20px 16px',
+                color: 'var(--tg-theme-hint-color)',
+                fontSize: '12px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+            }}>
+                <span>Balance: <strong style={{color: 'var(--tg-theme-text-color)'}}>{formatETB(useApp().user?.balance || 0)}</strong></span>
+                <span onClick={() => useApp().setActiveTab('deposit')} style={{cursor: 'pointer', color: 'var(--tg-theme-link-color)'}}>+ Add Funds</span>
+            </div>
+
             {/* ─── Platform Selection Grid ─── */}
             <PlatformGrid
                 selectedPlatform={selectedPlatform}
@@ -93,29 +107,30 @@ export function OrderPage() {
                 </Cell>
             </Section>
 
-            {/* ─── Sticky Call to Action Button ─── */}
+            {/* ─── Modern Action Bar ─── */}
             <div style={{ 
                 padding: '16px', 
-                position: 'sticky', 
-                bottom: 0, 
-                // Gradient fade so it floats nicely over content
-                background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 30%, #000000 100%)',
+                background: 'var(--card-bg)', // match native card color
+                borderTop: '1px solid var(--divider)',
+                marginTop: 'auto',
+                position: 'sticky',
+                bottom: 0,
                 zIndex: 10
             }}>
                 <Button
                     size="l"
                     stretched
                     style={{ 
-                        // Native Telegram Button Color
                         background: selectedService ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
-                        // Native Telegram Text Color
                         color: selectedService ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-hint-color)',
-                        transition: 'all 0.15s ease',
-                        fontWeight: 600
+                        transition: 'all 0.2s ease',
+                        fontWeight: 600,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '0 20px'
                     }}
                     onClick={() => {
                         import('../../helpers/telegram').then(m => {
-                            // Safe Validation
                             if (!selectedPlatform) {
                                 m.hapticNotification('error');
                                 showToast('error', 'Please select a social platform first');
@@ -132,13 +147,19 @@ export function OrderPage() {
                                 return;
                             }
                             
-                            // All safe -> Open Form
                             m.hapticImpact('light');
                             setShowOrderModal(true);
                         });
                     }}
                 >
-                    {selectedService ? 'Configure Order' : 'Select Service to Order'}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                        <span>{selectedService ? 'Configure Order' : 'Select Service'}</span>
+                        {selectedService && (
+                            <span style={{ fontSize: '13px', opacity: 0.9 }}>
+                                {formatETB(selectedService.rate)}
+                            </span>
+                        )}
+                    </div>
                 </Button>
             </div>
 

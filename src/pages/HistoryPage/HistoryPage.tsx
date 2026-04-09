@@ -192,14 +192,23 @@ export function HistoryPage() {
                                 key={order.id}
                                 // Make the ID look like a sleek pill instead of plain text
                                 before={
-                                    <div style={{
-                                        background: 'var(--surface-elevated)', 
-                                        padding: '4px 8px', 
-                                        borderRadius: '6px', 
-                                        fontSize: '11px', 
-                                        fontWeight: 700, 
-                                        color: 'var(--tg-theme-hint-color)'
-                                    }}>
+                                    <div 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(order.api_order_id.toString());
+                                            showToast('info', 'ID copied to clipboard');
+                                            hapticImpact('light');
+                                        }}
+                                        style={{
+                                            background: 'var(--surface-elevated)', 
+                                            padding: '4px 8px', 
+                                            borderRadius: '6px', 
+                                            fontSize: '11px', 
+                                            fontWeight: 700, 
+                                            color: 'var(--tg-theme-hint-color)',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
                                         #{order.api_order_id}
                                     </div>
                                 }
