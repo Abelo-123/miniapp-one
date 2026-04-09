@@ -3,7 +3,7 @@ import { AppProvider, useApp } from '../context/AppContext';
 import { BottomNav } from './BottomNav/BottomNav';
 import { ToastContainer } from './Toast/Toast';
 import { LoadingOverlay } from './LoadingOverlay/LoadingOverlay';
-import { lazy, Suspense, useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { GlobalHeader } from './GlobalHeader/GlobalHeader';
 import { SearchModal } from './SearchModal/SearchModal';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,9 +14,6 @@ import {
   onSettingsButtonClick,
   retrieveLaunchParams,
   isMiniAppDark,
-  expand,
-  setHeaderColor,
-  setBackgroundColor
 } from '@telegram-apps/sdk-react';
 import { hapticSelection } from '../helpers/telegram';
 import { NotificationPanel } from './NotificationPanel/NotificationPanel';
@@ -58,13 +55,16 @@ function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
   // Viewport and Color Sync
   useEffect(() => {
     try {
-        expand();
-        const isDark = isMiniAppDark();
-        const bgColor = isDark ? '#000000' : '#ffffff';
-        const secondaryBg = isDark ? '#000000' : '#f4f4f5';
-        
-        setHeaderColor(bgColor as any);
-        setBackgroundColor(secondaryBg as any);
+        const twa = (window as any).Telegram?.WebApp;
+        if (twa) {
+            twa.expand();
+            const isDark = isMiniAppDark();
+            const bgColor = isDark ? '#000000' : '#ffffff';
+            const secondaryBg = isDark ? '#000000' : '#f4f4f5';
+            
+            twa.setHeaderColor(bgColor);
+            twa.setBackgroundColor(secondaryBg);
+        }
     } catch (e) {
         console.log('Telegram SDK Viewport/Color setup failed', e);
     }

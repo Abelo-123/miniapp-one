@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Section, Cell, Switch } from '@telegram-apps/telegram-ui';
+import { Section, Cell } from '@telegram-apps/telegram-ui';
 import * as api from '../../api';
 
 interface MorePageProps {

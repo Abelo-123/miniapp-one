@@ -12,7 +12,7 @@ import {
     hapticNotification, 
     getInitDataString 
 } from '../../helpers/telegram';
-import { Button, Input } from '@telegram-apps/telegram-ui';
+import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
 
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
