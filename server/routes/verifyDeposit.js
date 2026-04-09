@@ -18,6 +18,7 @@ import { Router } from 'express';
 import pool from '../config/database.js';
 import Chapa from '../lib/chapa.js';
 import { getTelegramUserId } from '../lib/auth.js';
+import { processTransaction } from '../lib/wallet.js';
 
 const router = Router();
 
@@ -99,26 +100,15 @@ router.post('/', async (req, res) => {
                 [chapaRef, responseJson, deposit.id]
             );
 
-            // Credit balance
-            const [updateRes] = await conn.execute(
-                'UPDATE auth SET balance = balance + ? WHERE tg_id = ?',
-                [verifiedAmount, String(deposit.user_id)]
-            );
-            
-            console.log(`[verify_deposit] Auth Update result:`, updateRes.affectedRows > 0 ? 'Success' : 'FAILED - No row updated');
-
-            // Get new balance
-            const [balRows] = await conn.execute(
-                'SELECT balance FROM auth WHERE tg_id = ?',
-                [String(deposit.user_id)]
-            );
-            const newBalance = parseFloat(balRows[0]?.balance) || 0;
-
-            // Record transaction
-            await conn.execute(
-                `INSERT INTO transactions (user_id, type, amount, balance_after, reference_type, reference_id, description)
-                 VALUES (?, 'deposit', ?, ?, 'deposit', ?, 'Chapa deposit (verified)')`,
-                [String(deposit.user_id), verifiedAmount, newBalance, deposit.id]
+            // 4. Update Balance & Record Transaction (Centralized)
+            const newBalance = await processTransaction(
+                String(deposit.user_id),
+                'deposit',
+                verifiedAmount,
+                `Chapa deposit (verified) - ${chapaRef}`,
+                conn,
+                'deposit',
+                deposit.id
             );
 
             await conn.commit();

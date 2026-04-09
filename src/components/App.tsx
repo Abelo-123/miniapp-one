@@ -52,22 +52,23 @@ function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
     return () => el.removeEventListener('touchstart', handleTouchStart);
   }, []);
 
-  // Viewport and Color Sync
+  // Combined SDK setups & Pre-fetching
   useEffect(() => {
     try {
         const twa = (window as any).Telegram?.WebApp;
         if (twa) {
-            twa.expand(); // Expand to full screen
-            
-            // Tell Telegram to make the top header and bottom background
-            // match the "Secondary Background" (the standard iOS/Telegram base gray)
+            twa.expand();
             twa.setHeaderColor('secondary_bg_color');
             twa.setBackgroundColor('secondary_bg_color');
         }
     } catch (e) {
         console.log('Telegram SDK Color setup failed', e);
     }
-  }, []); // Run once on mount
+
+    // Silent background pre-fetch (Warm up the cache)
+    fetch('/api/services').catch(() => {});
+    fetch('/api/categories').catch(() => {});
+  }, []);
 
   // Combined Back Button logic for Modals and Tabs
   useEffect(() => {

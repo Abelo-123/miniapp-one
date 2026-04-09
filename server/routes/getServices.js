@@ -8,6 +8,7 @@
  */
 import { Router } from 'express';
 import pool from '../config/database.js';
+import { getServicesCached } from '../lib/gop.js';
 
 const router = Router();
 
@@ -39,28 +40,13 @@ async function preloadServices() {
             // Table might not exist yet
         }
         
-        let response, rawServices;
-        for (let i = 0; i < 3; i++) {
-            try {
-                response = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=services`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        rawServices = data;
-                        break;
-                    }
-                }
-            } catch (e) {}
-            await new Promise(r => setTimeout(r, 1000));
-        }
+        const rawServices = await getServicesCached();
 
-        if (!rawServices) throw new Error("GodOfPanel failed after 3 retries");
-        
         if (Array.isArray(rawServices)) {
             // Filter disabled services
             cachedServices = rawServices.filter(s => !disabledServiceIds.has(parseInt(s.service)));
             lastCacheTime = Date.now();
-            console.log(`[get_services] Preloaded ${cachedServices.length} services (${rawServices.length - cachedServices.length} disabled)`);
+            console.log(`[get_services] Preloaded ${cachedServices.length} services from GOP wrapper`);
         }
     } catch(e) {
         console.error('[get_services] Preload failed:', e.message);
@@ -180,30 +166,11 @@ router.get('/', async (req, res) => {
             return res.json(finalResult);
         }
 
-        // Fallback: fetch fresh if cache is empty
-        let response, rawServices, lastProviderError = null;
-        for (let i = 0; i < 3; i++) {
-            try {
-                response = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=services`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        rawServices = data;
-                        break;
-                    } else if (data.error) {
-                        lastProviderError = data.error;
-                    }
-                }
-            } catch (e) {}
-            await new Promise(r => setTimeout(r, 1000));
-        }
+        // 1. Fetch fresh or cached services from GOP (Snappy Wrapper)
+        const rawServices = await getServicesCached();
 
-        if (!rawServices) {
-            if (lastProviderError) {
-                console.error('[get_services] Provider Error:', lastProviderError);
-                return res.status(502).json({ error: lastProviderError });
-            }
-            throw new Error('Invalid response format or provider timeout after 3 retries');
+        if (!rawServices || rawServices.length === 0) {
+            throw new Error('GodOfPanel API is currently unavailable and no cache is present');
         }
 
         // 2. Fetch rate multiplier from DB

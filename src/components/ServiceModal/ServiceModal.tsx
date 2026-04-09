@@ -1,5 +1,6 @@
-import { useState, useMemo, useDeferredValue } from 'react';
+import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { List, Section, Cell, Input, Modal, Placeholder } from '@telegram-apps/telegram-ui';
+import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-apps/sdk-react';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
 import { useCategoryServices } from '../../hooks/useCategoryServices';
@@ -15,6 +16,53 @@ interface Props {
 
 const BATCH_SIZE = 50;
 
+// 1. Memoized Row Component to prevent re-renders while typing
+const ServiceRow = React.memo(({ 
+    svc, platform, onSelect 
+}: { 
+    svc: Service, platform: string | null, onSelect: (s: Service) => void 
+}) => {
+    return (
+        <Cell
+            className="cell-row"
+            multiline
+            onClick={() => onSelect(svc)}
+            before={
+                <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {platform ? PLATFORM_ICONS[platform] : '📂'}
+                </div>
+            }
+            description={
+                <span style={{ fontSize: 12, color: 'var(--tg-theme-hint-color, #999)' }}>
+                    Min: {svc.min} – Max: {svc.max.toLocaleString()}
+                    {svc.averageTime && ` • ⏱ ${svc.averageTime}`}
+                    {svc.refill && ' • ♻ Refill'}
+                    {svc.cancel && ' • ✕ Cancel'}
+                </span>
+            }
+            after={
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', minWidth: 'max-content' }}>
+                    <span style={{ 
+                        fontSize: 11, 
+                        fontWeight: 600, 
+                        color: 'var(--accent, #7c5cfc)',
+                        background: 'rgba(124, 92, 252, 0.1)',
+                        padding: '2px 6px',
+                        borderRadius: '8px'
+                    }}>
+                        ID: {svc.id}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tg-theme-text-color)' }}>
+                        {formatETB(svc.rate)}
+                    </span>
+                </div>
+            }
+        >
+            {svc.name}
+        </Cell>
+    );
+});
+
 export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Props) {
     const { selectedPlatform } = useApp();
     const [search, setSearch] = useState('');
@@ -22,6 +70,22 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
     
     const { data: categoryServices = [], isLoading: loading, isError } = useCategoryServices(category, recommendedIds);
+
+    // 2. Native Back Button Flow
+    useEffect(() => {
+        try {
+            showBackButton();
+            const off = onBackButtonClick(() => {
+                onClose();
+            });
+            return () => {
+                off();
+                hideBackButton();
+            };
+        } catch (e) {
+            console.error('Back button setup failed', e);
+        }
+    }, [onClose]);
 
     const filtered = useMemo(() => {
         if (!deferredSearch.trim()) return categoryServices;
@@ -53,8 +117,11 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
         >
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }} onScroll={handleScroll}>
                 <List>
-                    <Section>
+                    <Section className="modal-search">
                         <Input
+                            inputMode="search"
+                            autoComplete="off"
+                            spellCheck={false}
                             placeholder="Search services..."
                             value={search}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
@@ -86,43 +153,12 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                     ) : (
                         <Section>
                             {visibleServices.map(svc => (
-                                <Cell
-                                    key={svc.id}
-                                    multiline
-                                    onClick={() => onSelect(svc)}
-                                    before={
-                                        <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {selectedPlatform ? PLATFORM_ICONS[selectedPlatform] : '📂'}
-                                        </div>
-                                    }
-                                    description={
-                                        <span style={{ fontSize: 12, color: 'var(--tg-theme-hint-color, #999)' }}>
-                                            Min: {svc.min} – Max: {svc.max.toLocaleString()}
-                                            {svc.averageTime && ` • ⏱ ${svc.averageTime}`}
-                                            {svc.refill && ' • ♻ Refill'}
-                                            {svc.cancel && ' • ✕ Cancel'}
-                                        </span>
-                                    }
-                                    after={
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', minWidth: 'max-content' }}>
-                                            <span style={{ 
-                                                fontSize: 11, 
-                                                fontWeight: 600, 
-                                                color: 'var(--accent, #7c5cfc)',
-                                                background: 'rgba(124, 92, 252, 0.1)',
-                                                padding: '2px 6px',
-                                                borderRadius: '8px'
-                                            }}>
-                                                ID: {svc.id}
-                                            </span>
-                                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tg-theme-text-color)' }}>
-                                                {formatETB(svc.rate)}
-                                            </span>
-                                        </div>
-                                    }
-                                >
-                                    {svc.name}
-                                </Cell>
+                                <ServiceRow 
+                                    key={svc.id} 
+                                    svc={svc} 
+                                    platform={selectedPlatform} 
+                                    onSelect={onSelect} 
+                                />
                             ))}
                             {hasMore && (
                                 <Cell

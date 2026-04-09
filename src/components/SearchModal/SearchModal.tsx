@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { List, Section, Cell, Input, Placeholder } from '@telegram-apps/telegram-ui';
+import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-apps/sdk-react';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
 import { useAllServices } from '../../hooks/useAllServices';
@@ -12,6 +13,21 @@ interface Props {
 export function SearchModal({ onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
     const { data: services = [], isLoading } = useAllServices();
+
+    useEffect(() => {
+        try {
+            showBackButton();
+            const off = onBackButtonClick(() => {
+                onClose();
+            });
+            return () => {
+                off();
+                hideBackButton();
+            };
+        } catch (e) {
+            console.error('Back button setup failed', e);
+        }
+    }, [onClose]);
 
     const results = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -71,6 +87,9 @@ export function SearchModal({ onSelect, onClose }: Props) {
                 <List>
                     <Section>
                         <Input
+                            inputMode="search"
+                            autoComplete="off"
+                            spellCheck={false}
                             autoFocus
                             placeholder="Type name, ID, or category..."
                             value={search}
@@ -90,6 +109,7 @@ export function SearchModal({ onSelect, onClose }: Props) {
                                 {svcs.map(svc => (
                                     <Cell
                                         key={svc.id}
+                                        className="cell-row"
                                         multiline
                                         onClick={() => onSelect(svc)}
                                         description={

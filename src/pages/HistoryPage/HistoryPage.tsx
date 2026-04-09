@@ -135,6 +135,9 @@ export function HistoryPage() {
             {showSearch && (
                 <div style={{ margin: '0 16px 12px' }}>
                     <Input
+                        inputMode="search"
+                        autoComplete="off"
+                        spellCheck={false}
                         type="text"
                         placeholder="Search by API order ID, service name, or link..."
                         value={search}
@@ -190,6 +193,7 @@ export function HistoryPage() {
                         return (
                             <Cell
                                 key={order.id}
+                                className="cell-row"
                                 // Make the ID look like a sleek pill instead of plain text
                                 before={
                                     <div 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import pool from '../config/database.js';
 import { getTelegramUserId } from '../lib/auth.js';
 import { notifyNewOrder } from '../lib/notify.js';
+import { processTransaction } from '../lib/wallet.js';
 
 const router = Router();
 const connectedClients = new Map();
@@ -134,33 +135,27 @@ router.post('/place', async (req, res) => {
                 console.log('[place_order] Warning: Could not verify order with provider, but order was placed');
             }
 
-            // 5. Update user balance
-            await conn.execute('UPDATE auth SET balance = balance - ? WHERE tg_id = ?', [totalCostEtb, tgId]);
-
-            // Get new balance
-            const [newBalRows] = await conn.execute('SELECT balance FROM auth WHERE tg_id = ?', [tgId]);
-            const newBalanceStr = newBalRows[0].balance;
-
-            // 6. Insert Order into DB
+            // 5. Insert Order into DB
             const [insertRes] = await conn.execute(
                 `INSERT INTO orders 
                  (user_id, service_id, service_name, link, target_link, quantity, api_order_id, charge, status, created_at) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
                 [tgId, service, serviceData.name, link, link, quantity, providerOrderId, totalCostEtb]
             );
+            const dbId = insertRes.insertId;
 
-            // 7. Log Transaction
-            await conn.execute(
-                `INSERT INTO transactions 
-                 (user_id, type, amount, balance_after, reference_type, reference_id, description)
-                 VALUES (?, 'order', ?, ?, 'order', ?, 'Placed Order #${insertRes.insertId}')`,
-                [tgId, -totalCostEtb, newBalanceStr, insertRes.insertId]
+            // 6. Update user balance & Log Transaction (Centralized)
+            const newBalance = await processTransaction(
+                tgId,
+                'order',
+                -totalCostEtb,
+                `Placed Order #${dbId}`,
+                conn,
+                'order',
+                dbId
             );
 
             await conn.commit();
-
-            const dbId = insertRes.insertId;
-            const newBalance = parseFloat(newBalanceStr);
 
             // Notify admin bot about new order
             console.log('[orders] Calling notifyNewOrder with:', { uid: tgId, uuid: user.username || user.first_name || 'User', service: serviceData.name, order: dbId.toString(), amount: totalCostEtb.toString() });
@@ -283,12 +278,15 @@ router.post('/status', async (req, res) => {
                         const conn = await pool.getConnection();
                         try {
                             await conn.beginTransaction();
-                            await conn.execute('UPDATE auth SET balance = balance + ? WHERE tg_id = ?', [refundAmt, tgId]);
-                            const [newBalRows] = await conn.execute('SELECT balance FROM auth WHERE tg_id = ?', [tgId]);
-                            await conn.execute(
-                                `INSERT INTO transactions (user_id, type, amount, balance_after, reference_type, reference_id, description)
-                                 VALUES (?, 'refund', ?, ?, 'order_refund', ?, ?)`,
-                                [tgId, refundAmt, newBalRows[0].balance, order.id, newStatus === 'partial' ? `Partial Refund for Order #${order.id}` : `Refund for Order #${order.id}`]
+                            // Process Refund (Centralized)
+                            await processTransaction(
+                                tgId,
+                                'refund',
+                                refundAmt,
+                                newStatus === 'partial' ? `Partial Refund for Order #${order.id}` : `Refund for Order #${order.id}`,
+                                conn,
+                                'order_refund',
+                                order.id
                             );
                             await conn.commit();
                         } catch (e) {
@@ -372,42 +370,34 @@ const TERMINAL_STATUSES = new Set(['completed', 'canceled', 'cancelled', 'refund
     }
 })();
 
-// ─── Main Polling Loop ──────────────────────────────────────
+// ─── Consolidation: Master Poller (Consolidated Engine) ──────
 let pollTimer = null;
 
-async function pollTick() {
+async function masterPoller() {
     if (pendingOrders.size === 0) return;
 
-    // Collect only orders whose users are currently connected via SSE
-    const batch = [];
-    for (const [apiId, info] of pendingOrders) {
-        if (connectedClients.has(info.userId)) {
-            batch.push({ apiId, ...info });
-        }
-    }
-
-    if (batch.length === 0) return;
-
+    // Collect ALL pending orders currently in the tracker
+    const ids = Array.from(pendingOrders.keys()).join(',');
     const apiKey = process.env.GODOFPANEL_API_KEY;
     if (!apiKey) return;
 
     try {
-        const ids = batch.map(o => o.apiId).join(',');
         const res = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=status&orders=${ids}`);
         const statusMap = await res.json();
 
-        if (statusMap.error) return; // Rate limit — skip this tick silently
+        if (statusMap.error) {
+            console.log('[MasterPoller] API Throttled or Error:', statusMap.error);
+            return;
+        }
 
-        for (const order of batch) {
-            const info = statusMap[order.apiId];
+        for (const [apiId, order] of pendingOrders) {
+            const info = statusMap[apiId];
             if (!info || !info.status) continue;
 
             const newStatus = info.status.toLowerCase().replace(/\s+/g, '_');
-            if (newStatus === order.status) continue; // No change
+            if (newStatus === order.status) continue;
 
-            // ── Status changed! ──
-
-            // 1. Calculate refund if needed
+            // 1. Calculate Refund if status changed to terminal/partial
             let refundAmt = 0;
             if (['canceled', 'cancelled', 'refunded', 'fail', 'failed'].includes(newStatus)) {
                 refundAmt = order.charge;
@@ -418,19 +408,14 @@ async function pollTick() {
                 }
             }
 
-            // 2. Process refund in DB (only if needed)
+            // 2. Database updates (Atomically process refund if needed)
             if (refundAmt > 0) {
                 const conn = await pool.getConnection();
                 try {
                     await conn.beginTransaction();
-                    await conn.execute('UPDATE auth SET balance = balance + ? WHERE tg_id = ?', [refundAmt, order.userId]);
-                    const [balRows] = await conn.execute('SELECT balance FROM auth WHERE tg_id = ?', [order.userId]);
-                    await conn.execute(
-                        `INSERT INTO transactions (user_id, type, amount, balance_after, reference_type, reference_id, description)
-                         VALUES (?, 'refund', ?, ?, 'order_refund', ?, ?)`,
-                        [order.userId, refundAmt, balRows[0].balance, order.dbId,
-                         newStatus === 'partial' ? `Partial Refund #${order.dbId}` : `Refund #${order.dbId}`]
-                    );
+                    await processTransaction(order.userId, 'refund', refundAmt, 
+                        newStatus === 'partial' ? `Partial Refund #${order.dbId}` : `Refund #${order.dbId}`,
+                        conn, 'order_refund', order.dbId);
                     await conn.commit();
                 } catch (e) {
                     await conn.rollback();
@@ -439,52 +424,37 @@ async function pollTick() {
                 }
             }
 
-            // 3. Update DB (single lightweight UPDATE)
-            await pool.execute(
-                'UPDATE orders SET status = ?, start_count = ?, remains = ? WHERE id = ?',
-                [newStatus, info.start_count || 0, info.remains || 0, order.dbId]
-            );
+            // Update order status in DB
+            await pool.execute('UPDATE orders SET status = ?, start_count = ?, remains = ? WHERE id = ?',
+                [newStatus, info.start_count || 0, info.remains || 0, order.dbId]);
 
-            // 4. Push to SSE
+            // 3. Update memory state
+            if (TERMINAL_STATUSES.has(newStatus)) {
+                untrackOrder(apiId);
+            } else {
+                order.status = newStatus;
+            }
+
+            // 4. BROADCAST to connected SSE clients
             const clients = connectedClients.get(order.userId);
             if (clients) {
                 const payload = JSON.stringify({
                     type: 'ORDER_UPDATED',
-                    order: {
-                        id: order.dbId,
-                        api_order_id: parseInt(order.apiId),
-                        status: newStatus,
-                        start_count: info.start_count || 0,
-                        remains: info.remains || 0,
-                    },
+                    order: { id: order.dbId, api_order_id: parseInt(apiId), status: newStatus, start_count: info.start_count || 0, remains: info.remains || 0 },
                     refunded: refundAmt > 0,
                 });
                 for (const c of clients) c.write(`data: ${payload}\n\n`);
             }
-
-            // 5. Update in-memory tracker
-            if (TERMINAL_STATUSES.has(newStatus)) {
-                untrackOrder(order.apiId);
-            } else {
-                pendingOrders.get(order.apiId).status = newStatus;
-            }
         }
     } catch (err) {
-        // Network error — silently skip, next tick will retry
+        console.error('[MasterPoller] Error:', err.message);
     }
 }
 
-// Adaptive loop: 3s when active, stops cleanly when nothing to track
+// Global loop: 5 seconds interval
 function startPolling() {
     if (pollTimer) return;
-    pollTimer = setInterval(async () => {
-        if (pendingOrders.size === 0 && connectedClients.size === 0) {
-            clearInterval(pollTimer);
-            pollTimer = null;
-            return;
-        }
-        await pollTick();
-    }, 3000);
+    pollTimer = setInterval(masterPoller, 5000);
 }
 
 // Auto-start polling when SSE clients connect or orders are placed

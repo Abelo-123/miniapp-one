@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Section, Input, Textarea, Button, Cell } from '@telegram-apps/telegram-ui';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../../context/AppContext';
 import { formatETB, getLinkPlaceholder, QUANTITY_STEP } from '../../constants';
 import * as api from '../../api';
+import type { Order } from '../../types';
 import {
     hapticImpact,
     hapticNotification,
@@ -14,10 +16,9 @@ import {
     disableClosingConfirmation,
 } from '../../helpers/telegram';
 
-// URL validation helper - supports http, https, t.me, telegram.me, instagram.com, etc.
+// URL validation helper
 function isValidUrl(str: string): boolean {
     if (!str.trim()) return false;
-    // Allow any URL-like string that contains a domain or t.me/telegram.me
     const urlPattern = /^(https?:\/\/|t\.me\/|telegram\.me\/|@)/i;
     return urlPattern.test(str.trim());
 }
@@ -29,18 +30,18 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         selectedService, selectedPlatform, selectedCategory,
         rateMultiplier, discountPercent,
         user, userCanOrder, isTelegramApp,
-        setBalance, setOrders, orders,
+        setBalance, 
         showToast, setActiveTab,
     } = useApp();
+
+    const queryClient = useQueryClient();
 
     // Form State
     const [link, setLink] = useState('');
     const [quantity, setQuantity] = useState('');
     const [comments, setComments] = useState('');
     const [answerNumber, setAnswerNumber] = useState('');
-    const [submitting, setSubmitting] = useState(false);
     
-    // Track which fields user has interacted with (to avoid showing initial errors)
     const [touched, setTouched] = useState<{
         link?: boolean;
         quantity?: boolean;
@@ -48,7 +49,6 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         answerNumber?: boolean;
     }>({});
     
-    // Field-level error state
     const [errors, setErrors] = useState<{
         link?: string;
         quantity?: string;
@@ -68,7 +68,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             charge: discounted,
             hasDiscount: discountPercent > 0,
         };
-    }, [quantity, service.rate, rateMultiplier, discountPercent]);
+    }, [quantity, service.rate, rateMultiplier, discountPercent, service.type]);
 
     const placeholder = getLinkPlaceholder(selectedCategory || '', selectedPlatform || 'other');
     const showComments = ['Custom Comments', 'Custom Comments Package', 'Mentions with Hashtags'].includes(service.type);
@@ -79,14 +79,12 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
     const validation = useMemo(() => {
         const errs: typeof errors = {};
         
-        // Link validation
         if (!link.trim()) {
             errs.link = 'Link is required';
         } else if (!isValidUrl(link.trim())) {
             errs.link = 'Please enter a valid URL or username';
         }
         
-        // Quantity validation
         if (showQuantity && !showComments) {
             const qty = parseInt(quantity);
             if (!quantity || isNaN(qty)) {
@@ -100,7 +98,6 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             }
         }
         
-        // Comments validation
         if (showComments) {
             const lines = comments.split('\n').filter((l: string) => l.trim());
             if (lines.length === 0) {
@@ -112,7 +109,6 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             }
         }
         
-        // Answer number validation for polls
         if (showPoll) {
             const ans = parseInt(answerNumber);
             if (!answerNumber || isNaN(ans)) {
@@ -120,12 +116,10 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             }
         }
         
-        // Balance check - always show
         if (user && charge > user.balance) {
             errs.general = `Insufficient balance. You have ${formatETB(user.balance)} but need ${formatETB(charge)}`;
         }
         
-        // Check if ordering is allowed - always show
         if (!userCanOrder) {
             errs.general = 'Ordering is currently disabled. Please try again later.';
         }
@@ -138,95 +132,85 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         if (touched.answerNumber && errs.answerNumber) visibleErrs.answerNumber = errs.answerNumber;
         
         return {
-            isValid: Object.keys(errs).length === 0, // raw
-            errors: visibleErrs, // filtered for UI
-            rawErrors: errs, // raw state
+            isValid: Object.keys(errs).length === 0,
+            errors: visibleErrs,
+            rawErrors: errs,
         };
     }, [link, quantity, comments, answerNumber, service, charge, user, userCanOrder, showComments, showQuantity, showPoll, touched]);
 
-    // For backward compatibility
     const isValid = validation.isValid;
 
-    // Submit Handler
-    const handleSubmit = async () => {
-        // Mark all fields as touched to show errors visually
-        setTouched({ link: true, quantity: true, comments: true, answerNumber: true });
-        
-        // Validate payload based on raw errors, ignoring UI visibility
-        if (Object.keys(validation.rawErrors).length > 0) {
+    // Optimistic Mutation Engine
+    const { mutate: placeOrderMutation, isPending: submitting } = useMutation({
+        mutationFn: api.placeOrder,
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: [ 'orders' ] });
+            const previousOrders = queryClient.getQueryData<Order[]>([ 'orders' ]) || [];
+            const previousBalance = user?.balance || 0;
+            const qty = service.type === 'Package' ? service.min : parseInt(quantity);
+            const optimisticOrder: any = {
+                id: Date.now(),
+                api_order_id: 0,
+                service_id: service.id,
+                service_name: service.name,
+                link: link,
+                quantity: qty,
+                charge: charge,
+                status: 'pending',
+                remains: qty,
+                start_count: 0,
+                created_at: new Date().toISOString(),
+                isOptimistic: true
+            };
+            queryClient.setQueryData([ 'orders' ], (old: Order[] = []) => [ optimisticOrder, ...old ]);
+            if (user) setBalance(user.balance - charge);
+            return { previousOrders, previousBalance };
+        },
+        onError: (err: any, _vars, context) => {
+            if (context) {
+                queryClient.setQueryData([ 'orders' ], context.previousOrders);
+                setBalance(context.previousBalance);
+            }
+            showToast('error', err.message || 'Order failed. Reverting...');
             hapticNotification('error');
-            // Get the first error to show in Toast
+        },
+        onSuccess: (response) => {
+            if (response.success) {
+                queryClient.setQueryData([ 'orders' ], (old: any[] = []) => 
+                    old.map(o => o.isOptimistic ? { ...o, id: response.order_id, api_order_id: response.order_id, isOptimistic: false } : o)
+                );
+                showToast('success', response.verified ? 'Order confirmed!' : 'Order processing.');
+                hapticImpact('heavy');
+                hapticNotification('success');
+                setLink(''); setQuantity(''); setComments(''); setAnswerNumber(''); setTouched({});
+                if (onClose) onClose();
+                setActiveTab('history');
+            } else {
+                throw new Error(response.error || 'Failed to place order');
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: [ 'orders' ] });
+        }
+    });
+
+    const handleSubmit = async () => {
+        setTouched({ link: true, quantity: true, comments: true, answerNumber: true });
+        if (!validation.isValid) {
+            hapticNotification('error');
             const firstError = Object.values(validation.rawErrors)[0];
             showToast('error', firstError);
             return;
         }
-
-        setSubmitting(true);
-        setErrors({});
-        try {
-            const qty = service.type === 'Package' ? service.min : parseInt(quantity);
-            
-            const response = await api.placeOrder({
-                service: service.id,
-                link,
-                quantity: qty,
-                tg_id: user?.id,
-                comments: comments || undefined,
-                answer_number: answerNumber ? parseInt(answerNumber) : undefined,
-            });
-
-            if (response.success) {
-                const newOrder = {
-                    id: response.order_id,
-                    api_order_id: response.order_id,
-                    service_id: service.id,
-                    service_name: service.name,
-                    link,
-                    quantity: qty,
-                    charge,
-                    status: 'pending' as const,
-                    remains: qty,
-                    start_count: 0,
-                    created_at: new Date().toISOString(),
-                };
-
-                setOrders([newOrder, ...orders]);
-                if (user) setBalance(response.new_balance);
-                
-                // NEW: Use native toasts instead of Swal
-                showToast('success', response.verified 
-                    ? `Order #${response.order_id} confirmed!` 
-                    : `Order #${response.order_id} processing.`
-                );
-                
-                hapticImpact('heavy');
-                hapticNotification('success');
-
-                setLink('');
-                setQuantity('');
-                setComments('');
-                setAnswerNumber('');
-                setTouched({});
-                
-                // Immediately close the modal and redirect to history to see the order
-                if (onClose) onClose();
-                setActiveTab('history');
-            } else {
-                // Handle API error response
-                const errorMsg = response.error || 'Failed to place order';
-                setErrors({ general: errorMsg });
-                showToast('error', errorMsg);
-                hapticNotification('error');
-            }
-        } catch (err: any) {
-            // Handle network/connection errors
-            const errorMsg = err.message || 'Network error. Please check your connection and try again.';
-            setErrors({ general: errorMsg });
-            showToast('error', errorMsg);
-            hapticNotification('error');
-        } finally {
-            setSubmitting(false);
-        }
+        const qty = service.type === 'Package' ? service.min : parseInt(quantity);
+        placeOrderMutation({
+            service: service.id,
+            link,
+            quantity: qty,
+            tg_id: user?.id,
+            comments: comments || undefined,
+            answer_number: answerNumber ? parseInt(answerNumber) : undefined,
+        });
     };
 
     // Imperative submit binding for non-Telegram path

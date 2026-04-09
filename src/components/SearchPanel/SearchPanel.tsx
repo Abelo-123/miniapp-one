@@ -66,6 +66,9 @@ export function SearchPanel({ onSelect, onClose }: Props) {
                 </button>
                 <div className="search-page__input-wrapper" style={{ flex: 1 }}>
                     <Input
+                        inputMode="search"
+                        autoComplete="off"
+                        spellCheck={false}
                         type="text"
                         placeholder="Search services..."
                         value={search}

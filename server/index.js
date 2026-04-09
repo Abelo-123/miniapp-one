@@ -3,6 +3,7 @@
  */
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import 'dotenv/config';
 
 import pool from './config/database.js';
@@ -28,6 +29,10 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({ optionsSuccessStatus: 200 }));
+app.use(compression({
+    level: 6,
+    threshold: 1024
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

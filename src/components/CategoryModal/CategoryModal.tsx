@@ -1,5 +1,6 @@
-import { useState, useMemo, useDeferredValue } from 'react';
+import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
 import { List, Section, Cell, Input, Modal, Placeholder, Spinner } from '@telegram-apps/telegram-ui';
+import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-apps/sdk-react';
 import type { SocialPlatform } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
 import { PLATFORM_ICONS } from '../../components/PlatformGrid/PlatformGrid';
@@ -14,6 +15,21 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
     const deferredSearch = useDeferredValue(search);
     const { data: rawCategories = [], isLoading: loading } = useCategories(platform);
+
+    useEffect(() => {
+        try {
+            showBackButton();
+            const off = onBackButtonClick(() => {
+                onClose();
+            });
+            return () => {
+                off();
+                hideBackButton();
+            };
+        } catch (e) {
+            console.error('Back button setup failed', e);
+        }
+    }, [onClose]);
 
     const categories = useMemo(() => {
         if (platform === 'top') return ['Top Services'];
@@ -35,8 +51,11 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
         >
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
                 <List>
-                    <Section>
+                    <Section className="modal-search">
                         <Input
+                            inputMode="search"
+                            autoComplete="off"
+                            spellCheck={false}
                             placeholder="Search categories..."
                             value={search}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}

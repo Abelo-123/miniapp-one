@@ -14,12 +14,28 @@
  * Replaces: chapa_callback.php
  */
 import { Router } from 'express';
+import crypto from 'crypto';
 import pool from '../config/database.js';
 import Chapa from '../lib/chapa.js';
+import { processTransaction } from '../lib/wallet.js';
 
 const router = Router();
 
 async function handleCallback(req, res) {
+    // 1. Signature Verification (Only for POST)
+    if (req.method === 'POST') {
+        const signature = req.headers['chapa-signature'];
+        const secret = process.env.CHAPA_SECRET_KEY;
+        
+        if (signature && secret) {
+            const hash = crypto.createHmac('sha256', secret).update(JSON.stringify(req.body)).digest('hex');
+            if (signature !== hash) {
+                console.warn('[chapa_callback] Invalid signature');
+                return res.status(401).send('Forbidden');
+            }
+        }
+    }
+
     // Extract tx_ref from GET or POST
     const txRef =
         req.query?.trx_ref ||
@@ -67,24 +83,16 @@ async function handleCallback(req, res) {
                 [chapaRef, responseJson, deposit.id]
             );
 
-            // Credit balance
-            await conn.execute(
-                'UPDATE auth SET balance = balance + ? WHERE tg_id = ?',
-                [verifiedAmount, deposit.user_id]
-            );
-
-            // Get new balance
-            const [balRows] = await conn.execute(
-                'SELECT balance FROM auth WHERE tg_id = ?',
-                [deposit.user_id]
-            );
-            const newBalance = parseFloat(balRows[0]?.balance) || 0;
-
-            // Record transaction
-            await conn.execute(
-                `INSERT INTO transactions (user_id, type, amount, balance_after, reference_type, reference_id, description)
-                 VALUES (?, 'deposit', ?, ?, 'deposit', ?, 'Chapa deposit (callback)')`,
-                [deposit.user_id, verifiedAmount, newBalance, deposit.id]
+            // 4. Update Balance & Record Transaction (Centralized)
+            const description = `Chapa deposit (callback) - ${chapaRef}`;
+            await processTransaction(
+                deposit.user_id,
+                'deposit',
+                verifiedAmount,
+                description,
+                conn,
+                'deposit',
+                deposit.id
             );
 
             await conn.commit();

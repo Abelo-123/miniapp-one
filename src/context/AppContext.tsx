@@ -12,6 +12,7 @@ import {
 } from '../helpers/telegram';
 import * as api from '../api';
 import Swal from 'sweetalert2';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface AppState {
     user: UserProfile | null;
@@ -80,7 +81,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
-    const [orders, setOrders] = useState<Order[]>([]);
     const [deposits, setDeposits] = useState<Deposit[]>([]);
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -119,16 +119,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    const refreshOrders = useCallback(async () => {
-        try {
+    const queryClient = useQueryClient();
+
+    // Use React Query for orders - Single Source of Truth
+    const { data: qOrders = [], refetch: refreshOrders } = useQuery<Order[]>({
+        queryKey: ['orders'],
+        queryFn: async () => {
             const data = await api.getOrders();
-            if (data && data.orders) {
-                setOrders(data.orders);
-            }
-        } catch (err) {
-            console.error('Failed to refresh orders:', err);
-        }
-    }, []);
+            return data.orders || [];
+        },
+        staleTime: 30000, 
+    });
+
+    // Backwards compatibility for components still using setOrders
+    const setOrders = useCallback((newOrders: Order[] | ((old: Order[]) => Order[])) => {
+        queryClient.setQueryData(['orders'], newOrders);
+    }, [queryClient]);
+
+    const orders = qOrders;
 
     const refreshDeposits = useCallback(async () => {
         try {
@@ -461,7 +469,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         showToast,
         removeToast,
         refreshServices,
-        refreshOrders,
+        refreshOrders: async () => { await refreshOrders(); },
         refreshDeposits,
         refreshAlerts,
     }), [
