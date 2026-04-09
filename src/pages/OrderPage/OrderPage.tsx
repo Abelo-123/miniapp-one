@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import Swal from 'sweetalert2';
+
 import { useApp } from '../../context/AppContext';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
@@ -8,10 +8,12 @@ import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
 import { OrderForm, type OrderFormHandle } from '../../components/OrderForm/OrderForm';
 import { NewsTicker } from '../../components/NewsTicker/NewsTicker';
 
+
 export function OrderPage() {
     const {
         recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
+        showToast
     } = useApp();
 
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -41,6 +43,8 @@ export function OrderPage() {
     const handleServiceSelect = useCallback((service: typeof selectedService) => {
         setSelectedService(service);
         setShowServiceModal(false);
+        // NEW: Instantly open the order form as soon as a service is picked
+        setTimeout(() => setShowOrderModal(true), 150); 
     }, [setSelectedService]);
 
     return (
@@ -54,81 +58,91 @@ export function OrderPage() {
                 onSelect={handlePlatformSelect}
             />
 
-            {/* ─── Category Selection ─── */}
-            <Section>
+            {/* ─── Category & Service Selection ─── */}
+            <Section style={{ margin: '0 16px', borderRadius: '14px', overflow: 'hidden' }}>
                 <Cell
                     subtitle={selectedCategory || 'Select a category'}
                     onClick={() => {
-                        if (selectedPlatform) {
-                            setShowCategoryModal(true);
-                        } else {
-                            Swal.fire({
-                                title: 'Select Platform',
-                                text: 'Please tap a social platform (YouTube, TikTok, etc.) above before picking a category.',
-                                icon: 'info',
-                                confirmButtonColor: '#7c5cfc'
-                            });
-                        }
+                        if (selectedPlatform) setShowCategoryModal(true);
+                        else import('../../helpers/telegram').then(m => m.hapticNotification('error'));
                     }}
-                    after={<span style={{ color: 'var(--tg-theme-hint-color)' }}>{'>'}</span>}
+                    // NEW: Shows a green checkmark if completed
+                    after={selectedCategory 
+                        ? <span style={{color: 'var(--color-success)', fontWeight: 'bold'}}>✓</span> 
+                        : <span style={{ color: 'var(--tg-theme-hint-color)' }}>{'>'}</span>
+                    }
                 >
-                    Category
+                    <span style={{ fontWeight: selectedCategory ? 600 : 400 }}>Category</span>
                 </Cell>
-            </Section>
+                
+                <div style={{ height: '1px', background: 'var(--surface-glass-border)', marginLeft: '16px' }} />
 
-            <Section>
                 <Cell
                     subtitle={selectedService?.name || 'Select a service'}
+                    style={{ opacity: selectedCategory ? 1 : 0.4, transition: 'opacity 0.2s' }}
                     onClick={() => {
-                        if (selectedCategory) {
-                            setShowServiceModal(true);
-                        } else if (!selectedPlatform) {
-                            Swal.fire({
-                                title: 'Start with Platform',
-                                text: 'Select a social platform and category first!',
-                                icon: 'info',
-                                confirmButtonColor: '#7c5cfc'
-                            });
-                        } else {
-                            Swal.fire({
-                                title: 'Select Category',
-                                text: 'Please choose a category from the list before selecting a specific service.',
-                                icon: 'info',
-                                confirmButtonColor: '#7c5cfc'
-                            });
-                        }
+                        if (selectedCategory) setShowServiceModal(true);
                     }}
-                    after={<span style={{ color: 'var(--tg-theme-hint-color)' }}>{'>'}</span>}
+                    // NEW: Shows a green checkmark if completed
+                    after={selectedService 
+                        ? <span style={{color: 'var(--color-success)', fontWeight: 'bold'}}>✓</span> 
+                        : <span style={{ color: 'var(--tg-theme-hint-color)' }}>{'>'}</span>
+                    }
                 >
-                    Service
+                    <span style={{ fontWeight: selectedService ? 600 : 400 }}>Service</span>
                 </Cell>
             </Section>
 
-            {/* ─── Order Trigger ─── */}
-            <div style={{ padding: '20px 16px' }}>
+            {/* ─── Sticky Call to Action Button ─── */}
+            <div style={{ 
+                padding: '16px', 
+                position: 'sticky', 
+                bottom: 0, 
+                // Gradient fade so it floats nicely over content
+                background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 30%, #000000 100%)',
+                zIndex: 10
+            }}>
                 <Button
                     size="l"
                     stretched
-                    onClick={() => {
-                        if (!selectedPlatform) {
-                            Swal.fire({ title: 'Hold On!', text: 'Please select a platform (e.g., Telegram, TikTok) first.', icon: 'warning', confirmButtonColor: '#f39c12' });
-                            return;
-                        }
-                        if (!selectedCategory) {
-                            Swal.fire({ title: 'Hold On!', text: 'Please select a category.', icon: 'warning', confirmButtonColor: '#f39c12' });
-                            return;
-                        }
-                        if (!selectedService) {
-                            Swal.fire({ title: 'Hold On!', text: 'Please select a specific service to order.', icon: 'warning', confirmButtonColor: '#f39c12' });
-                            return;
-                        }
-                        setShowOrderModal(true);
+                    style={{ 
+                        // Native Telegram Button Color
+                        background: selectedService ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
+                        // Native Telegram Text Color
+                        color: selectedService ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-hint-color)',
+                        transition: 'all 0.15s ease',
+                        fontWeight: 600
                     }}
-                    style={{ background: 'linear-gradient(135deg, #7c5cfc 0%, #5b8def 100%)', color: '#fff' }}
+                    onClick={() => {
+                        import('../../helpers/telegram').then(m => {
+                            // Safe Validation
+                            if (!selectedPlatform) {
+                                m.hapticNotification('error');
+                                showToast('error', 'Please select a social platform first');
+                                return;
+                            }
+                            if (!selectedCategory) {
+                                m.hapticNotification('error');
+                                showToast('error', 'Please select a category');
+                                return;
+                            }
+                            if (!selectedService) {
+                                m.hapticNotification('error');
+                                showToast('error', 'Please select a service');
+                                return;
+                            }
+                            
+                            // All safe -> Open Form
+                            m.hapticImpact('light');
+                            setShowOrderModal(true);
+                        });
+                    }}
                 >
-                    Configure Order
+                    {selectedService ? 'Configure Order' : 'Select Service to Order'}
                 </Button>
             </div>
+
+
 
             {/* ─── Modals ─── */}
             {showOrderModal && selectedService && (

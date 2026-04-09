@@ -1,8 +1,17 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import Swal from 'sweetalert2';
+
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
-import { hapticSelection, hapticImpact, hapticNotification, getInitDataString } from '../../helpers/telegram';
+import { 
+    showMainButton, 
+    hideMainButton, 
+    onMainButtonClick, 
+    configureMainButton,
+    hapticSelection, 
+    hapticImpact, 
+    hapticNotification, 
+    getInitDataString 
+} from '../../helpers/telegram';
 import { Button, Input } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
 
@@ -34,6 +43,8 @@ export function DepositPage() {
     useEffect(() => {
         refreshDeposits().catch(() => { });
     }, [refreshDeposits]);
+
+
 
     // ─── Chapa Phone Validation ──────────────────────────────
     useEffect(() => {
@@ -324,19 +335,13 @@ export function DepositPage() {
                     activeTxRefRef.current = null;
                     
                     let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
-                    // If the bank message is just generic API success text, rewrite it to make sense
                     if (declinedReason.toLowerCase().includes('fetched successfully')) {
                         declinedReason = 'Payment was failed or cancelled by user.';
                     }
                     
-                    Swal.fire({
-                        title: 'Payment Declined',
-                        html: `<div style="color: #e74c3c; font-weight: 500;">${declinedReason}</div>`,
-                        icon: 'error',
-                        confirmButtonColor: '#6c5ce7',
-                        confirmButtonText: 'Try Again'
-                    });
-                    
+                    // NEW: Use native toast and inline error state
+                    setErrorMessage(declinedReason);
+                    showToast('error', 'Payment Declined');
                     hapticNotification('error');
                     return; // Stop polling
                 }
@@ -439,49 +444,25 @@ export function DepositPage() {
                         // Real failure (e.g. Invalid PIN, Insufficient Funds, etc)
                         setStep('amount');
                         
-                        // The error object thrown by the Chapa SDK is often generic (e.g., "Payment failed").
-                        // To get the EXACT reason (like "Insufficient balance" or "Invalid PIN"), 
-                        // we MUST ask the backend verification endpoint.
-                        Swal.fire({
-                            title: 'Checking Status',
-                            text: 'Fetching details from provider...',
-                            icon: 'info',
-                            showConfirmButton: false,
-                            allowOutsideClick: false,
-                            didOpen: async () => {
-                                Swal.showLoading();
-                                try {
-                                    const initData = await getInitDataString();
-                                    const verifyRes = await fetch(`${NODE_API_URL}/verify-deposit`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ tx_ref: txRef, initData }),
-                                    });
-                                    const data = await verifyRes.json();
-                                    
-                                    const exactReason = data?.bank_message || data?.message || rawMsg;
-                                    
-                                    Swal.fire({
-                                        title: 'Payment Declined',
-                                        html: `<div style="color: #e74c3c; font-weight: 500;">${exactReason}</div>`,
-                                        icon: 'error',
-                                        confirmButtonColor: '#6c5ce7',
-                                        confirmButtonText: 'Try Again'
-                                    });
-                                    hapticNotification('error');
-                                } catch (e) {
-                                    // Fallback to the generic error if the network fails
-                                    Swal.fire({
-                                        title: 'Payment Declined',
-                                        html: `<div style="color: #e74c3c; font-weight: 500;">${rawMsg}</div>`,
-                                        icon: 'error',
-                                        confirmButtonColor: '#6c5ce7',
-                                        confirmButtonText: 'Try Again'
-                                    });
-                                    hapticNotification('error');
-                                }
+                        // NEW: Update UI with the exact reason without blocking popups
+                        void (async () => {
+                            try {
+                                const initData = await getInitDataString();
+                                const v = await fetch(`${NODE_API_URL}/verify-deposit`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ tx_ref: txRef, initData }),
+                                });
+                                const data = await v.json();
+                                const exactReason = data?.bank_message || data?.message || rawMsg;
+                                setErrorMessage(exactReason);
+                            } catch (e) {
+                                setErrorMessage(rawMsg);
+                            } finally {
+                                showToast('error', 'Payment Declined');
+                                hapticNotification('error');
                             }
-                        });
+                        })();
                     }
                 },
 
@@ -534,6 +515,39 @@ export function DepositPage() {
         startInlinePayment(val);
     }, [amount, startInlinePayment, showToast]);
 
+    // ─── Native Main Button Integration ──────────────────────
+    useEffect(() => {
+        // Only show the native button if we are on the amount entry step
+        if (step === 'amount') {
+            const val = parseFloat(amount);
+            const isValid = val >= 10;
+
+            configureMainButton({
+                text: isValid ? `DEPOSIT ${val} ETB` : 'ENTER AMOUNT (MIN 10)',
+                color: isValid ? '#007AFF' : '#2d2d2d', // Native button color
+                textColor: '#ffffff',
+                isEnabled: isValid,
+                isLoaderVisible: false
+            });
+
+            showMainButton();
+
+            // Handle the native click
+            const off = onMainButtonClick(() => {
+                if (isValid) {
+                    handleDeposit(); 
+                }
+            });
+
+            return () => {
+                off();
+                hideMainButton();
+            };
+        } else {
+            hideMainButton();
+        }
+    }, [step, amount, handleDeposit]); // Dependency list ensures refresh if amount or step changes
+
     const recentDeposits = useMemo(() => deposits.slice(0, 5), [deposits]);
 
     const formatBalanceDisplay = (bal: number) => {
@@ -564,14 +578,37 @@ export function DepositPage() {
                     <div className="paxyo-section-header">AMOUNT TO ADD</div>
                     <div className="deposit-input-group">
                         <span className="deposit-input-group__prefix">ETB</span>
-                        <Input
+                        <input
                             className="deposit-input-group__input"
-                            type="number"
-                            inputMode="decimal"
-                            pattern="[0-9]*"
+                            // Force strict numeric keypad on mobile
+                            inputMode="numeric" 
+                            type="text" 
                             placeholder="0"
                             value={amount}
-                            onChange={(e: any) => setAmount(e.target.value)}
+                            onChange={(e) => {
+                                // 1. Strip all non-numbers
+                                const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                                if (!rawValue) {
+                                    setAmount('');
+                                    return;
+                                }
+                                
+                                // 2. Convert to number and format
+                                const num = parseInt(rawValue, 10);
+                                if (num > 100000) return; // Max limit to prevent typos
+                                
+                                setAmount(num.toString());
+                            }}
+                            style={{ 
+                                background: 'transparent', 
+                                border: 'none', 
+                                color: 'var(--tg-theme-text-color)', 
+                                fontSize: '24px', 
+                                fontWeight: 'bold', 
+                                width: '100%', 
+                                outline: 'none',
+                                paddingLeft: '8px'
+                            }}
                         />
                     </div>
 
@@ -597,17 +634,7 @@ export function DepositPage() {
                         </div>
                     )}
 
-                    <div style={{ padding: '0 16px', marginBottom: 16 }}>
-                        <Button
-                            size="l"
-                            stretched
-                            onClick={handleDeposit}
-                            disabled={!amount || parseFloat(amount) < 10}
-                            style={{ background: 'var(--accent-primary)', color: '#fff' }}
-                        >
-                            💳 Deposit with Chapa
-                        </Button>
-                    </div>
+                    {/* ─── LEGACY HTML BUTTON REMOVED IN FAVOR OF NATIVE MAIN BUTTON ─── */}
 
                     <div className="deposit-secured">
                         <span className="deposit-secured__lock">🔒</span>

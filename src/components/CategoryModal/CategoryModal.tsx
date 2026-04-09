@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useDeferredValue } from 'react';
 import { List, Section, Cell, Input, Modal, Placeholder, Spinner } from '@telegram-apps/telegram-ui';
 import type { SocialPlatform } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
@@ -11,6 +11,7 @@ interface Props {
 
 export function CategoryModal({ platform, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
+    const deferredSearch = useDeferredValue(search);
     const { data: rawCategories = [], isLoading: loading } = useCategories(platform);
 
     const categories = useMemo(() => {
@@ -19,10 +20,10 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
     }, [rawCategories, platform]);
 
     const filtered = useMemo(() => {
-        if (!search.trim()) return categories;
-        const q = search.toLowerCase();
+        if (!deferredSearch.trim()) return categories;
+        const q = deferredSearch.toLowerCase();
         return categories.filter(c => c.toLowerCase().includes(q));
-    }, [categories, search]);
+    }, [categories, deferredSearch]);
 
     return (
         <Modal
@@ -33,9 +34,20 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
             <List style={{ maxHeight: '60vh', overflow: 'auto' }}>
                 <Section>
                     <Input
+                        autoFocus
                         placeholder="Search categories..."
                         value={search}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        after={
+                            search.length > 0 ? (
+                                <div 
+                                    onClick={() => setSearch('')} 
+                                    style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
+                                >
+                                    ✕
+                                </div>
+                            ) : null
+                        }
                     />
                 </Section>
                 {loading ? (

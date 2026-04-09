@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { useApp } from '../../context/AppContext';
 import { hapticImpact, hapticSelection } from '../../helpers/telegram';
 import { Section, Cell, Button, Input } from '@telegram-apps/telegram-ui';
@@ -8,7 +8,7 @@ const STATUS_FILTERS: { id: OrderStatus | 'all'; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'pending', label: 'Pending' },
     { id: 'processing', label: 'Processing' },
-    { id: 'completed', label: 'Compl' },
+    { id: 'completed', label: 'Completed' },
 ];
 
 function normalizeStatus(status: string): OrderStatus {
@@ -19,10 +19,12 @@ function normalizeStatus(status: string): OrderStatus {
 }
 
 export function HistoryPage() {
-    const { orders, showToast, refreshOrders } = useApp();
+    const { orders, showToast, refreshOrders, setActiveTab } = useApp();
     const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
     const [search, setSearch] = useState('');
+    const deferredSearch = useDeferredValue(search);
     const [showSearch, setShowSearch] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const filtered = useMemo(() => {
         let result = orders;
@@ -31,8 +33,8 @@ export function HistoryPage() {
             result = result.filter(o => normalizeStatus(o.status) === filter);
         }
 
-        if (search.trim()) {
-            const q = search.toLowerCase();
+        if (deferredSearch.trim()) {
+            const q = deferredSearch.toLowerCase();
             result = result.filter(o =>
                 (o.service_name || '').toLowerCase().includes(q) ||
                 (o.api_order_id || '').toString().includes(q) ||
@@ -41,19 +43,46 @@ export function HistoryPage() {
         }
 
         return result;
-    }, [orders, filter, search]);
+    }, [orders, filter, deferredSearch]);
 
     const handleRefresh = useCallback(() => {
         hapticImpact('medium');
+        setIsRefreshing(true);
         refreshOrders();
         showToast('info', 'Refreshing orders...');
+        
+        // Remove the spin class after animation completes so it can be triggered again
+        setTimeout(() => setIsRefreshing(false), 600);
     }, [refreshOrders, showToast]);
 
     return (
         <div className="history-page">
-            {/* ─── Filter Row with Search & Refresh ─── */}
-            <div className="history-filter-row">
-                <div className="filter-row">
+            <div className="history-filter-row" style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
+                background: 'var(--tg-theme-bg-color)',
+                backgroundColor: 'rgba(var(--tg-theme-bg-color), 0.8)', 
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                paddingTop: '16px',
+                paddingBottom: '12px',
+                borderBottom: '1px solid var(--tg-theme-secondary-bg-color)',
+                margin: '0 -16px 16px -16px', // Pull out to screen edges
+                paddingLeft: '16px',
+                paddingRight: '16px'
+            }}>
+                <div 
+                    className="filter-row"
+                    style={{
+                        display: 'flex',
+                        gap: '8px', 
+                        overflowX: 'auto', 
+                        flex: 1, 
+                        paddingRight: '8px', 
+                        scrollbarWidth: 'none', 
+                    }}
+                >
                     {STATUS_FILTERS.map(f => (
                         <Button
                             key={f.id}
@@ -63,7 +92,11 @@ export function HistoryPage() {
                                 hapticSelection();
                                 setFilter(f.id);
                             }}
-                            style={filter === f.id ? { background: 'var(--accent-primary)', color: '#fff', border: 'none' } : {}}
+                            style={{
+                                flexShrink: 0, // Prevent the button from shrinking
+                                whiteSpace: 'nowrap', // Prevent text from wrapping to next line
+                                ...(filter === f.id ? { background: 'var(--accent-primary)', color: '#fff', border: 'none' } : {})
+                            }}
                         >
                             {f.label}
                         </Button>
@@ -85,7 +118,11 @@ export function HistoryPage() {
                         onClick={handleRefresh}
                         style={{ padding: 8 }}
                     >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg 
+                            className={isRefreshing ? 'spin-animation' : ''} 
+                            width="18" height="18" viewBox="0 0 24 24" 
+                            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        >
                             <polyline points="23 4 23 10 17 10" />
                             <polyline points="1 20 1 14 7 14" />
                             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
@@ -103,12 +140,22 @@ export function HistoryPage() {
                         value={search}
                         onChange={(e: any) => setSearch(e.target.value)}
                         autoFocus
+                        after={
+                            search.length > 0 ? (
+                                <div 
+                                    onClick={() => setSearch('')} 
+                                    style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
+                                >
+                                    ✕
+                                </div>
+                            ) : null
+                        }
                     />
                 </div>
             )}
 
             {/* ─── Orders ─── */}
-            <Section style={{ margin: '0 16px', background: 'var(--surface-glass)', border: '1px solid var(--surface-glass-border)' }}>
+            <Section style={{ margin: '0 16px', background: 'var(--tg-theme-secondary-bg-color)', borderRadius: '12px', overflow: 'hidden' }}>
                 {filtered.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-state__icon">📦</div>
@@ -118,6 +165,17 @@ export function HistoryPage() {
                                 ? 'Try adjusting your filters'
                                 : "You haven't placed any orders yet"}
                         </div>
+                        
+                        {/* NEW: Actionable button to guide the user */}
+                        {(!search.trim() && filter === 'all') && (
+                            <Button 
+                                size="m" 
+                                style={{ marginTop: '16px', background: 'var(--accent-primary)', color: '#fff' }}
+                                onClick={() => setActiveTab('order')}
+                            >
+                                Place an Order
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     filtered.map((order) => {
@@ -132,13 +190,42 @@ export function HistoryPage() {
                         return (
                             <Cell
                                 key={order.id}
-                                before={<span style={{fontSize: 12, fontWeight: 700, opacity: 0.5}}>#{order.api_order_id}</span>}
-                                subtitle={<span style={{color: 'var(--accent-secondary)'}}>{linkName}</span>}
+                                // Make the ID look like a sleek pill instead of plain text
+                                before={
+                                    <div style={{
+                                        background: 'var(--surface-elevated)', 
+                                        padding: '4px 8px', 
+                                        borderRadius: '6px', 
+                                        fontSize: '11px', 
+                                        fontWeight: 700, 
+                                        color: 'var(--tg-theme-hint-color)'
+                                    }}>
+                                        #{order.api_order_id}
+                                    </div>
+                                }
+                                subtitle={
+                                    <span style={{color: 'var(--accent-secondary)', fontSize: '12px'}}>
+                                        {linkName}
+                                    </span>
+                                }
                                 after={
-                                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4}}>
-                                        <span style={{fontWeight: 700}}>{order.quantity} qty</span>
-                                        <span className={`history-table__status history-table__status--${status}`}>
-                                            {status.toUpperCase()}
+                                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6}}>
+                                        <span style={{fontWeight: 700, fontSize: '14px'}}>{order.quantity} <span style={{fontSize:'10px', opacity:0.6}}>QTY</span></span>
+                                        {/* Using inline styles to guarantee the badge looks native */}
+                                        <span style={{
+                                            fontSize: '10px', 
+                                            fontWeight: 800, 
+                                            padding: '3px 8px', 
+                                            borderRadius: '12px',
+                                            textTransform: 'uppercase',
+                                            background: status === 'completed' ? 'rgba(0,214,143,0.15)' : 
+                                                        status === 'processing' ? 'rgba(91,141,239,0.15)' : 
+                                                        status === 'cancelled' ? 'rgba(255,71,87,0.15)' : 'rgba(255,165,2,0.15)',
+                                            color: status === 'completed' ? 'var(--color-success)' : 
+                                                   status === 'processing' ? 'var(--color-info)' : 
+                                                   status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-warning)'
+                                        }}>
+                                            {status}
                                         </span>
                                     </div>
                                 }

@@ -65,16 +65,17 @@ export function BottomNav() {
                     selected={activeTab === tab.id}
                     text={tab.label}
                     onClick={() => handleTabClick(tab.id)}
-                    style={{ position: 'relative' }}
                 >
-                    <span className={`bottom-nav__icon ${activeTab === tab.id ? 'bottom-nav__item--active' : ''}`} style={activeTab === tab.id ? { color: 'var(--accent-primary)', transform: 'scale(1.1)' } : { color: 'var(--tg-theme-hint-color, #888)' }}>
-                        {tab.icon}
+                    <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <span className={`bottom-nav__icon ${activeTab === tab.id ? 'bottom-nav__item--active' : ''}`} style={activeTab === tab.id ? { color: 'var(--accent-primary)', transform: 'scale(1.1)' } : { color: 'var(--tg-theme-hint-color, #888)' }}>
+                            {tab.icon}
+                        </span>
                         {tab.id === 'more' && unreadAlerts > 0 && (
                             <span className="bottom-nav__badge">
                                 {unreadAlerts > 9 ? '9+' : unreadAlerts}
                             </span>
                         )}
-                    </span>
+                    </div>
                 </Tabbar.Item>
             ))}
         </Tabbar>

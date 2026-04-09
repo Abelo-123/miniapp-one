@@ -1,31 +1,42 @@
-/* ─── Paxyo SMM — Premium Design System ──────────────────── */
+/* ─── Telegram Native Design System ──────────────────── */
 :root {
-  --accent-primary: #7c5cfc;
-  --accent-secondary: #5b8def;
-  --accent-gradient: linear-gradient(135deg, #7c5cfc 0%, #5b8def 50%, #00d4aa 100%);
-  --accent-gradient-soft: linear-gradient(135deg, rgba(124,92,252,0.15), rgba(91,141,239,0.15));
-  --accent-glow: 0 0 20px rgba(124,92,252,0.3);
-  --color-success: #00d68f;
-  --color-warning: #ffa502;
-  --color-danger: #ff4757;
-  --color-info: #5b8def;
-  --surface-glass: rgba(255,255,255,0.04);
-  --surface-glass-border: rgba(255,255,255,0.08);
-  --surface-elevated: rgba(255,255,255,0.06);
+  /* Let Telegram dictate the primary brand color (matches user's chat bubbles) */
+  --accent-primary: var(--tg-theme-button-color, #2481cc);
+  --accent-secondary: var(--tg-theme-accent-text-color, #5AC8FA);
+  
+  /* Use native Telegram backgrounds for cards so they work perfectly in Light AND Dark mode */
+  --surface-glass: var(--tg-theme-secondary-bg-color, #f4f4f5);
+  --surface-elevated: var(--tg-theme-secondary-bg-color, #f4f4f5);
+  
+  /* Remove heavy borders, rely on Telegram's flat aesthetic */
+  --surface-glass-border: transparent; 
+  
   --gap-xs: 4px; --gap-sm: 8px; --gap-md: 12px; --gap-lg: 16px; --gap-xl: 24px; --gap-2xl: 32px;
-  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-pill: 100px;
-  --ease-out-expo: cubic-bezier(0.16,1,0.3,1);
-  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
-  --duration-fast: 0.1s; --duration-base: 0.15s; --duration-slow: 0.25s;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px;
+  --duration-fast: 0.08s; --duration-base: 0.12s; --duration-slow: 0.2s;
 }
 
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+*,*::before,*::after { 
+  margin:0; padding:0; box-sizing:border-box; 
+  /* Prevent text highlighting and browser magnifiers */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Disable the iOS long-press context menu on links/images */
+  -webkit-touch-callout: none;
+  /* Prevent dragging images */
+  -webkit-user-drag: none;
+}
+input, textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
 
 html, body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 14px;
-  color: var(--tg-theme-text-color, #f0f0f5);
-  background: var(--tg-theme-bg-color, #0a0a0f);
+  /* Force exact native background and text */
+  background: var(--tg-theme-bg-color, #ffffff) !important;
+  color: var(--tg-theme-text-color, #000000) !important;
   overflow: hidden; position: fixed; top:0; left:0; width:100%; height:100vh; height:100dvh;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
@@ -49,7 +60,7 @@ mark { background:rgba(124,92,252,0.3); color:var(--tg-theme-text-color,#f0f0f5)
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 @keyframes slideInRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-@keyframes shimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
+
 @keyframes scaleIn { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
 @keyframes badgePulse { 0% { box-shadow:0 0 0 0 rgba(255,71,87,0.5); } 70% { box-shadow:0 0 0 8px rgba(255,71,87,0); } 100% { box-shadow:0 0 0 0 rgba(255,71,87,0); } }
 @keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-50%); } }
@@ -124,28 +135,42 @@ mark { background:rgba(124,92,252,0.3); color:var(--tg-theme-text-color,#f0f0f5)
 }
 
 /* ═══════════════════════════════════════════════════════
-   PLATFORM GRID (3 columns, matches f.jpg)
+   PLATFORM GRID (Updated: 4 columns, snappy & compact)
    ═══════════════════════════════════════════════════════ */
 .platform-grid {
-  display:grid; grid-template-columns:repeat(3,1fr);
-  gap:var(--gap-sm); padding:var(--gap-sm) var(--gap-lg) var(--gap-lg);
+  display: grid; 
+  grid-template-columns: repeat(4, 1fr); /* Changed to 4 columns */
+  gap: 10px; 
+  padding: 8px 16px 16px;
 }
 .platform-card {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:6px; padding:16px 4px; border-radius:var(--radius-md); cursor:pointer;
-  transition:all var(--duration-fast) var(--ease-out-expo);
-  -webkit-tap-highlight-color:transparent;
-  border:1.5px solid transparent; position:relative; overflow:hidden;
-  background:var(--surface-glass);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; 
+  padding: 12px 4px; /* Reduced padding for smaller height */
+  border-radius: var(--radius-md); 
+  cursor: pointer;
+  transition: all 0.1s ease-out; /* Faster, snappier transition */
+  -webkit-tap-highlight-color: transparent;
+  border: 1.5px solid transparent; 
+  position: relative; 
+  overflow: hidden;
+  background: var(--surface-glass);
 }
-.platform-card:active { transform:scale(0.94); }
+.platform-card:active { transform: scale(0.92); } /* Snappier tap effect */
 .platform-card--active {
-  background:linear-gradient(135deg,rgba(124,92,252,0.18),rgba(91,141,239,0.12));
-  border-color:rgba(124,92,252,0.5); box-shadow:0 0 16px rgba(124,92,252,0.15);
+  background: rgba(124,92,252,0.15); /* Flatter, cleaner background */
+  border-color: var(--accent-primary); 
+  /* Removed heavy box-shadow to make UI feel lighter */
 }
-.platform-card__icon { font-size:26px; line-height:1; display:flex; align-items:center; justify-content:center; }
-.platform-card__label { font-size:11px; font-weight:500; white-space:nowrap; opacity:0.65; }
-.platform-card--active .platform-card__label { opacity:1; font-weight:600; color:var(--accent-primary); }
+.platform-card__icon { 
+  display: flex; align-items: center; justify-content: center; 
+}
+.platform-card__label { 
+  font-size: 11px; font-weight: 500; white-space: nowrap; opacity: 0.7; 
+}
+.platform-card--active .platform-card__label { 
+  opacity: 1; font-weight: 600; color: var(--accent-primary); 
+}
 
 /* ═══════════════════════════════════════════════════════
    SELECTION CARDS (Category / Service dropdowns)
@@ -477,11 +502,16 @@ mark { background:rgba(124,92,252,0.3); color:var(--tg-theme-text-color,#f0f0f5)
 /* ═══════════════════════════════════════════════════════
    BOTTOM NAV
    ═══════════════════════════════════════════════════════ */
+/* ─── Bottom Nav (Native Blend) ─── */
 .bottom-nav {
-  position:fixed; bottom:0; left:0; right:0; z-index:100;
-  background:var(--tg-theme-bg-color,#0a0a0f);
-  border-top:1px solid var(--surface-glass-border);
-  padding-bottom:env(safe-area-inset-bottom,0);
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  /* Use native bottom bar color, with a slight Apple blur if transparent */
+  background: var(--tg-theme-bottom-bar-bg-color, var(--tg-theme-bg-color)) !important;
+  opacity: 0.95;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-top: 1px solid var(--tg-theme-secondary-bg-color);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 .bottom-nav__inner { display:flex; align-items:center; justify-content:space-around; height:56px; }
 .bottom-nav__item {
@@ -552,7 +582,7 @@ mark { background:rgba(124,92,252,0.3); color:var(--tg-theme-text-color,#f0f0f5)
 .loading-overlay__spinner {
   width:36px; height:36px; border:3px solid rgba(255,255,255,0.1);
   border-top-color:var(--accent-primary); border-radius:50%;
-  animation:spin 0.7s linear infinite;
+  animation: spin 0.5s linear infinite;
 }
 .loading-overlay__text { font-size:13px; color:rgba(255,255,255,0.5); letter-spacing:0.05em; }
 
@@ -591,7 +621,7 @@ mark { background:rgba(124,92,252,0.3); color:var(--tg-theme-text-color,#f0f0f5)
 .modal-sheet {
   background:var(--tg-theme-bg-color,#1a1a2e); border-radius:16px 16px 0 0;
   width:100%; max-width:500px; max-height:70vh; max-height:70dvh;
-  display:flex; flex-direction:column; overflow:hidden; animation:modalSlideUp 0.3s ease;
+  display:flex; flex-direction:column; overflow:hidden; animation: modalSlideUp 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .modal-sheet--large { max-height:85vh; max-height:85dvh; }
 .modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
@@ -712,6 +742,73 @@ mark { background:rgba(124,92,252,0.3); color:var(--tg-theme-text-color,#f0f0f5)
   justify-content: center;
   padding: 0 4px;
   box-shadow: 0 0 0 2px var(--bg-color);
+}
+
+/* ─── Notification Badge ─── */
+.global-header__badge,
+.bottom-nav__badge {
+  position: absolute !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 20px !important;
+  max-width: 40px !important;
+  height: 18px !important;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  line-height: 18px !important;
+  text-align: center !important;
+  color: #fff !important;
+  background: var(--color-danger, #ff4757) !important;
+  border-radius: 9px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  z-index: 9999 !important;
+}
+
+.global-header__badge {
+  top: -6px !important;
+  right: -6px !important;
+  transform: scale(0.85);
+}
+
+.bottom-nav__badge {
+  top: -6px !important;
+  right: -6px !important;
+  transform: scale(0.85);
+}
+ 
+/* ─── Skeleton Loading (Native Feel) ─── */
+.skeleton-row {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 16px; border-bottom: 1px solid var(--surface-glass-border);
+}
+.skeleton-bar {
+    height: 14px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--surface-elevated) 25%, var(--surface-glass-border) 50%, var(--surface-elevated) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-animation {
+  animation: spin 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ensure text is always visible on red badges */
+.global-header__badge, .bottom-nav__badge {
+    background: var(--tg-theme-destructive-text-color, #FF3B30) !important;
+    color: #FFFFFF !important;
 }
  
  

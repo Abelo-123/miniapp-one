@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Section, Input, Textarea, Button, Cell } from '@telegram-apps/telegram-ui';
-import Swal from 'sweetalert2';
 import { useApp } from '../../context/AppContext';
 import { formatETB, getLinkPlaceholder, QUANTITY_STEP } from '../../constants';
 import * as api from '../../api';
@@ -31,6 +30,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         rateMultiplier, discountPercent,
         user, userCanOrder, isTelegramApp,
         setBalance, setOrders, orders,
+        showToast, setActiveTab,
     } = useApp();
 
     // Form State
@@ -154,17 +154,10 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         
         // Validate payload based on raw errors, ignoring UI visibility
         if (Object.keys(validation.rawErrors).length > 0) {
-            if (isTelegramApp) {
-                hapticNotification('error');
-            }
-            // Get the first error to show in Swal
+            hapticNotification('error');
+            // Get the first error to show in Toast
             const firstError = Object.values(validation.rawErrors)[0];
-            Swal.fire({
-                title: 'Invalid Order',
-                text: firstError,
-                icon: 'warning',
-                confirmButtonColor: '#f39c12'
-            });
+            showToast('error', firstError);
             return;
         }
 
@@ -200,17 +193,11 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                 setOrders([newOrder, ...orders]);
                 if (user) setBalance(response.new_balance);
                 
-                // Show success message with Swal
-                Swal.fire({
-                    title: 'Order Placed!',
-                    text: response.verified 
-                        ? `Your order #${response.order_id} has been confirmed!`
-                        : `Your order #${response.order_id} is being processed.`,
-                    icon: 'success',
-                    confirmButtonColor: '#2ecc71',
-                    timer: 3000,
-                    timerProgressBar: true,
-                });
+                // NEW: Use native toasts instead of Swal
+                showToast('success', response.verified 
+                    ? `Order #${response.order_id} confirmed!` 
+                    : `Order #${response.order_id} processing.`
+                );
                 
                 hapticImpact('heavy');
                 hapticNotification('success');
@@ -221,29 +208,21 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                 setAnswerNumber('');
                 setTouched({});
                 
+                // Immediately close the modal and redirect to history to see the order
                 if (onClose) onClose();
+                setActiveTab('history');
             } else {
                 // Handle API error response
                 const errorMsg = response.error || 'Failed to place order';
                 setErrors({ general: errorMsg });
-                Swal.fire({
-                    title: 'Order Failed',
-                    text: errorMsg,
-                    icon: 'error',
-                    confirmButtonColor: '#ff4757'
-                });
+                showToast('error', errorMsg);
                 hapticNotification('error');
             }
         } catch (err: any) {
             // Handle network/connection errors
             const errorMsg = err.message || 'Network error. Please check your connection and try again.';
             setErrors({ general: errorMsg });
-            Swal.fire({
-                title: 'Connection Error',
-                text: errorMsg,
-                icon: 'error',
-                confirmButtonColor: '#ff4757'
-            });
+            showToast('error', errorMsg);
             hapticNotification('error');
         } finally {
             setSubmitting(false);

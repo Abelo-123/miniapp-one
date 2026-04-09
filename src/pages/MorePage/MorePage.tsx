@@ -3,13 +3,18 @@ import { useApp } from '../../context/AppContext';
 import { Section, Cell, Switch } from '@telegram-apps/telegram-ui';
 import * as api from '../../api';
 
-export function MorePage() {
+interface MorePageProps {
+    themeOverride: 'auto' | 'light' | 'dark';
+    setThemeOverride: (t: 'auto' | 'light' | 'dark') => void;
+}
+
+export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     const {
         chatMessages, setChatMessages, showToast, refreshAlerts
     } = useApp();
 
     const [chatInput, setChatInput] = useState('');
-    const [isDarkTheme, setIsDarkTheme] = useState(true);
+
     const [isSending, setIsSending] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -69,27 +74,41 @@ export function MorePage() {
     return (
         <div className="more-page">
             <Section>
-                <Cell
-                    before={
-                        <div className="theme-card__icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="5" />
-                                <line x1="12" y1="1" x2="12" y2="3" />
-                                <line x1="12" y1="21" x2="12" y2="23" />
-                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                                <line x1="1" y1="12" x2="3" y2="12" />
-                                <line x1="21" y1="12" x2="23" y2="12" />
-                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                            </svg>
-                        </div>
-                    }
-                    after={<Switch checked={isDarkTheme} onChange={(e: any) => setIsDarkTheme(e.target.checked)} />}
-                    subtitle="Switch to light/dark mode"
-                    Component="label"
-                >
-                    App Theme
+                <Cell subtitle="Choose application appearance">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 600 }}>App Theme</span>
+                    </div>
+                    <div style={{ 
+                        display: 'flex', 
+                        background: 'var(--tg-theme-secondary-bg-color)', 
+                        padding: '4px', 
+                        borderRadius: '8px' 
+                    }}>
+                        {['auto', 'light', 'dark'].map((t) => (
+                            <button
+                                key={t}
+                                onClick={() => {
+                                    import('../../helpers/telegram').then(m => m.hapticSelection());
+                                    setThemeOverride(t as any);
+                                    localStorage.setItem('app-theme', t);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: '6px 0',
+                                    background: themeOverride === t ? 'var(--tg-theme-bg-color)' : 'transparent',
+                                    color: themeOverride === t ? 'var(--tg-theme-text-color)' : 'var(--tg-theme-hint-color)',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontWeight: themeOverride === t ? 600 : 500,
+                                    boxShadow: themeOverride === t ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+                                    transition: 'all 0.2s ease',
+                                    textTransform: 'capitalize'
+                                }}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
                 </Cell>
                 
                 <Cell

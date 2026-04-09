@@ -71,6 +71,7 @@ export function SearchModal({ onSelect, onClose }: Props) {
                 <List>
                     <Section>
                         <Input
+                            autoFocus
                             placeholder="Type name, ID, or category..."
                             value={search}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}

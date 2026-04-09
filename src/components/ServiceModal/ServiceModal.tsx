@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useDeferredValue } from 'react';
 import { List, Section, Cell, Input, Modal, Placeholder } from '@telegram-apps/telegram-ui';
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
@@ -15,17 +15,18 @@ const BATCH_SIZE = 50;
 
 export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Props) {
     const [search, setSearch] = useState('');
+    const deferredSearch = useDeferredValue(search);
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
     
     const { data: categoryServices = [], isLoading: loading, isError } = useCategoryServices(category, recommendedIds);
 
     const filtered = useMemo(() => {
-        if (!search.trim()) return categoryServices;
-        const q = search.toLowerCase();
+        if (!deferredSearch.trim()) return categoryServices;
+        const q = deferredSearch.toLowerCase();
         return categoryServices.filter(s =>
             s.name.toLowerCase().includes(q) || s.id.toString().includes(q)
         );
-    }, [categoryServices, search]);
+    }, [categoryServices, deferredSearch]);
 
     const visibleServices = useMemo(() => {
         return filtered.slice(0, visibleCount);
@@ -51,13 +52,32 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                 <List>
                     <Section>
                         <Input
+                            autoFocus
                             placeholder="Search services..."
                             value={search}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                            after={
+                                search.length > 0 ? (
+                                    <div 
+                                        onClick={() => setSearch('')} 
+                                        style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
+                                    >
+                                        ✕
+                                    </div>
+                                ) : null
+                            }
                         />
                     </Section>
                     {loading ? (
-                        <Placeholder description="Loading services..." />
+                        <Section>
+                            {/* Render 5 skeleton rows to mimic native loading */}
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <div key={i} className="skeleton-row">
+                                    <div className="skeleton-bar" style={{ width: '70%' }}></div>
+                                    <div className="skeleton-bar" style={{ width: '40%', opacity: 0.6 }}></div>
+                                </div>
+                            ))}
+                        </Section>
                     ) : isError ? (
                         <Placeholder description="Failed to load services" />
                     ) : filtered.length === 0 ? (

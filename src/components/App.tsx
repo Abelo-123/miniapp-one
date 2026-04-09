@@ -14,26 +14,28 @@ import {
   onSettingsButtonClick,
   retrieveLaunchParams,
   isMiniAppDark,
+  expand,
+  setHeaderColor,
+  setBackgroundColor
 } from '@telegram-apps/sdk-react';
 import { hapticSelection } from '../helpers/telegram';
 import { NotificationPanel } from './NotificationPanel/NotificationPanel';
 
-// ─── Lazy-loaded pages (code-split per tab) ─────────────────
-const OrderPage = lazy(() => import('../pages/OrderPage/OrderPage').then(m => ({ default: m.OrderPage })));
-const HistoryPage = lazy(() => import('../pages/HistoryPage/HistoryPage').then(m => ({ default: m.HistoryPage })));
-const DepositPage = lazy(() => import('../pages/DepositPage/DepositPage').then(m => ({ default: m.DepositPage })));
-const MorePage = lazy(() => import('../pages/MorePage/MorePage').then(m => ({ default: m.MorePage })));
+import { OrderPage } from '../pages/OrderPage/OrderPage';
+import { HistoryPage } from '../pages/HistoryPage/HistoryPage';
+import { DepositPage } from '../pages/DepositPage/DepositPage';
+import { MorePage } from '../pages/MorePage/MorePage';
 
-// Minimal fallback to avoid layout shift while lazy chunk loads
-const TabFallback = () => (
-  <div className="loading-overlay">
-    <div className="loading-overlay__spinner" />
-  </div>
-);
+
 
 import { ChatPanel } from './ChatPanel/ChatPanel';
 
-function AppContent() {
+interface AppContentProps {
+  themeOverride: 'auto' | 'light' | 'dark';
+  setThemeOverride: (t: 'auto' | 'light' | 'dark') => void;
+}
+
+function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
   const { activeTab, setActiveTab, isLoading, maintenanceMode, setSelectedPlatform, setSelectedCategory, setSelectedService } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showSearch, setShowSearch] = useState(false);
@@ -53,13 +55,40 @@ function AppContent() {
     return () => el.removeEventListener('touchstart', handleTouchStart);
   }, []);
 
-  // Back button via SDK
+  // Viewport and Color Sync
   useEffect(() => {
-    if (activeTab !== 'order') {
-      try { showBackButton(); } catch { /* not available */ }
+    try {
+        expand();
+        const isDark = isMiniAppDark();
+        const bgColor = isDark ? '#000000' : '#ffffff';
+        const secondaryBg = isDark ? '#000000' : '#f4f4f5';
+        
+        setHeaderColor(bgColor as any);
+        setBackgroundColor(secondaryBg as any);
+    } catch (e) {
+        console.log('Telegram SDK Viewport/Color setup failed', e);
+    }
+  }, [activeTab]);
+
+  // Combined Back Button logic for Modals and Tabs
+  useEffect(() => {
+    const isSubViewOpen = showSearch || showNotifications || showChat;
+
+    if (isSubViewOpen || activeTab !== 'order') {
+      try { showBackButton(); } catch { /* ignore */ }
+      
       const off = onBackButtonClick(() => {
-        setActiveTab('order');
+        if (showSearch) {
+          setShowSearch(false);
+        } else if (showNotifications) {
+          setShowNotifications(false);
+        } else if (showChat) {
+          setShowChat(false);
+        } else {
+          setActiveTab('order');
+        }
       });
+      
       return () => {
         off();
         try { hideBackButton(); } catch { /* ignore */ }
@@ -67,7 +96,7 @@ function AppContent() {
     } else {
       try { hideBackButton(); } catch { /* ignore */ }
     }
-  }, [activeTab, setActiveTab]);
+  }, [activeTab, setActiveTab, showSearch, showNotifications, showChat]);
 
   // Settings button via SDK
   useEffect(() => {
@@ -109,12 +138,10 @@ function AppContent() {
           onNotificationClick={() => setShowNotifications(true)}
           onChatClick={() => setShowChat(true)}
         />
-        <Suspense fallback={<TabFallback />}>
-          {activeTab === 'order' && <OrderPage />}
-          {activeTab === 'history' && <HistoryPage />}
-          {activeTab === 'deposit' && <DepositPage />}
-          {activeTab === 'more' && <MorePage />}
-        </Suspense>
+        {activeTab === 'order' && <OrderPage />}
+        {activeTab === 'history' && <HistoryPage />}
+        {activeTab === 'deposit' && <DepositPage />}
+        {activeTab === 'more' && <MorePage themeOverride={themeOverride} setThemeOverride={setThemeOverride} />}
       </div>
       <BottomNav />
       {showSearch && (
@@ -154,16 +181,30 @@ const queryClient = new QueryClient({
 
 export function App() {
   const lp = useMemo(() => retrieveLaunchParams(), []);
-  const isDark = isMiniAppDark();
+  
+  const [themeOverride, setThemeOverride] = useState<'auto' | 'light' | 'dark'>(
+    (localStorage.getItem('app-theme') as any) || 'auto'
+  );
+
+  const isSystemDark = isMiniAppDark();
+  const activeAppearance = themeOverride === 'auto' 
+    ? (isSystemDark ? 'dark' : 'light') 
+    : themeOverride;
+
+  // Sync background to body so the whole frame changes color
+  useEffect(() => {
+    document.body.style.backgroundColor = activeAppearance === 'dark' ? '#000000' : '#ffffff';
+    document.body.style.color = activeAppearance === 'dark' ? '#ffffff' : '#000000';
+  }, [activeAppearance]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
         <AppRoot
-          appearance={isDark ? 'dark' : 'light'}
+          appearance={activeAppearance}
           platform={['macos', 'ios'].includes(lp.tgWebAppPlatform) ? 'ios' : 'base'}
         >
-          <AppContent />
+          <AppContent themeOverride={themeOverride} setThemeOverride={setThemeOverride} />
         </AppRoot>
       </AppProvider>
     </QueryClientProvider>
