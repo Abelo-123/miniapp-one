@@ -12,6 +12,26 @@ import { getServicesCached } from '../lib/gop.js';
 
 const router = Router();
 
+const PLATFORM_KEYWORDS = {
+    instagram: ['instagram', 'ig '],
+    tiktok: ['tiktok', 'tik tok'],
+    youtube: ['youtube', 'yt '],
+    facebook: ['facebook', 'fb '],
+    twitter: ['twitter', 'x.com', 'tweet'],
+    telegram: ['telegram', 'tg '],
+};
+
+function determinePlatform(category) {
+    if (!category) return 'other';
+    const lower = category.toLowerCase();
+    for (const [platform, keywords] of Object.entries(PLATFORM_KEYWORDS)) {
+        if (keywords.some(kw => lower.includes(kw))) {
+            return platform;
+        }
+    }
+    return 'other';
+}
+
 // In-memory cache - preloaded at startup
 let cachedServices = [];
 let lastCacheTime = 0;
@@ -113,6 +133,7 @@ router.get('/', async (req, res) => {
                     average_time: svc.average_time || '',
                     refill: svc.refill,
                     cancel: svc.cancel,
+                    platform_id: determinePlatform(svc.category)
                 }));
                 return res.json(transformed);
             }
@@ -156,6 +177,7 @@ router.get('/', async (req, res) => {
                     drip: svc.drip,
                     refill: svc.refill,
                     cancel: svc.cancel,
+                    platform_id: determinePlatform(svc.category)
                 }));
 
             // Filter by category/ids
@@ -194,26 +216,26 @@ router.get('/', async (req, res) => {
             console.log('[get_services] Note: service_adjustments table might be missing or empty. Skipping adjustments.');
         }
 
-        // 4. Transform services (filtering out disabled ones)
-        const finalServices = rawServices
-            .filter(svc => !disabledServiceIds.has(parseInt(svc.service))) // Filter disabled
-            .map(svc => {
-            const numericRate = parseFloat(svc.rate) || 0;
-            const finalRate = (numericRate * rateMultiplier).toFixed(2);
-            
-            return {
-                service: parseInt(svc.service),
-                name: svc.name,
-                type: svc.type,
-                category: svc.category,
-                rate: finalRate,
-                min: parseInt(svc.min),
-                max: parseInt(svc.max),
-                refill: svc.refill === true || svc.refill === 1 || svc.refill === '1',
-                cancel: svc.cancel === true || svc.cancel === 1 || svc.cancel === '1',
-                average_time: adjustmentsMap[svc.service] || 'Not specified'
-            };
-        });
+const finalServices = rawServices
+    .filter(svc => !disabledServiceIds.has(parseInt(svc.service))) // Filter disabled
+    .map(svc => {
+    const numericRate = parseFloat(svc.rate) || 0;
+    const finalRate = (numericRate * rateMultiplier).toFixed(2);
+    
+    return {
+        service: parseInt(svc.service),
+        name: svc.name,
+        type: svc.type,
+        category: svc.category,
+        rate: finalRate,
+        min: parseInt(svc.min),
+        max: parseInt(svc.max),
+        refill: svc.refill === true || svc.refill === 1 || svc.refill === '1',
+        cancel: svc.cancel === true || svc.cancel === 1 || svc.cancel === '1',
+        average_time: adjustmentsMap[svc.service] || 'Not specified',
+        platform_id: determinePlatform(svc.category)
+    };
+});
 
         // Update Cache
         cachedServices = finalServices;

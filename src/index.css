@@ -887,12 +887,25 @@ mark { background:rgba(124,92,252,0.3); color:var(--tg-theme-text-color,#f0f0f5)
     padding: 16px !important;
 }
 
-/* Add this to wrapper to make all pages feel identical */
+/* Add to wrapper to make all pages feel identical */
 .order-page-wrapper, .history-page, .deposit-page-wrapper, .more-page {
     display: flex;
     flex-direction: column;
     gap: 12px;
     padding-bottom: 24px;
+}
+
+/* Add first-time guidance pulse */
+@keyframes border-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(var(--tg-theme-button-color-rgb, 124, 92, 252), 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+}
+.history-pulse {
+    animation: border-pulse 2s infinite;
+    border-radius: 50%;
+    margin: -4px; /* Expand slightly for better visibility */
+    padding: 4px;
 }
  
  

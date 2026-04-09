@@ -28,7 +28,7 @@ declare global {
 }
 
 export function DepositPage() {
-    const { user, deposits, setBalance, refreshDeposits, showToast } = useApp();
+    const { user, deposits, setBalance, refreshDeposits, showToast, setActiveTab } = useApp();
     const [amount, setAmount] = useState('');
     const [step, setStep] = useState<DepositStep>('amount');
     const [errorMessage, setErrorMessage] = useState('');
@@ -312,6 +312,13 @@ export function DepositPage() {
                     setStep('success');
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
+
+                    // First-time deposit guidance
+                    const isFirstDeposit = !localStorage.getItem('hasDeposited');
+                    if (isFirstDeposit) {
+                        localStorage.setItem('hasDeposited', 'true');
+                        setTimeout(() => setActiveTab('history'), 2000); 
+                    }
                     return;
                 }
 

@@ -11,6 +11,7 @@ export interface Service {
     averageTime: string;
     refill: boolean;
     cancel: boolean;
+    platform_id?: SocialPlatform;
 }
 
 export type ServiceType =

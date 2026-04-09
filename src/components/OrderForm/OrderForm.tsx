@@ -201,6 +201,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                 showToast('success', response.verified ? 'Order confirmed!' : 'Order processing.');
                 hapticImpact('heavy');
                 hapticNotification('success');
+                localStorage.setItem('hasOrdered', 'true');
                 setLink(''); setQuantity(''); setComments(''); setAnswerNumber(''); setTouched({});
                 if (onClose) onClose();
                 setActiveTab('history');

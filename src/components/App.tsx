@@ -147,8 +147,8 @@ function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
       {showSearch && (
         <SearchModal 
           onSelect={(service) => {
-            // Attempt a best-guess platform fallback, though user has to proceed normally
-            setSelectedPlatform('other'); 
+            // Automatically map based on logic or a lookup map
+            setSelectedPlatform(service.platform_id || 'other'); 
             setSelectedCategory(service.category);
             setSelectedService(service);
             setShowSearch(false);
