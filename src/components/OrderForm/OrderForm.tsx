@@ -15,6 +15,7 @@ import {
     enableClosingConfirmation,
     disableClosingConfirmation,
 } from '../../helpers/telegram';
+import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-apps/sdk-react';
 
 // URL validation helper
 function isValidUrl(str: string): boolean {
@@ -49,13 +50,14 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         answerNumber?: boolean;
     }>({});
     
-    const [errors, setErrors] = useState<{
+    // We only need the type for the errors, not the setter, as it's derived state now
+    type FormErrors = {
         link?: string;
         quantity?: string;
         comments?: string;
         answerNumber?: string;
         general?: string;
-    }>({});
+    };
 
     const service = selectedService!;
 
@@ -77,7 +79,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
 
     // Validation with error messages
     const validation = useMemo(() => {
-        const errs: typeof errors = {};
+        const errs: FormErrors = {};
         
         if (!link.trim()) {
             errs.link = 'Link is required';
@@ -124,7 +126,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             errs.general = 'Ordering is currently disabled. Please try again later.';
         }
 
-        const visibleErrs: typeof errors = {};
+        const visibleErrs: FormErrors = {};
         if (errs.general) visibleErrs.general = errs.general;
         if (touched.link && errs.link) visibleErrs.link = errs.link;
         if (touched.quantity && errs.quantity) visibleErrs.quantity = errs.quantity;
@@ -139,6 +141,23 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
     }, [link, quantity, comments, answerNumber, service, charge, user, userCanOrder, showComments, showQuantity, showPoll, touched]);
 
     const isValid = validation.isValid;
+
+    // Native Back Button Handling
+    useEffect(() => {
+        try {
+            if (typeof showBackButton === 'function') showBackButton();
+            let off: (() => void) | undefined;
+            if (typeof onBackButtonClick === 'function') {
+                off = onBackButtonClick(() => {
+                    onClose?.();
+                });
+            }
+            return () => {
+                if (off) off();
+                if (typeof hideBackButton === 'function') hideBackButton();
+            };
+        } catch { /* noop */ }
+    }, [onClose]);
 
     // Optimistic Mutation Engine
     const { mutate: placeOrderMutation, isPending: submitting } = useMutation({

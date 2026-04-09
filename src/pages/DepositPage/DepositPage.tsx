@@ -703,7 +703,8 @@ export function DepositPage() {
             {/* ─── Verifying State ─── */}
             {step === 'verifying' && (
                 <div className="deposit-processing">
-                    <div className="deposit-processing__spinner" />
+                    <div className="skeleton-bar" style={{ width: '40px', height: '40px', borderRadius: '50%', margin: '0 auto 16px' }}></div>
+                    <div className="skeleton-bar" style={{ width: '60%', margin: '0 auto 12px' }}></div>
                     <div className="deposit-processing__text">Confirming Payment...</div>
                     <div className="deposit-processing__subtext">
                         Waiting for confirmation from your mobile provider.

@@ -98,7 +98,14 @@ export function SearchModal({ onSelect, onClose }: Props) {
                     </Section>
 
                     {isLoading ? (
-                        <Placeholder description="Loading services..." />
+                        <Section>
+                            {[1, 2, 3, 4, 5, 6].map(i => (
+                                <div key={i} className="skeleton-row">
+                                    <div className="skeleton-bar" style={{ width: '70%' }}></div>
+                                    <div className="skeleton-bar" style={{ width: '40%', opacity: 0.6 }}></div>
+                                </div>
+                            ))}
+                        </Section>
                     ) : search.trim() === '' ? (
                         <Placeholder description="Start typing to search" />
                     ) : results.length === 0 ? (

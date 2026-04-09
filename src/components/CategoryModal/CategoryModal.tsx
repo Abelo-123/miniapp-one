@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useDeferredValue, useEffect } from 'react';
-import { List, Section, Cell, Input, Modal, Placeholder, Spinner } from '@telegram-apps/telegram-ui';
+import { List, Section, Cell, Input, Modal, Placeholder } from '@telegram-apps/telegram-ui';
 import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-apps/sdk-react';
 import type { SocialPlatform } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
@@ -73,7 +73,12 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
                     </Section>
                     {loading ? (
                         <Section>
-                            <Placeholder header={<Spinner size="l" />} description="Fetching categories..." />
+                            {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                                <div key={i} className="skeleton-row">
+                                    <div className="skeleton-bar" style={{ width: '60%' }}></div>
+                                    <div className="skeleton-bar" style={{ width: '30%', opacity: 0.6 }}></div>
+                                </div>
+                            ))}
                         </Section>
                     ) : filtered.length === 0 ? (
                         <Placeholder description="No categories found" />
