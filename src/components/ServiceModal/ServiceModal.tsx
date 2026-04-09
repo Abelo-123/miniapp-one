@@ -24,41 +24,44 @@ const ServiceRow = React.memo(({
 }) => {
     return (
         <Cell
-            className="cell-row"
-            multiline
+            key={svc.id}
+            multiline={false} // Force single line
             onClick={() => onSelect(svc)}
             before={
                 <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {platform ? PLATFORM_ICONS[platform] : '📂'}
                 </div>
             }
-            description={
-                <span style={{ fontSize: 12, color: 'var(--tg-theme-hint-color, #999)' }}>
-                    Min: {svc.min} – Max: {svc.max.toLocaleString()}
-                    {svc.averageTime && ` • ⏱ ${svc.averageTime}`}
-                    {svc.refill && ' • ♻ Refill'}
-                    {svc.cancel && ' • ✕ Cancel'}
-                </span>
-            }
             after={
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', minWidth: 'max-content' }}>
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    flexShrink: 0 // Badge NEVER shrinks or wraps
+                }}>
                     <span style={{ 
-                        fontSize: 11, 
+                        fontSize: 10, 
                         fontWeight: 600, 
-                        color: 'var(--accent, #7c5cfc)',
-                        background: 'rgba(124, 92, 252, 0.1)',
                         padding: '2px 6px',
-                        borderRadius: '8px'
+                        borderRadius: '6px',
+                        background: 'var(--tg-theme-secondary-bg-color)'
                     }}>
                         ID: {svc.id}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tg-theme-text-color)' }}>
+                    <span style={{ fontWeight: 600, fontSize: '14px' }}>
                         {formatETB(svc.rate)}
                     </span>
                 </div>
             }
         >
-            {svc.name}
+            <div style={{ 
+                whiteSpace: 'nowrap', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis',
+                marginRight: '12px' // Gap between name and badge
+            }}>
+                {svc.name}
+            </div>
         </Cell>
     );
 });

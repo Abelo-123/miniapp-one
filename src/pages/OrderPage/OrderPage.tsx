@@ -73,15 +73,7 @@ export function OrderPage() {
             />
 
             {/* ─── Category & Service Selection ─── */}
-            <Section 
-                style={{ 
-                    margin: '16px', 
-                    borderRadius: '12px', 
-                    background: 'var(--tg-theme-bg-color)',
-                    border: '1px solid var(--tg-theme-section-separator-color)',
-                    overflow: 'hidden'
-                }}
-            >
+            <Section className="selection-section">
                 <Cell
                     subtitle={selectedCategory || 'Select a category'}
                     onClick={() => {
@@ -147,7 +139,11 @@ export function OrderPage() {
                 >
                     {selectedService 
                         ? `Order for ${formatETB(selectedService.rate)}` 
-                        : 'Select Service First'
+                        : !selectedPlatform 
+                            ? 'Select a Platform'
+                            : !selectedCategory
+                                ? 'Select a Category'
+                                : 'Select a Service'
                     }
                 </Button>
             </div>

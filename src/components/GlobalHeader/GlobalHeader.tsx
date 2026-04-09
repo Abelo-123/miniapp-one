@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function GlobalHeader({ onSearchClick, onNotificationClick, onChatClick }: Props) {
-    const { user, unreadAlerts } = useApp();
+    const { user, unreadAlerts, setActiveTab } = useApp();
 
     return (
         <div className="global-header">
@@ -27,6 +27,12 @@ export function GlobalHeader({ onSearchClick, onNotificationClick, onChatClick }
                     </div>
                     <div className="global-header__balance">
                         {user ? formatETB(user.balance) : '0.00 ETB'}
+                        <span 
+                            onClick={() => setActiveTab('deposit')} 
+                            style={{ marginLeft: 8, color: 'var(--tg-theme-link-color)', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
+                        >
+                            + ADD FUNDS
+                        </span>
                     </div>
                 </div>
             </div>
