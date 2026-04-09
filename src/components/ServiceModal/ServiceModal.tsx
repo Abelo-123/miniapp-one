@@ -3,6 +3,8 @@ import { List, Section, Cell, Input, Modal, Placeholder } from '@telegram-apps/t
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
 import { useCategoryServices } from '../../hooks/useCategoryServices';
+import { useApp } from '../../context/AppContext';
+import { PLATFORM_ICONS } from '../../components/PlatformGrid/PlatformGrid';
 
 interface Props {
     category: string;
@@ -14,6 +16,7 @@ interface Props {
 const BATCH_SIZE = 50;
 
 export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Props) {
+    const { selectedPlatform } = useApp();
     const [search, setSearch] = useState('');
     const deferredSearch = useDeferredValue(search);
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
@@ -46,9 +49,9 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
             open
             onOpenChange={(open) => { if (!open) onClose(); }}
             header={<Modal.Header>Select Service</Modal.Header>}
-            snapPoints={[0.5, 0.9]}
+            snapPoints={[0.9]}
         >
-            <div style={{ height: 'auto' }} onScroll={handleScroll}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }} onScroll={handleScroll}>
                 <List>
                     <Section>
                         <Input
@@ -69,7 +72,6 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                     </Section>
                     {loading ? (
                         <Section>
-                            {/* Render 5 skeleton rows to mimic native loading */}
                             {[1, 2, 3, 4, 5].map(i => (
                                 <div key={i} className="skeleton-row">
                                     <div className="skeleton-bar" style={{ width: '70%' }}></div>
@@ -88,6 +90,11 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                                     key={svc.id}
                                     multiline
                                     onClick={() => onSelect(svc)}
+                                    before={
+                                        <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {selectedPlatform ? PLATFORM_ICONS[selectedPlatform] : '📂'}
+                                        </div>
+                                    }
                                     description={
                                         <span style={{ fontSize: 12, color: 'var(--tg-theme-hint-color, #999)' }}>
                                             Min: {svc.min} – Max: {svc.max.toLocaleString()}

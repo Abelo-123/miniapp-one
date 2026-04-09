@@ -1,26 +1,52 @@
 /* ─── Official Telegram Native Palette ──────────────────── */
 :root {
-  /* Use native SDK variables exclusively */
-  --bg-color: var(--tg-theme-bg-color, #ffffff);
-  --section-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
-  --header-bg: var(--tg-theme-header-bg-color, #ffffff);
-  --accent-color: var(--tg-theme-button-color, #3390ec);
-  --accent-text: var(--tg-theme-button-text-color, #ffffff);
-  --text-main: var(--tg-theme-text-color, #000000);
-  --text-hint: var(--tg-theme-hint-color, #999999);
-  --link-color: var(--tg-theme-link-color, #3390ec);
-  --section-header-text: var(--tg-theme-section-header-text-color, #999999);
+  /* 1. Base Structure */
+  --tg-bg-color: var(--tg-theme-bg-color, #ffffff);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+  
+  /* 2. Text Tones */
+  --tg-text: var(--tg-theme-text-color, #000000);
+  --tg-hint: var(--tg-theme-hint-color, #999999);
+  --tg-subtitle: var(--tg-theme-subtitle-text-color, #707579);
+  
+  /* 3. Interactive/Brand */
+  --tg-accent: var(--tg-theme-button-color, #2481cc);
+  --tg-accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-link: var(--tg-theme-link-color, #2481cc);
+  
+  /* 4. Structural Elements */
+  --tg-separator: var(--tg-theme-section-separator-color, #d1d1d6);
+  --tg-header-bg: var(--tg-theme-header-bg-color, #ffffff);
 
-  /* Map old variables to the new system so you don't have to rewrite everything */
-  --accent-primary: var(--accent-color);
-  --accent-secondary: var(--tg-theme-accent-text-color, #5AC8FA);
-  --surface-glass: var(--bg-color);
-  --surface-elevated: var(--bg-color);
-  --surface-glass-border: var(--tg-theme-section-separator-color, rgba(128,128,128,0.15));
+  /* Mapping for existing components */
+  --app-bg: var(--tg-secondary-bg);
+  --card-bg: var(--tg-bg-color);
+  --text-main: var(--tg-text);
+  --text-muted: var(--tg-hint);
+  --accent: var(--tg-accent);
+  --accent-text: var(--tg-accent-text);
+  --divider: var(--tg-separator);
+  --accent-primary: var(--tg-accent);
+  --surface-glass: var(--tg-bg-color);
+  --surface-elevated: var(--tg-bg-color);
+  --surface-glass-border: var(--tg-separator);
   
   --gap-xs: 4px; --gap-sm: 8px; --gap-md: 12px; --gap-lg: 16px; --gap-xl: 24px; --gap-2xl: 32px;
   --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px;
   --duration-fast: 0.08s; --duration-base: 0.12s; --duration-slow: 0.2s;
+}
+
+/* Premium Subtitle style */
+.cell-subtitle {
+    color: var(--tg-subtitle) !important;
+    font-size: 13px;
+}
+
+/* Modern Borderless Cards */
+.card-native {
+    background: var(--tg-bg-color);
+    border-radius: 12px;
+    margin: 12px;
 }
 
 .section-header {

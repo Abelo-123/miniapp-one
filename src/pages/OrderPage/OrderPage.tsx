@@ -73,14 +73,21 @@ export function OrderPage() {
             />
 
             {/* ─── Category & Service Selection ─── */}
-            <Section style={{ margin: '0 16px', borderRadius: '14px', overflow: 'hidden' }}>
+            <Section 
+                style={{ 
+                    margin: '16px', 
+                    borderRadius: '12px', 
+                    background: 'var(--tg-theme-bg-color)',
+                    border: '1px solid var(--tg-theme-section-separator-color)',
+                    overflow: 'hidden'
+                }}
+            >
                 <Cell
                     subtitle={selectedCategory || 'Select a category'}
                     onClick={() => {
                         if (selectedPlatform) setShowCategoryModal(true);
                         else import('../../helpers/telegram').then(m => m.hapticNotification('error'));
                     }}
-                    // NEW: Shows a green checkmark if completed
                     after={selectedCategory 
                         ? <span style={{color: 'var(--color-success)', fontWeight: 'bold'}}>✓</span> 
                         : <span style={{ color: 'var(--tg-theme-hint-color)' }}>{'>'}</span>
@@ -89,7 +96,7 @@ export function OrderPage() {
                     <span style={{ fontWeight: selectedCategory ? 600 : 400 }}>Category</span>
                 </Cell>
                 
-                <div style={{ height: '1px', background: 'var(--surface-glass-border)', marginLeft: '16px' }} />
+                <div style={{ height: '0.5px', background: 'var(--tg-theme-section-separator-color)', marginLeft: '16px' }} />
 
                 <Cell
                     subtitle={selectedService?.name || 'Select a service'}
@@ -97,7 +104,6 @@ export function OrderPage() {
                     onClick={() => {
                         if (selectedCategory) setShowServiceModal(true);
                     }}
-                    // NEW: Shows a green checkmark if completed
                     after={selectedService 
                         ? <span style={{color: 'var(--color-success)', fontWeight: 'bold'}}>✓</span> 
                         : <span style={{ color: 'var(--tg-theme-hint-color)' }}>{'>'}</span>
@@ -107,59 +113,42 @@ export function OrderPage() {
                 </Cell>
             </Section>
 
-            {/* ─── Modern Action Bar ─── */}
+            {/* ─── Sticky Action Bar ─── */}
             <div style={{ 
-                padding: '16px', 
-                background: 'var(--card-bg)', // match native card color
-                borderTop: '1px solid var(--divider)',
-                marginTop: 'auto',
+                padding: '12px 16px', 
+                background: 'var(--tg-theme-bg-color)',
+                borderTop: '1px solid var(--tg-theme-section-separator-color)',
                 position: 'sticky',
                 bottom: 0,
-                zIndex: 10
+                zIndex: 99
             }}>
                 <Button
                     size="l"
                     stretched
+                    disabled={!selectedService}
                     style={{ 
                         background: selectedService ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
                         color: selectedService ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-hint-color)',
                         transition: 'all 0.2s ease',
-                        fontWeight: 600,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        padding: '0 20px'
+                        fontWeight: 700,
+                        borderRadius: '12px'
                     }}
                     onClick={() => {
                         import('../../helpers/telegram').then(m => {
-                            if (!selectedPlatform) {
-                                m.hapticNotification('error');
-                                showToast('error', 'Please select a social platform first');
-                                return;
-                            }
-                            if (!selectedCategory) {
-                                m.hapticNotification('error');
-                                showToast('error', 'Please select a category');
-                                return;
-                            }
                             if (!selectedService) {
                                 m.hapticNotification('error');
-                                showToast('error', 'Please select a service');
+                                showToast('error', 'Please select a service first');
                                 return;
                             }
-                            
                             m.hapticImpact('light');
                             setShowOrderModal(true);
                         });
                     }}
                 >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                        <span>{selectedService ? 'Configure Order' : 'Select Service'}</span>
-                        {selectedService && (
-                            <span style={{ fontSize: '13px', opacity: 0.9 }}>
-                                {formatETB(selectedService.rate)}
-                            </span>
-                        )}
-                    </div>
+                    {selectedService 
+                        ? `Order for ${formatETB(selectedService.rate)}` 
+                        : 'Select Service First'
+                    }
                 </Button>
             </div>
 

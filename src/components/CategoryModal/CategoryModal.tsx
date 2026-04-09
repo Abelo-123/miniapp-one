@@ -2,6 +2,7 @@ import { useState, useMemo, useDeferredValue } from 'react';
 import { List, Section, Cell, Input, Modal, Placeholder, Spinner } from '@telegram-apps/telegram-ui';
 import type { SocialPlatform } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
+import { PLATFORM_ICONS } from '../../components/PlatformGrid/PlatformGrid';
 
 interface Props {
     platform: SocialPlatform;
@@ -30,44 +31,52 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
             open
             onOpenChange={(open) => { if (!open) onClose(); }}
             header={<Modal.Header>Select Category</Modal.Header>}
-            snapPoints={[0.5, 0.9]} 
+            snapPoints={[0.9]} 
         >
-            <List style={{ height: 'auto' }}>
-                <Section>
-                    <Input
-                        placeholder="Search categories..."
-                        value={search}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                        after={
-                            search.length > 0 ? (
-                                <div 
-                                    onClick={() => setSearch('')} 
-                                    style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
-                                >
-                                    ✕
-                                </div>
-                            ) : null
-                        }
-                    />
-                </Section>
-                {loading ? (
-                    <Placeholder header={<Spinner size="l" />} description="Fetching categories..." />
-                ) : filtered.length === 0 ? (
-                    <Placeholder description="No categories found" />
-                ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
+                <List>
                     <Section>
-                        {filtered.map(cat => (
-                            <Cell
-                                key={cat}
-                                before={<span style={{ fontSize: 18 }}>📂</span>}
-                                onClick={() => onSelect(cat)}
-                            >
-                                {cat}
-                            </Cell>
-                        ))}
+                        <Input
+                            placeholder="Search categories..."
+                            value={search}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                            after={
+                                search.length > 0 ? (
+                                    <div 
+                                        onClick={() => setSearch('')} 
+                                        style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
+                                    >
+                                        ✕
+                                    </div>
+                                ) : null
+                            }
+                        />
                     </Section>
-                )}
-            </List>
+                    {loading ? (
+                        <Section>
+                            <Placeholder header={<Spinner size="l" />} description="Fetching categories..." />
+                        </Section>
+                    ) : filtered.length === 0 ? (
+                        <Placeholder description="No categories found" />
+                    ) : (
+                        <Section>
+                            {filtered.map(cat => (
+                                <Cell
+                                    key={cat}
+                                    before={
+                                        <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {PLATFORM_ICONS[platform] || '📂'}
+                                        </div>
+                                    }
+                                    onClick={() => onSelect(cat)}
+                                >
+                                    {cat}
+                                </Cell>
+                            ))}
+                        </Section>
+                    )}
+                </List>
+            </div>
         </Modal>
     );
 }
