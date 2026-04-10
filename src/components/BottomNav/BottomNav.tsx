@@ -51,7 +51,6 @@ const TABS: { id: TabId; label: string; icon: JSX.Element }[] = [
 
 export function BottomNav() {
     const { activeTab, setActiveTab, unreadAlerts } = useApp();
-    const isFirstOrder = !localStorage.getItem('hasOrdered');
 
     const handleTabClick = (tab: TabId) => {
         setActiveTab(tab);
@@ -69,7 +68,6 @@ export function BottomNav() {
                 >
                     <div 
                         style={{ position: 'relative', display: 'inline-flex' }}
-                        className={isFirstOrder && tab.id === 'history' ? 'history-pulse' : ''}
                     >
                         <span className={`bottom-nav__icon ${activeTab === tab.id ? 'bottom-nav__item--active' : ''}`} style={activeTab === tab.id ? { color: 'var(--accent-primary)', transform: 'scale(1.1)' } : { color: 'var(--tg-theme-hint-color, #888)' }}>
                             {tab.icon}

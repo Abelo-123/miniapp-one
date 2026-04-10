@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { formatETB } from '../../constants';
 
 import { useApp } from '../../context/AppContext';
@@ -6,12 +6,13 @@ import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
 import { CategoryModal } from '../../components/CategoryModal/CategoryModal';
 import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
-import { OrderForm, type OrderFormHandle } from '../../components/OrderForm/OrderForm';
 import { NewsTicker } from '../../components/NewsTicker/NewsTicker';
+import { hapticImpact, hapticNotification, getInitDataString } from '../../helpers/telegram';
 
 
 export function OrderPage() {
     const {
+        user, refreshUser, refreshOrders,
         recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
         showToast
@@ -19,8 +20,72 @@ export function OrderPage() {
 
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showServiceModal, setShowServiceModal] = useState(false);
-    const [showOrderModal, setShowOrderModal] = useState(false);
-    const orderFormRef = useRef<OrderFormHandle | null>(null);
+    
+    const [link, setLink] = useState('');
+    const [quantity, setQuantity] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isFirstOrder, setIsFirstOrder] = useState(!localStorage.getItem('hasPlacedOrder'));
+
+    useEffect(() => {
+        setLink('');
+        setQuantity('');
+    }, [selectedService]);
+
+    const totalCharge = useMemo(() => {
+        if (!selectedService || !quantity) return 0;
+        const q = parseInt(quantity, 10) || 0;
+        return (q / 1000) * selectedService.rate;
+    }, [selectedService, quantity]);
+
+    const handlePlaceOrder = async () => {
+        if (!selectedService) return;
+        
+        const q = parseInt(quantity, 10);
+        if (!link.trim()) return showToast('error', 'Please enter a valid link');
+        if (!q || q < selectedService.min) return showToast('error', `Minimum quantity is ${selectedService.min}`);
+        if (q > selectedService.max) return showToast('error', `Maximum quantity is ${selectedService.max}`);
+        if (totalCharge > (user?.balance || 0)) return showToast('error', 'Insufficient balance. Please add funds.');
+
+        setIsSubmitting(true);
+        hapticImpact('medium');
+
+        try {
+            const initData = await getInitDataString();
+            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || '/api'}/place-order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    service_id: selectedService.service,
+                    link: link.trim(),
+                    quantity: q,
+                    initData
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                hapticNotification('success');
+                showToast('success', 'Order placed successfully!');
+                
+                localStorage.setItem('hasPlacedOrder', 'true');
+                setIsFirstOrder(false);
+                setLink('');
+                setQuantity('');
+                setSelectedService(null);
+                
+                refreshUser();
+                refreshOrders();
+            } else {
+                hapticNotification('error');
+                showToast('error', data.error || 'Failed to place order');
+            }
+        } catch (e) {
+            hapticNotification('error');
+            showToast('error', 'Network error occurred');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const handlePlatformSelect = useCallback((platform: typeof selectedPlatform) => {
         setSelectedPlatform(platform);
@@ -44,27 +109,13 @@ export function OrderPage() {
     const handleServiceSelect = useCallback((service: typeof selectedService) => {
         setSelectedService(service);
         setShowServiceModal(false);
-        // NEW: Instantly open the order form as soon as a service is picked
-        setTimeout(() => setShowOrderModal(true), 150); 
+        setTimeout(() => window.scrollBy({ top: 300, behavior: 'smooth' }), 100);
     }, [setSelectedService]);
 
     return (
         <div className="order-page-wrapper">
             {/* ─── Global Marquee Banner ─── */}
             <NewsTicker />
-
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                padding: '0 20px 16px',
-                color: 'var(--tg-theme-hint-color)',
-                fontSize: '12px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-            }}>
-                <span>Balance: <strong style={{color: 'var(--tg-theme-text-color)'}}>{formatETB(useApp().user?.balance || 0)}</strong></span>
-                <span onClick={() => useApp().setActiveTab('deposit')} style={{cursor: 'pointer', color: 'var(--tg-theme-link-color)'}}>+ Add Funds</span>
-            </div>
 
             {/* ─── Platform Selection Grid ─── */}
             <PlatformGrid
@@ -105,58 +156,81 @@ export function OrderPage() {
                 </Cell>
             </Section>
 
-            {/* ─── Sticky Action Bar ─── */}
-            <div style={{ 
-                padding: '12px 16px', 
-                background: 'var(--tg-theme-bg-color)',
-                borderTop: '1px solid var(--tg-theme-section-separator-color)',
-                position: 'sticky',
-                bottom: 0,
-                zIndex: 99
-            }}>
-                <Button
-                    size="l"
-                    stretched
-                    disabled={!selectedService}
-                    style={{ 
-                        background: selectedService ? 'var(--tg-theme-button-color)' : 'var(--tg-theme-secondary-bg-color)',
-                        color: selectedService ? 'var(--tg-theme-button-text-color)' : 'var(--tg-theme-hint-color)',
-                        transition: 'all 0.2s ease',
-                        fontWeight: 700,
-                        borderRadius: '12px'
-                    }}
-                    onClick={() => {
-                        import('../../helpers/telegram').then(m => {
-                            if (!selectedService) {
-                                m.hapticNotification('error');
-                                showToast('error', 'Please select a service first');
-                                return;
-                            }
-                            m.hapticImpact('light');
-                            setShowOrderModal(true);
-                        });
-                    }}
-                >
-                    {selectedService 
-                        ? 'Order' 
-                        : !selectedPlatform 
-                            ? 'Select a Platform'
-                            : !selectedCategory
-                                ? 'Select a Category'
-                                : 'Select a Service'
-                    }
-                </Button>
-            </div>
+            {selectedService && (
+                <div className="inline-order-container">
+                    <div className="order-details-card">
+                        <div className="order-details-card__title">
+                            <span className="order-details-card__id">#{selectedService.service}</span>
+                            {selectedService.name}
+                        </div>
+                        <div className="order-details-card__row">
+                            <span>Min Order</span>
+                            <span className="bold">{selectedService.min}</span>
+                        </div>
+                        <div className="order-details-card__row">
+                            <span>Max Order</span>
+                            <span className="bold">{selectedService.max.toLocaleString()}</span>
+                        </div>
+                        <div className="order-details-card__row">
+                            <span>Rate per 1000</span>
+                            <span className="bold highlight">{formatETB(selectedService.rate)}</span>
+                        </div>
+                    </div>
+
+                    <div className="order-input-group">
+                        <label>Link / URL</label>
+                        <input 
+                            type="text" 
+                            placeholder="https://" 
+                            value={link} 
+                            onChange={(e) => setLink(e.target.value)} 
+                            className="order-custom-input"
+                        />
+                    </div>
+
+                    <div className="order-input-group">
+                        <label>Quantity</label>
+                        <input 
+                            type="number" 
+                            inputMode="numeric"
+                            placeholder={`${selectedService.min} - ${selectedService.max}`} 
+                            value={quantity} 
+                            onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ''))} 
+                            className="order-custom-input"
+                        />
+                    </div>
+
+                    <div className="order-total-card">
+                        <span>Total Charge</span>
+                        <span className="order-total-card__amount">
+                            {Number(totalCharge).toFixed(4)} ETB
+                        </span>
+                    </div>
+
+                    <Button
+                        size="l"
+                        stretched
+                        loading={isSubmitting}
+                        disabled={isSubmitting || !link || !quantity}
+                        className={isFirstOrder && link && quantity ? 'order-btn-pulse' : ''}
+                        style={{ 
+                            background: 'var(--tg-theme-button-color)',
+                            color: 'var(--tg-theme-button-text-color)',
+                            fontWeight: 700,
+                            borderRadius: '12px',
+                            marginTop: '8px',
+                            padding: '16px'
+                        }}
+                        onClick={handlePlaceOrder}
+                    >
+                        {isSubmitting ? 'Processing...' : `Place Order`}
+                    </Button>
+                </div>
+            )}
 
 
 
             {/* ─── Modals ─── */}
-            {showOrderModal && selectedService && (
-                <OrderForm 
-                    ref={orderFormRef} 
-                    onClose={() => setShowOrderModal(false)}
-                />
-            )}
             {showCategoryModal && selectedPlatform && (
                 <CategoryModal
                     platform={selectedPlatform}

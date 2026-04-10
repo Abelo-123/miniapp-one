@@ -49,7 +49,7 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
             header={<Modal.Header>Select Category</Modal.Header>}
             snapPoints={[0.9]} 
         >
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingTop: 0 }}>
                 <List>
                     <Section className="modal-search">
                         <Input

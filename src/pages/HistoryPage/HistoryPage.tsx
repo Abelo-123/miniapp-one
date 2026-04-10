@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { useApp } from '../../context/AppContext';
-import { hapticImpact, hapticSelection } from '../../helpers/telegram';
+import { hapticImpact, hapticSelection, hapticNotification } from '../../helpers/telegram';
 import { Section, Cell, Button, Input } from '@telegram-apps/telegram-ui';
 import type { OrderStatus } from '../../types';
 
@@ -53,6 +53,30 @@ export function HistoryPage() {
         
         // Remove the spin class after animation completes so it can be triggered again
         setTimeout(() => setIsRefreshing(false), 600);
+    }, [refreshOrders, showToast]);
+
+    const handleCancelOrder = useCallback(async (orderId: string | number) => {
+        hapticImpact('medium');
+        if (!window.confirm(`Are you sure you want to request cancellation for Order #${orderId}?`)) return;
+
+        try {
+            const initData = window.Telegram?.WebApp?.initData || '';
+            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || '/api'}/cancel-order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId, initData }),
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showToast('success', 'Order cancelled successfully.');
+                refreshOrders();
+            } else {
+                showToast('error', data.error || 'Failed to cancel order via API.');
+            }
+        } catch (e) {
+            showToast('error', 'Network error while cancelling.');
+        }
     }, [refreshOrders, showToast]);
 
     return (
@@ -157,98 +181,71 @@ export function HistoryPage() {
                 </div>
             )}
 
-            {/* ─── Orders ─── */}
-            <Section style={{ margin: '0 16px', background: 'var(--tg-theme-secondary-bg-color)', borderRadius: '12px', overflow: 'hidden' }}>
+{/* ─── Orders Table ─── */}
+            <div className="history-table-wrapper">
                 {filtered.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-state__icon">📦</div>
                         <div className="empty-state__title">No Orders Found</div>
-                        <div className="empty-state__text">
-                            {search.trim() || filter !== 'all'
-                                ? 'Try adjusting your filters'
-                                : "You haven't placed any orders yet"}
-                        </div>
-                        
-                        {/* NEW: Actionable button to guide the user */}
                         {(!search.trim() && filter === 'all') && (
-                            <Button 
-                                size="m" 
-                                style={{ marginTop: '16px', background: 'var(--accent-primary)', color: '#fff' }}
-                                onClick={() => setActiveTab('order')}
-                            >
+                            <Button size="m" style={{ marginTop: '16px', background: 'var(--accent-primary)', color: '#fff' }} onClick={() => setActiveTab('order')}>
                                 Place an Order
                             </Button>
                         )}
                     </div>
                 ) : (
-                    filtered.map((order) => {
-                        const status = normalizeStatus(order.status);
-                        const serviceName = (order.service_name || '').length > 25
-                            ? (order.service_name || '').substring(0, 25) + '...'
-                            : (order.service_name || '');
-                        const linkName = (order.link || '').length > 30
-                            ? (order.link || '').substring(0, 30) + '...'
-                            : (order.link || '');
-                            
-                        return (
-                            <Cell
-                                key={order.id}
-                                className="cell-row"
-                                // Make the ID look like a sleek pill instead of plain text
-                                before={
-                                    <div 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigator.clipboard.writeText(order.api_order_id.toString());
-                                            showToast('info', 'ID copied to clipboard');
-                                            hapticImpact('light');
-                                        }}
-                                        style={{
-                                            background: 'var(--surface-elevated)', 
-                                            padding: '4px 8px', 
-                                            borderRadius: '6px', 
-                                            fontSize: '11px', 
-                                            fontWeight: 700, 
-                                            color: 'var(--tg-theme-hint-color)',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        #{order.api_order_id}
-                                    </div>
-                                }
-                                subtitle={
-                                    <span style={{color: 'var(--accent-secondary)', fontSize: '12px'}}>
-                                        {linkName}
-                                    </span>
-                                }
-                                after={
-                                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6}}>
-                                        <span style={{fontWeight: 700, fontSize: '14px'}}>{order.quantity} <span style={{fontSize:'10px', opacity:0.6}}>QTY</span></span>
-                                        {/* Using inline styles to guarantee the badge looks native */}
-                                        <span style={{
-                                            fontSize: '10px', 
-                                            fontWeight: 800, 
-                                            padding: '3px 8px', 
-                                            borderRadius: '12px',
-                                            textTransform: 'uppercase',
-                                            background: status === 'completed' ? 'rgba(0,214,143,0.15)' : 
-                                                        status === 'processing' ? 'rgba(91,141,239,0.15)' : 
-                                                        status === 'cancelled' ? 'rgba(255,71,87,0.15)' : 'rgba(255,165,2,0.15)',
-                                            color: status === 'completed' ? 'var(--color-success)' : 
-                                                   status === 'processing' ? 'var(--color-info)' : 
-                                                   status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-warning)'
-                                        }}>
-                                            {status}
-                                        </span>
-                                    </div>
-                                }
-                            >
-                                <span style={{fontWeight: 600, fontSize: 14}}>{serviceName}</span>
-                            </Cell>
-                        );
-                    })
+                    <table className="history-table-new">
+                        <thead>
+                            <tr>
+                                <th>ORDER ID</th>
+                                <th>SERVICE / LINK</th>
+                                <th className="col-center">QTY</th>
+                                <th className="col-center">START</th>
+                                <th className="col-center">REMAINS</th>
+                                <th className="col-center">CHARGE</th>
+                                <th>DATE</th>
+                                <th>ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map(order => {
+                                const status = normalizeStatus(order.status);
+                                const isCancellable = status === 'pending' || status === 'processing';
+                                
+                                return (
+                                    <tr key={order.id}>
+                                        <td className="col-id">
+                                            <span className="order-id-text">ID: {order.api_order_id}</span>
+                                            <span className={`status-badge status-${status}`}>{status.toUpperCase()}</span>
+                                        </td>
+                                        <td className="col-service">
+                                            <div className="service-name-text">{order.service_name}</div>
+                                            <div className="service-link-text">{order.link}</div>
+                                        </td>
+                                        <td className="col-center">{order.quantity}</td>
+                                        <td className="col-center">{order.start_count || 0}</td>
+                                        <td className="col-center">{order.remains || 0}</td>
+                                        <td className="col-charge">
+                                            <div className="charge-amount">{Number(order.charge || 0).toFixed(4)}</div>
+                                            <div className="charge-currency">ETB</div>
+                                        </td>
+                                        <td className="col-date">
+                                            {new Date(order.created_at).toLocaleDateString('en-GB')}
+                                        </td>
+                                        <td className="col-action">
+                                            {isCancellable ? (
+                                                <button className="cancel-btn" onClick={() => handleCancelOrder(order.api_order_id)}>Cancel</button>
+                                            ) : (
+                                                <span style={{ color: 'var(--tg-theme-hint-color)', fontSize: '12px' }}>—</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 )}
-            </Section>
+            </div>
         </div>
     );
 }

@@ -559,8 +559,8 @@ export function DepositPage() {
 
     const formatBalanceDisplay = (bal: number) => {
         const parts = bal.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+            minimumFractionDigits: 4,
+            maximumFractionDigits: 4,
         }).split('.');
         return { whole: parts[0], decimal: '.' + parts[1] };
     };
@@ -785,20 +785,25 @@ export function DepositPage() {
                     <div className="empty-state__title">No Deposits Yet</div>
                 </div>
             ) : (
-                recentDeposits.map((d) => (
-                    <div className="deposit-card" key={d.id}>
-                        <div className="deposit-card__left">
-                            <span className={`deposit-card__status deposit-card__status--${d.status}`}>
-                                {d.status === 'completed' || d.status === 'success' ? '✅' : d.status === 'pending' ? '⏳' : '❌'}{' '}
-                                {d.status.charAt(0).toUpperCase() + d.status.slice(1)}
-                            </span>
-                            <span className="deposit-card__date">
-                                {new Date(d.created_at).toLocaleDateString()} • Chapa
-                            </span>
+                <div style={{ background: 'var(--tg-theme-bg-color)', borderRadius: '12px', margin: '0 16px' }}>
+                    {recentDeposits.map((d) => (
+                        <div className="deposit-list-item" key={d.id}>
+                            <div className="deposit-list-item__left">
+                                <span className={`deposit-list-item__amount deposit-list-item__amount--${d.status}`}>
+                                    +{Number(d.amount).toFixed(4)} ETB
+                                </span>
+                            </div>
+                            <div className="deposit-list-item__right">
+                                <span className="deposit-list-item__date">
+                                    {new Date(d.created_at).toLocaleDateString()}
+                                </span>
+                                <span className={`deposit-list-item__status deposit-list-item__status--${d.status}`}>
+                                    {d.status.toUpperCase()}
+                                </span>
+                            </div>
                         </div>
-                        <span className="deposit-card__amount">+{formatETB(d.amount)}</span>
-                    </div>
-                ))
+                    ))}
+                </div>
             )}
         </div>
     );

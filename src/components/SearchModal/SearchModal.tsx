@@ -152,7 +152,7 @@ export function SearchModal({ onClose }: Props) {
                                             <div className="modal-item-name">{svc.name}</div>
                                         </div>
                                         <div className="modal-item-id">ID: {svc.id}</div>
-                                        <div className="modal-item-price">{formatETB(svc.rate)}</div>
+                                        <div className="modal-item-price">{formatETB(svc.rate)} <span style={{ fontSize: '10px', opacity: 0.8 }}>/1000</span></div>
                                     </div>
                                 ))}
                             </Section>

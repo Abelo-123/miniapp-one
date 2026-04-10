@@ -38,7 +38,7 @@ const ServiceRow = React.memo(({
                 ID: {svc.id}
             </div>
             <div className="modal-item-price">
-                {formatETB(svc.rate)}
+                {formatETB(svc.rate)} <span style={{ fontSize: '10px', opacity: 0.8 }}>/1000</span>
             </div>
         </div>
     );
@@ -96,7 +96,7 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
             header={<Modal.Header>Select Service</Modal.Header>}
             snapPoints={[0.9]}
         >
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }} onScroll={handleScroll}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingTop: 0 }} onScroll={handleScroll}>
                 <List>
                     <Section className="modal-search">
                         <Input

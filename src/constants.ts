@@ -100,11 +100,12 @@ export function getLinkPlaceholder(category: string, platform: SocialPlatform): 
 }
 
 // ─── Currency Formatting ──────────────────────────────────────
-export function formatETB(amount: number): string {
-    return amount.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }) + ' ETB';
+export function formatETB(amount: number | string): string {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+    }).format(num || 0) + ' ETB';
 }
 
 // ─── Misc ─────────────────────────────────────────────────────
