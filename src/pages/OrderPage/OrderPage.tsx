@@ -128,8 +128,12 @@ export function OrderPage() {
                 <Cell
                     subtitle={selectedCategory || 'Select a category'}
                     onClick={() => {
-                        if (selectedPlatform) setShowCategoryModal(true);
-                        else import('../../helpers/telegram').then(m => m.hapticNotification('error'));
+                        if (selectedPlatform) {
+                            setShowCategoryModal(true);
+                        } else {
+                            showToast('error', 'Please select a social media platform first (e.g. TikTok, Telegram).');
+                            import('../../helpers/telegram').then(m => m.hapticNotification('error'));
+                        }
                     }}
                     after={selectedCategory 
                         ? <span style={{color: 'var(--color-success)', fontWeight: 'bold'}}>✓</span> 

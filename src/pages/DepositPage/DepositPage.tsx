@@ -559,10 +559,10 @@ export function DepositPage() {
 
     const formatBalanceDisplay = (bal: number) => {
         const parts = bal.toLocaleString('en-US', {
-            minimumFractionDigits: 4,
-            maximumFractionDigits: 4,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
         }).split('.');
-        return { whole: parts[0], decimal: '.' + parts[1] };
+        return { whole: parts[0], decimal: '.' + (parts[1] || '00') };
     };
 
     const balDisplay = formatBalanceDisplay(balance);
