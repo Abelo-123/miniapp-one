@@ -33,7 +33,7 @@ interface AppContentProps {
 }
 
 function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
-  const { activeTab, setActiveTab, isLoading, maintenanceMode, setSelectedPlatform, setSelectedCategory, setSelectedService } = useApp();
+  const { activeTab, setActiveTab, isLoading, maintenanceMode } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -146,14 +146,6 @@ function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
       <BottomNav />
       {showSearch && (
         <SearchModal 
-          onSelect={(service) => {
-            // Automatically map based on logic or a lookup map
-            setSelectedPlatform(service.platform_id || 'other'); 
-            setSelectedCategory(service.category);
-            setSelectedService(service);
-            setShowSearch(false);
-            setActiveTab('order');
-          }}
           onClose={() => setShowSearch(false)}
         />
       )}

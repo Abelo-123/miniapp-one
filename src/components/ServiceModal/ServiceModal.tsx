@@ -23,46 +23,24 @@ const ServiceRow = React.memo(({
     svc: Service, platform: string | null, onSelect: (s: Service) => void 
 }) => {
     return (
-        <Cell
+        <div
             key={svc.id}
-            multiline={false} // Force single line
+            className="modal-item"
             onClick={() => onSelect(svc)}
-            before={
-                <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {platform ? PLATFORM_ICONS[platform] : '📂'}
-                </div>
-            }
-            after={
-                <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px', 
-                    flexShrink: 0 // Badge NEVER shrinks or wraps
-                }}>
-                    <span style={{ 
-                        fontSize: 10, 
-                        fontWeight: 600, 
-                        padding: '2px 6px',
-                        borderRadius: '6px',
-                        background: 'var(--tg-theme-secondary-bg-color)'
-                    }}>
-                        ID: {svc.id}
-                    </span>
-                    <span style={{ fontWeight: 600, fontSize: '14px' }}>
-                        {formatETB(svc.rate)}
-                    </span>
-                </div>
-            }
         >
-            <div style={{ 
-                whiteSpace: 'nowrap', 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis',
-                marginRight: '12px' // Gap between name and badge
-            }}>
+            <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {platform ? PLATFORM_ICONS[platform] : '📂'}
+            </div>
+            <div style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {svc.name}
             </div>
-        </Cell>
+            <div className="modal-item-id">
+                ID: {svc.id}
+            </div>
+            <div className="modal-item-price">
+                {formatETB(svc.rate)}
+            </div>
+        </div>
     );
 });
 

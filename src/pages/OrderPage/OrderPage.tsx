@@ -138,7 +138,7 @@ export function OrderPage() {
                     }}
                 >
                     {selectedService 
-                        ? `Order for ${formatETB(selectedService.rate)}` 
+                        ? 'Order' 
                         : !selectedPlatform 
                             ? 'Select a Platform'
                             : !selectedCategory

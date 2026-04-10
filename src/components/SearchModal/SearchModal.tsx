@@ -1,16 +1,17 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { List, Section, Cell, Input, Placeholder } from '@telegram-apps/telegram-ui';
+import { List, Section, Input, Placeholder } from '@telegram-apps/telegram-ui';
 import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-apps/sdk-react';
-import type { Service } from '../../types';
+import type { Service, SocialPlatform } from '../../types';
 import { formatETB } from '../../constants';
 import { useAllServices } from '../../hooks/useAllServices';
+import { useApp } from '../../context/AppContext';
 
 interface Props {
-    onSelect: (service: Service) => void;
     onClose: () => void;
 }
 
-export function SearchModal({ onSelect, onClose }: Props) {
+export function SearchModal({ onClose }: Props) {
+    const { setSelectedPlatform, setSelectedCategory, setSelectedService, setActiveTab } = useApp();
     const [search, setSearch] = useState('');
     const { data: services = [], isLoading } = useAllServices();
 
@@ -49,6 +50,33 @@ export function SearchModal({ onSelect, onClose }: Props) {
         return map;
     }, [results]);
 
+    const handleSelectSearchResult = (service: Service) => {
+        const textToCheck = (service.category + " " + service.name).toLowerCase();
+        
+        let network: SocialPlatform = 'other';
+        if (textToCheck.includes('youtube') || textToCheck.includes('yt ')) {
+            network = 'youtube';
+        } else if (textToCheck.includes('tiktok') || textToCheck.includes('tik tok')) {
+            network = 'tiktok';
+        } else if (textToCheck.includes('telegram') || textToCheck.includes('tg ')) {
+            network = 'telegram';
+        } else if (textToCheck.includes('instagram') || textToCheck.includes('ig ')) {
+            network = 'instagram';
+        } else if (textToCheck.includes('twitter') || textToCheck.includes(' x ') || textToCheck.startsWith('x ') || textToCheck.includes('x/')) {
+            network = 'twitter';
+        } else if (textToCheck.includes('facebook') || textToCheck.includes('fb ')) {
+            network = 'facebook';
+        } else if (textToCheck.includes('top services') || textToCheck.includes('top ')) {
+            network = 'top';
+        }
+
+        setSelectedPlatform(network);
+        setSelectedCategory(service.category);
+        setSelectedService(service);
+        setActiveTab('order');
+        onClose();
+    };
+
     return (
         <div style={{
             position: 'fixed',
@@ -85,7 +113,7 @@ export function SearchModal({ onSelect, onClose }: Props) {
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingTop: '0px' }}>
                 <List>
-                    <Section>
+                    <Section className="modal-search">
                         <Input
                             inputMode="search"
                             autoComplete="off"
@@ -94,6 +122,7 @@ export function SearchModal({ onSelect, onClose }: Props) {
                             placeholder="Type name, ID, or category..."
                             value={search}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                            className="modal-search-input"
                         />
                     </Section>
 
@@ -114,36 +143,17 @@ export function SearchModal({ onSelect, onClose }: Props) {
                         Array.from(grouped.entries()).map(([category, svcs]) => (
                             <Section key={category} header={category}>
                                 {svcs.map(svc => (
-                                    <Cell
+                                    <div
                                         key={svc.id}
-                                        className="cell-row"
-                                        multiline
-                                        onClick={() => onSelect(svc)}
-                                        description={
-                                            <span style={{ fontSize: 12, color: 'var(--tg-theme-hint-color, #999)' }}>
-                                                {svc.category}
-                                            </span>
-                                        }
-                                        after={
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                                <span style={{ 
-                                                    fontSize: 11, 
-                                                    fontWeight: 600, 
-                                                    color: 'var(--accent, #7c5cfc)',
-                                                    background: 'rgba(124, 92, 252, 0.1)',
-                                                    padding: '2px 6px',
-                                                    borderRadius: '8px'
-                                                }}>
-                                                    ID: {svc.id}
-                                                </span>
-                                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tg-theme-text-color)' }}>
-                                                    {formatETB(svc.rate)}
-                                                </span>
-                                            </div>
-                                        }
+                                        className="modal-item"
+                                        onClick={() => handleSelectSearchResult(svc)}
                                     >
-                                        {svc.name}
-                                    </Cell>
+                                        <div className="modal-item-main">
+                                            <div className="modal-item-name">{svc.name}</div>
+                                        </div>
+                                        <div className="modal-item-id">ID: {svc.id}</div>
+                                        <div className="modal-item-price">{formatETB(svc.rate)}</div>
+                                    </div>
                                 ))}
                             </Section>
                         ))
