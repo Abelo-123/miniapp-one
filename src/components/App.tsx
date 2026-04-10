@@ -136,7 +136,6 @@ function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
         <GlobalHeader 
           onSearchClick={() => setShowSearch(true)}
           onNotificationClick={() => setShowNotifications(true)}
-          onChatClick={() => setShowChat(true)}
         />
         {activeTab === 'order' && <OrderPage />}
         {activeTab === 'history' && <HistoryPage />}

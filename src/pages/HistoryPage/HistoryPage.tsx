@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { useApp } from '../../context/AppContext';
-import { hapticImpact, hapticSelection, hapticNotification } from '../../helpers/telegram';
-import { Section, Cell, Button, Input } from '@telegram-apps/telegram-ui';
+import { hapticImpact, hapticSelection } from '../../helpers/telegram';
+import { Button, Input } from '@telegram-apps/telegram-ui';
 import type { OrderStatus } from '../../types';
 
 const STATUS_FILTERS: { id: OrderStatus | 'all'; label: string }[] = [
@@ -51,7 +51,6 @@ export function HistoryPage() {
         refreshOrders();
         showToast('info', 'Refreshing orders...');
         
-        // Remove the spin class after animation completes so it can be triggered again
         setTimeout(() => setIsRefreshing(false), 600);
     }, [refreshOrders, showToast]);
 
@@ -92,7 +91,7 @@ export function HistoryPage() {
                 paddingTop: '16px',
                 paddingBottom: '12px',
                 borderBottom: '1px solid var(--tg-theme-secondary-bg-color)',
-                margin: '0 -16px 16px -16px', // Pull out to screen edges
+                margin: '0 -16px 16px -16px',
                 paddingLeft: '16px',
                 paddingRight: '16px'
             }}>
@@ -117,8 +116,8 @@ export function HistoryPage() {
                                 setFilter(f.id);
                             }}
                             style={{
-                                flexShrink: 0, // Prevent the button from shrinking
-                                whiteSpace: 'nowrap', // Prevent text from wrapping to next line
+                                flexShrink: 0,
+                                whiteSpace: 'nowrap',
                                 ...(filter === f.id ? { background: 'var(--accent-primary)', color: '#fff', border: 'none' } : {})
                             }}
                         >
@@ -155,7 +154,6 @@ export function HistoryPage() {
                 </div>
             </div>
 
-            {/* ─── Inline Search ─── */}
             {showSearch && (
                 <div style={{ margin: '0 16px 12px' }}>
                     <Input
@@ -181,7 +179,6 @@ export function HistoryPage() {
                 </div>
             )}
 
-{/* ─── Orders Table ─── */}
             <div className="history-table-wrapper">
                 {filtered.length === 0 ? (
                     <div className="empty-state">

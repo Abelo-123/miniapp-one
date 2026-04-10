@@ -6,10 +6,9 @@ import { Avatar, Button } from '@telegram-apps/telegram-ui';
 interface Props {
     onSearchClick: () => void;
     onNotificationClick: () => void;
-    onChatClick?: () => void;
 }
 
-export function GlobalHeader({ onSearchClick, onNotificationClick, onChatClick }: Props) {
+export function GlobalHeader({ onSearchClick, onNotificationClick }: Props) {
     const { user, unreadAlerts, setActiveTab } = useApp();
 
     return (

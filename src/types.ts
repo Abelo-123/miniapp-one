@@ -2,6 +2,7 @@
 
 export interface Service {
     id: number;
+    service?: number;   // API uses 'service', some responses use 'id'
     category: string;
     name: string;
     type: ServiceType;
@@ -12,6 +13,20 @@ export interface Service {
     refill: boolean;
     cancel: boolean;
     platform_id?: SocialPlatform;
+}
+
+declare global {
+    interface Window {
+        Telegram?: {
+            WebApp?: {
+                initData: string;
+                initDataUnsafe: {
+                    user?: any;
+                    query_id?: string;
+                };
+            };
+        };
+    }
 }
 
 export type ServiceType =

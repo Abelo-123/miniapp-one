@@ -11,12 +11,13 @@ import { hapticImpact, hapticNotification, getInitDataString } from '../../helpe
 
 
 export function OrderPage() {
+    const appContext = useApp();
     const {
-        user, refreshUser, refreshOrders,
+        user, refreshOrders,
         recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
         showToast
-    } = useApp();
+    } = appContext;
 
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showServiceModal, setShowServiceModal] = useState(false);
@@ -55,7 +56,7 @@ export function OrderPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    service_id: selectedService.service,
+                    service_id: (selectedService as any).service || (selectedService as any).id,
                     link: link.trim(),
                     quantity: q,
                     initData
@@ -73,7 +74,9 @@ export function OrderPage() {
                 setQuantity('');
                 setSelectedService(null);
                 
-                refreshUser();
+                if ('refreshUser' in appContext && typeof (appContext as any).refreshUser === 'function') {
+                    (appContext as any).refreshUser();
+                }
                 refreshOrders();
             } else {
                 hapticNotification('error');
@@ -114,16 +117,13 @@ export function OrderPage() {
 
     return (
         <div className="order-page-wrapper">
-            {/* ─── Global Marquee Banner ─── */}
             <NewsTicker />
 
-            {/* ─── Platform Selection Grid ─── */}
             <PlatformGrid
                 selectedPlatform={selectedPlatform}
                 onSelect={handlePlatformSelect}
             />
 
-            {/* ─── Category & Service Selection ─── */}
             <Section className="selection-section">
                 <Cell
                     subtitle={selectedCategory || 'Select a category'}
@@ -160,7 +160,7 @@ export function OrderPage() {
                 <div className="inline-order-container">
                     <div className="order-details-card">
                         <div className="order-details-card__title">
-                            <span className="order-details-card__id">#{selectedService.service}</span>
+                            <span className="order-details-card__id">#{(selectedService as any).service || (selectedService as any).id}</span>
                             {selectedService.name}
                         </div>
                         <div className="order-details-card__row">
