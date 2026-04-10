@@ -28,7 +28,7 @@ declare global {
 }
 
 export function DepositPage() {
-    const { user, deposits, setBalance, refreshDeposits, showToast, setActiveTab } = useApp();
+    const { user, deposits, setBalance, refreshDeposits, showToast } = useApp();
     const [amount, setAmount] = useState('');
     const [step, setStep] = useState<DepositStep>('amount');
     const [errorMessage, setErrorMessage] = useState('');
@@ -36,6 +36,7 @@ export function DepositPage() {
     // Use refs for polling state to avoid stale closure issues
     const pollAbortRef = useRef(false);
     const activeTxRefRef = useRef<string | null>(null);
+    const recentDepositsRef = useRef<HTMLDivElement>(null);
 
     const balance = user?.balance ?? 0;
 
@@ -317,8 +318,14 @@ export function DepositPage() {
                     const isFirstDeposit = !localStorage.getItem('hasDeposited');
                     if (isFirstDeposit) {
                         localStorage.setItem('hasDeposited', 'true');
-                        setTimeout(() => setActiveTab('history'), 2000); 
                     }
+                    
+                    // Automatically scroll to deposit history after deposit success
+                    setTimeout(() => {
+                        if (recentDepositsRef.current) {
+                            recentDepositsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 800);
                     return;
                 }
 
@@ -329,6 +336,17 @@ export function DepositPage() {
                     setStep('success');
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
+                    
+                    const isFirstDeposit = !localStorage.getItem('hasDeposited');
+                    if (isFirstDeposit) {
+                        localStorage.setItem('hasDeposited', 'true');
+                    }
+                    
+                    setTimeout(() => {
+                        if (recentDepositsRef.current) {
+                            recentDepositsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 800);
                     return;
                 }
 
@@ -506,19 +524,33 @@ export function DepositPage() {
     // ─── Handle Deposit Button Click ─────────────────────────
     const handleDeposit = useCallback(() => {
         const val = parseFloat(amount);
-        if (!val || val < 10) {
+        
+        // 1. Basic validation
+        if (!amount || amount.trim() === '') {
+            showToast('error', 'Please enter an amount');
+            return hapticNotification('error');
+        }
+        if (isNaN(val)) {
+            showToast('error', 'Amount must be a number');
+            return hapticNotification('error');
+        }
+        if (val < 10) {
             showToast('error', 'Minimum deposit is 10 ETB');
+            return hapticNotification('error');
+        }
+        if (val > 50000) {
+            showToast('error', 'Max deposit is 50,000 ETB');
+            return hapticNotification('error');
+        }
+
+        // 2. System Readiness Security
+        if (!window.ChapaCheckout) {
+            showToast('error', 'Payment system busy, try again in 1s');
             hapticNotification('error');
             return;
         }
+
         setErrorMessage('');
-
-        if (!window.ChapaCheckout) {
-            showToast('info', 'Payment system loading...');
-            setTimeout(handleDeposit, 1000);
-            return;
-        }
-
         startInlinePayment(val);
     }, [amount, startInlinePayment, showToast]);
 
@@ -778,7 +810,7 @@ export function DepositPage() {
 
 
             {/* ─── Recent Deposits ─── */}
-            <div className="paxyo-section-header" style={{ marginTop: 24 }}>Recent Deposits</div>
+            <div ref={recentDepositsRef} className="paxyo-section-header" style={{ marginTop: 24 }}>Recent Deposits</div>
             {recentDeposits.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state__icon">💸</div>

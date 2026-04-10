@@ -4,8 +4,6 @@ import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-app
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
 import { useCategoryServices } from '../../hooks/useCategoryServices';
-import { useApp } from '../../context/AppContext';
-import { PLATFORM_ICONS } from '../../components/PlatformGrid/PlatformGrid';
 
 interface Props {
     category: string;
@@ -18,34 +16,23 @@ const BATCH_SIZE = 50;
 
 // 1. Memoized Row Component to prevent re-renders while typing
 const ServiceRow = React.memo(({ 
-    svc, platform, onSelect 
+    svc, onSelect 
 }: { 
-    svc: Service, platform: string | null, onSelect: (s: Service) => void 
+    svc: Service, onSelect: (s: Service) => void 
 }) => {
     return (
-        <div
-            key={svc.id}
-            className="modal-item"
-            onClick={() => onSelect(svc)}
-        >
-            <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {platform ? PLATFORM_ICONS[platform] : '📂'}
-            </div>
-            <div style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {svc.name}
-            </div>
-            <div className="modal-item-id">
-                ID: {svc.id}
-            </div>
-            <div className="modal-item-price">
-                {formatETB(svc.rate)} <span style={{ fontSize: '10px', opacity: 0.8 }}>/1000</span>
+        <div className="svc-item" onClick={() => onSelect(svc)}>
+            <div className="svc-id-pill">#{svc.id}</div>
+            <div className="svc-name">{svc.name}</div>
+            <div className="svc-footer">
+                <span className="svc-price">{formatETB(svc.rate)} / 1000</span>
+                <span className="svc-limits"> | Min: {svc.min} | Max: {svc.max.toLocaleString()}</span>
             </div>
         </div>
     );
 });
 
 export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Props) {
-    const { selectedPlatform } = useApp();
     const [search, setSearch] = useState('');
     const deferredSearch = useDeferredValue(search);
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
@@ -137,7 +124,6 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                                 <ServiceRow 
                                     key={svc.id} 
                                     svc={svc} 
-                                    platform={selectedPlatform} 
                                     onSelect={onSelect} 
                                 />
                             ))}

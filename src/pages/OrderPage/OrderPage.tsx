@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { formatETB } from '../../constants';
 
 import { useApp } from '../../context/AppContext';
@@ -27,6 +27,8 @@ export function OrderPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFirstOrder, setIsFirstOrder] = useState(!localStorage.getItem('hasPlacedOrder'));
 
+    const orderContainerRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         setLink('');
         setQuantity('');
@@ -39,13 +41,46 @@ export function OrderPage() {
     }, [selectedService, quantity]);
 
     const handlePlaceOrder = async () => {
-        if (!selectedService) return;
-        
+        // 1. Selection Security
+        if (!selectedPlatform) {
+            showToast('error', 'Select a platform first');
+            return hapticNotification('error');
+        }
+        if (!selectedCategory) {
+            showToast('error', 'Select a category first');
+            return hapticNotification('error');
+        }
+        if (!selectedService) {
+            showToast('error', 'Select a service first');
+            return hapticNotification('error');
+        }
+
+        // 2. Input Security
         const q = parseInt(quantity, 10);
-        if (!link.trim()) return showToast('error', 'Please enter a valid link');
-        if (!q || q < selectedService.min) return showToast('error', `Minimum quantity is ${selectedService.min}`);
-        if (q > selectedService.max) return showToast('error', `Maximum quantity is ${selectedService.max}`);
-        if (totalCharge > (user?.balance || 0)) return showToast('error', 'Insufficient balance. Please add funds.');
+        const urlPattern = /^(https?:\/\/|t\.me\/|@)/i;
+        
+        if (!link.trim() || !urlPattern.test(link.trim())) {
+            showToast('error', 'Enter a valid URL or username');
+            return hapticNotification('error');
+        }
+        if (!quantity || isNaN(q)) {
+            showToast('error', 'Please enter a valid quantity');
+            return hapticNotification('error');
+        }
+        if (q < selectedService.min) {
+            showToast('error', `Min quantity is ${selectedService.min}`);
+            return hapticNotification('error');
+        }
+        if (q > selectedService.max) {
+            showToast('error', `Max quantity is ${selectedService.max.toLocaleString()}`);
+            return hapticNotification('error');
+        }
+
+        // 3. Financial Security
+        if (totalCharge > (user?.balance || 0)) {
+            showToast('error', 'Insufficient balance. Deposit required.');
+            return hapticNotification('error');
+        }
 
         setIsSubmitting(true);
         hapticImpact('medium');
@@ -68,6 +103,11 @@ export function OrderPage() {
                 hapticNotification('success');
                 showToast('success', 'Order placed successfully!');
                 
+                if (isFirstOrder) {
+                    localStorage.setItem('pulseHistoryTab', 'true');
+                    window.dispatchEvent(new Event('pulseHistoryTab'));
+                }
+
                 localStorage.setItem('hasPlacedOrder', 'true');
                 setIsFirstOrder(false);
                 setLink('');
@@ -84,7 +124,7 @@ export function OrderPage() {
             }
         } catch (e) {
             hapticNotification('error');
-            showToast('error', 'Network error occurred');
+            showToast('error', 'Connection failed. Please check your internet.');
         } finally {
             setIsSubmitting(false);
         }
@@ -112,7 +152,13 @@ export function OrderPage() {
     const handleServiceSelect = useCallback((service: typeof selectedService) => {
         setSelectedService(service);
         setShowServiceModal(false);
-        setTimeout(() => window.scrollBy({ top: 300, behavior: 'smooth' }), 100);
+        setTimeout(() => {
+            if (orderContainerRef.current) {
+                orderContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                window.scrollBy({ top: 300, behavior: 'smooth' });
+            }
+        }, 150);
     }, [setSelectedService]);
 
     return (
@@ -161,7 +207,7 @@ export function OrderPage() {
             </Section>
 
             {selectedService && (
-                <div className="inline-order-container">
+                <div className="inline-order-container" ref={orderContainerRef}>
                     <div className="order-details-card">
                         <div className="order-details-card__title">
                             <span className="order-details-card__id">#{(selectedService as any).service || (selectedService as any).id}</span>

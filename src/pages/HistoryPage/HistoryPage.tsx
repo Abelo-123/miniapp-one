@@ -211,8 +211,17 @@ export function HistoryPage() {
                                 
                                 return (
                                     <tr key={order.id}>
-                                        <td className="col-id">
-                                            <span className="order-id-text">ID: {order.api_order_id}</span>
+                                        <td className="col-id" 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(order.api_order_id.toString());
+                                                showToast('success', 'ID copied!');
+                                                hapticImpact('light');
+                                            }} 
+                                            style={{ cursor: 'pointer', background: 'rgba(124, 92, 252, 0.05)', borderRadius: '8px' }}
+                                        >
+                                            <span className="order-id-text" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                #{order.api_order_id} 📋
+                                            </span>
                                             <span className={`status-badge status-${status}`}>{status.toUpperCase()}</span>
                                         </td>
                                         <td className="col-service">

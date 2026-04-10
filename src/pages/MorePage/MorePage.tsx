@@ -128,6 +128,31 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                 >
                     Refer & Earn
                 </Cell>
+
+                <Cell
+                    before={
+                        <div className="refer-card__icon" style={{ 
+                            width: 44, height: 44, margin: 0, borderRadius: 8, 
+                            background: 'rgba(42, 171, 238, 0.1)', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                        }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2AABEE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                            </svg>
+                        </div>
+                    }
+                    subtitle="Latest updates & news"
+                    onClick={() => {
+                        const tgLink = 'https://t.me/paxyo';
+                        if (window.Telegram?.WebApp) {
+                            (window.Telegram.WebApp as any).openTelegramLink?.(tgLink);
+                        } else {
+                            window.open(tgLink, '_blank');
+                        }
+                    }}
+                >
+                    Telegram Channel
+                </Cell>
             </Section>
 
             {/* ─── Live Support ─── */}

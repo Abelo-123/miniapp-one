@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import type { TabId } from '../../types';
 import { hapticSelection } from '../../helpers/telegram';
@@ -51,10 +52,21 @@ const TABS: { id: TabId; label: string; icon: JSX.Element }[] = [
 
 export function BottomNav() {
     const { activeTab, setActiveTab, unreadAlerts } = useApp();
+    const [pulseHistory, setPulseHistory] = useState(localStorage.getItem('pulseHistoryTab') === 'true');
+
+    useEffect(() => {
+        const handlePulse = () => setPulseHistory(true);
+        window.addEventListener('pulseHistoryTab', handlePulse);
+        return () => window.removeEventListener('pulseHistoryTab', handlePulse);
+    }, []);
 
     const handleTabClick = (tab: TabId) => {
         setActiveTab(tab);
         hapticSelection();
+        if (tab === 'history' && pulseHistory) {
+            setPulseHistory(false);
+            localStorage.removeItem('pulseHistoryTab');
+        }
     };
 
     return (
@@ -69,7 +81,7 @@ export function BottomNav() {
                     <div 
                         style={{ position: 'relative', display: 'inline-flex' }}
                     >
-                        <span className={`bottom-nav__icon ${activeTab === tab.id ? 'bottom-nav__item--active' : ''}`} style={activeTab === tab.id ? { color: 'var(--accent-primary)', transform: 'scale(1.1)' } : { color: 'var(--tg-theme-hint-color, #888)' }}>
+                        <span className={`bottom-nav__icon ${activeTab === tab.id ? 'bottom-nav__item--active' : ''} ${tab.id === 'history' && pulseHistory ? 'history-pulse' : ''}`} style={activeTab === tab.id ? { color: 'var(--accent-primary)', transform: 'scale(1.1)' } : { color: 'var(--tg-theme-hint-color, #888)' }}>
                             {tab.icon}
                         </span>
                         {tab.id === 'more' && unreadAlerts > 0 && (
