@@ -87,11 +87,11 @@ export function OrderPage() {
 
         try {
             const initData = await getInitDataString();
-            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || '/api'}/place-order`, {
+            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || '/api'}/orders/place`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    service_id: (selectedService as any).service || (selectedService as any).id,
+                    service: (selectedService as any).service || (selectedService as any).id,
                     link: link.trim(),
                     quantity: q,
                     initData
