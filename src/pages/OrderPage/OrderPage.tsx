@@ -59,20 +59,28 @@ export function OrderPage() {
         const q = parseInt(quantity, 10);
         const urlPattern = /^(https?:\/\/|t\.me\/|@)/i;
         
-        if (!link.trim() || !urlPattern.test(link.trim())) {
-            showToast('error', 'Action Required: Enter a valid URL or username (e.g., https://... or @username)');
+        if (!link.trim()) {
+            showToast('error', 'Missing Link: Please enter the target URL or @username for this order.');
+            return hapticNotification('error');
+        }
+        if (!urlPattern.test(link.trim())) {
+            showToast('error', 'Invalid Link Format: Link must start with http://, https://, t.me/, or @username.');
             return hapticNotification('error');
         }
         if (!quantity || isNaN(q)) {
-            showToast('error', 'Action Required: Please enter a valid quantity');
+            showToast('error', 'Missing Quantity: Please specify how many interactions you want to order.');
             return hapticNotification('error');
         }
         if (q < selectedService.min) {
-            showToast('error', `Action Required: Minimum quantity is ${selectedService.min}`);
+            showToast('error', `Quantity Too Low: The minimum order requirement for this service is ${selectedService.min}.`);
             return hapticNotification('error');
         }
         if (q > selectedService.max) {
-            showToast('error', `Action Required: Maximum quantity is ${selectedService.max.toLocaleString()}`);
+            showToast('error', `Quantity Exceeds Limit: The maximum order limit for this service is ${selectedService.max.toLocaleString()}.`);
+            return hapticNotification('error');
+        }
+        if (q % 10 !== 0) {
+            showToast('error', 'Invalid Quantity: The quantity must be a multiple of 10.');
             return hapticNotification('error');
         }
 
@@ -261,8 +269,8 @@ export function OrderPage() {
                         size="l"
                         stretched
                         loading={isSubmitting}
-                        disabled={isSubmitting || !link || !quantity}
-                        className={isFirstOrder && link && quantity ? 'order-btn-pulse' : ''}
+                        disabled={isSubmitting}
+                        className={isFirstOrder ? 'order-btn-pulse' : ''}
                         style={{ 
                             background: 'var(--tg-theme-button-color)',
                             color: 'var(--tg-theme-button-text-color)',

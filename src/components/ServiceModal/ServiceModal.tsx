@@ -84,27 +84,27 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
             snapPoints={[0.9]}
         >
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingTop: 0 }} onScroll={handleScroll}>
+                <div style={{ padding: '8px 16px 12px' }}>
+                    <Input
+                        inputMode="search"
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder="Search services..."
+                        value={search}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        after={
+                            search.length > 0 ? (
+                                <div 
+                                    onClick={() => setSearch('')} 
+                                    style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
+                                >
+                                    ✕
+                                </div>
+                            ) : null
+                        }
+                    />
+                </div>
                 <List>
-                    <Section className="modal-search">
-                        <Input
-                            inputMode="search"
-                            autoComplete="off"
-                            spellCheck={false}
-                            placeholder="Search services..."
-                            value={search}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                            after={
-                                search.length > 0 ? (
-                                    <div 
-                                        onClick={() => setSearch('')} 
-                                        style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
-                                    >
-                                        ✕
-                                    </div>
-                                ) : null
-                            }
-                        />
-                    </Section>
                     {loading ? (
                         <Section>
                             {[1, 2, 3, 4, 5].map(i => (

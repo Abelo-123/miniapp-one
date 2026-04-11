@@ -96,7 +96,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             } else if (qty > service.max) {
                 errs.quantity = `Maximum quantity is ${service.max.toLocaleString()}`;
             } else if (qty % QUANTITY_STEP !== 0) {
-                errs.quantity = `Quantity must be in multiples of ${QUANTITY_STEP}`;
+                errs.quantity = `Invalid Quantity: Must be in multiples of 10.`;
             }
         }
         

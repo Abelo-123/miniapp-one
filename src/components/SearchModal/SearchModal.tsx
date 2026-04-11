@@ -112,20 +112,19 @@ export function SearchModal({ onClose }: Props) {
                 </button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingTop: '0px' }}>
+                <div style={{ padding: '8px 0 12px' }}>
+                    <Input
+                        inputMode="search"
+                        autoComplete="off"
+                        spellCheck={false}
+                        autoFocus
+                        placeholder="Type name, ID, or category..."
+                        value={search}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        className="modal-search-input"
+                    />
+                </div>
                 <List>
-                    <Section className="modal-search">
-                        <Input
-                            inputMode="search"
-                            autoComplete="off"
-                            spellCheck={false}
-                            autoFocus
-                            placeholder="Type name, ID, or category..."
-                            value={search}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                            className="modal-search-input"
-                        />
-                    </Section>
-
                     {isLoading ? (
                         <Section>
                             {[1, 2, 3, 4, 5, 6].map(i => (
