@@ -527,25 +527,25 @@ export function DepositPage() {
         
         // 1. Basic validation
         if (!amount || amount.trim() === '') {
-            showToast('error', 'Please enter an amount');
+            showToast('error', 'Action Required: Please enter an amount');
             return hapticNotification('error');
         }
         if (isNaN(val)) {
-            showToast('error', 'Amount must be a number');
+            showToast('error', 'Action Required: Amount must be a valid number');
             return hapticNotification('error');
         }
         if (val < 10) {
-            showToast('error', 'Minimum deposit is 10 ETB');
+            showToast('error', 'Action Required: Minimum deposit is 10 ETB');
             return hapticNotification('error');
         }
         if (val > 50000) {
-            showToast('error', 'Max deposit is 50,000 ETB');
+            showToast('error', 'Action Required: Maximum deposit is 50,000 ETB');
             return hapticNotification('error');
         }
 
         // 2. System Readiness Security
         if (!window.ChapaCheckout) {
-            showToast('error', 'Payment system busy, try again in 1s');
+            showToast('error', 'Payment system busy, please try again in a moment');
             hapticNotification('error');
             return;
         }

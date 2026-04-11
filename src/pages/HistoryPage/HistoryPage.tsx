@@ -220,7 +220,8 @@ export function HistoryPage() {
                                             style={{ cursor: 'pointer', background: 'rgba(124, 92, 252, 0.05)', borderRadius: '8px' }}
                                         >
                                             <span className="order-id-text" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                #{order.api_order_id} 📋
+                                                <i className="fa fa-copy" style={{ fontSize: '12px', opacity: 0.6 }}></i>
+                                                #{order.api_order_id}
                                             </span>
                                             <span className={`status-badge status-${status}`}>{status.toUpperCase()}</span>
                                         </td>

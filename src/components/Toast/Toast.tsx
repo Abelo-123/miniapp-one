@@ -1,10 +1,9 @@
-import { Snackbar } from '@telegram-apps/telegram-ui';
 import { useApp } from '../../context/AppContext';
 
 const ICONS: Record<string, string> = {
-    success: '✅',
-    error: '❌',
-    info: 'ℹ️',
+    success: 'fa-check-circle',
+    error: 'fa-exclamation-circle',
+    info: 'fa-info-circle',
 };
 
 export function ToastContainer() {
@@ -12,18 +11,17 @@ export function ToastContainer() {
 
     if (toasts.length === 0) return null;
 
-    // Show only the latest toast as a Snackbar
     const latest = toasts[toasts.length - 1];
 
     return (
-        <Snackbar
-            key={latest.id}
-            before={<span style={{ fontSize: 20 }}>{ICONS[latest.type] || 'ℹ️'}</span>}
-            description={latest.message}
-            onClose={() => removeToast(latest.id)}
-            duration={3000}
-        >
-            {latest.type === 'success' ? 'Success' : latest.type === 'error' ? 'Error' : 'Info'}
-        </Snackbar>
+        <div className="top-toast-container">
+            <div className={`top-toast ${latest.type}`} key={latest.id}>
+                <i className={`fa ${ICONS[latest.type] || 'fa-info-circle'} top-toast-icon`}></i>
+                <span className="top-toast-message">{latest.message}</span>
+                <button className="top-toast-close" onClick={() => removeToast(latest.id)}>
+                    <i className="fa fa-times"></i>
+                </button>
+            </div>
+        </div>
     );
 }

@@ -43,15 +43,15 @@ export function OrderPage() {
     const handlePlaceOrder = async () => {
         // 1. Selection Security
         if (!selectedPlatform) {
-            showToast('error', 'Select a platform first');
+            showToast('error', 'Action Required: Select a platform first');
             return hapticNotification('error');
         }
         if (!selectedCategory) {
-            showToast('error', 'Select a category first');
+            showToast('error', 'Action Required: Select a category first');
             return hapticNotification('error');
         }
         if (!selectedService) {
-            showToast('error', 'Select a service first');
+            showToast('error', 'Action Required: Select a service first');
             return hapticNotification('error');
         }
 
@@ -60,25 +60,25 @@ export function OrderPage() {
         const urlPattern = /^(https?:\/\/|t\.me\/|@)/i;
         
         if (!link.trim() || !urlPattern.test(link.trim())) {
-            showToast('error', 'Enter a valid URL or username');
+            showToast('error', 'Action Required: Enter a valid URL or username (e.g., https://... or @username)');
             return hapticNotification('error');
         }
         if (!quantity || isNaN(q)) {
-            showToast('error', 'Please enter a valid quantity');
+            showToast('error', 'Action Required: Please enter a valid quantity');
             return hapticNotification('error');
         }
         if (q < selectedService.min) {
-            showToast('error', `Min quantity is ${selectedService.min}`);
+            showToast('error', `Action Required: Minimum quantity is ${selectedService.min}`);
             return hapticNotification('error');
         }
         if (q > selectedService.max) {
-            showToast('error', `Max quantity is ${selectedService.max.toLocaleString()}`);
+            showToast('error', `Action Required: Maximum quantity is ${selectedService.max.toLocaleString()}`);
             return hapticNotification('error');
         }
 
         // 3. Financial Security
         if (totalCharge > (user?.balance || 0)) {
-            showToast('error', 'Insufficient balance. Deposit required.');
+            showToast('error', 'Action Required: Insufficient balance. Please deposit funds.');
             return hapticNotification('error');
         }
 
