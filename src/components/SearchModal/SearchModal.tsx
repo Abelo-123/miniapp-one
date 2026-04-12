@@ -111,7 +111,7 @@ export function SearchModal({ onClose }: Props) {
                     </svg>
                 </button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingTop: '0px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px', paddingTop: '0px', paddingBottom: '150px' }}>
                 <div style={{ padding: '8px 0 12px' }}>
                     <Input
                         inputMode="search"
@@ -158,6 +158,7 @@ export function SearchModal({ onClose }: Props) {
                         ))
                     )}
                 </List>
+                <div className="modal-list-spacer" />
             </div>
         </div>
     );

@@ -10,11 +10,10 @@ interface MorePageProps {
 
 export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     const {
-        chatMessages, setChatMessages, showToast, refreshAlerts
+        user, chatMessages, setChatMessages, showToast, refreshAlerts
     } = useApp();
 
     const [chatInput, setChatInput] = useState('');
-
     const [isSending, setIsSending] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -29,7 +28,6 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
         }
     };
 
-    // Scroll chat to bottom
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatMessages]);
@@ -44,53 +42,65 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
         return () => clearInterval(interval);
     }, [refreshAlerts]);
 
-    // Send chat message
     const handleSendChat = async () => {
         if (!chatInput.trim() || isSending) return;
-
         setIsSending(true);
         const text = chatInput.trim();
         setChatInput('');
-
         try {
             await api.sendChat(text);
             await loadMessages();
             showToast('info', 'Message sent to support');
         } catch (e) {
-            console.error('Failed to send message', e);
             showToast('error', 'Failed to send message');
         } finally {
             setIsSending(false);
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSendChat();
+    const handleOpenLink = (url: string) => {
+        if ((window as any).Telegram?.WebApp) {
+            (window as any).Telegram.WebApp.openLink(url);
+        } else {
+            window.open(url, '_blank');
         }
     };
 
     return (
         <div className="more-page">
-            <Section>
+            {/* ─── Account Info ─── */}
+            <Section header="Account Information">
+                <Cell 
+                    after={<span style={{ color: 'var(--tg-theme-hint-color)', fontWeight: 'bold' }}>#{user?.id || 'N/A'}</span>}
+                    onClick={() => {
+                        import('../../helpers/telegram').then(m => m.hapticSelection());
+                        navigator.clipboard.writeText(String(user?.id || ''));
+                    }}
+                >
+                    Your User ID
+                </Cell>
+            </Section>
+
+            {/* ─── Appearance ─── */}
+            <Section header="Appearance">
                 <Cell subtitle="Choose application appearance">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 600 }}>App Theme</span>
-                    </div>
                     <div style={{ 
                         display: 'flex', 
-                        gap: '8px', /* THIS FIXES THE SQUISHING */
+                        gap: '8px', 
                         background: 'var(--tg-theme-secondary-bg-color)', 
                         padding: '6px', 
                         borderRadius: '12px',
-                        width: '100%' 
+                        width: '100%',
+                        marginTop: '8px'
                     }}>
-                        {['auto', 'light', 'dark'].map((t) => (
+                        {['light', 'dark', 'auto'].map((t) => (
                             <button
                                 key={t}
                                 onClick={() => {
-                                    import('../../helpers/telegram').then(m => m.hapticSelection());
+                                    import('../../helpers/telegram').then(m => {
+                                        m.hapticSelection();
+                                        m.setTheme(t === 'auto' ? 'system' : t as 'light' | 'dark');
+                                    });
                                     setThemeOverride(t as any);
                                     localStorage.setItem('app-theme', t);
                                 }}
@@ -102,7 +112,7 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                                     border: 'none',
                                     borderRadius: '8px',
                                     fontWeight: themeOverride === t ? 600 : 500,
-                                    boxShadow: themeOverride === t ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                                    boxShadow: themeOverride === t ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
                                     transition: 'all 0.2s ease',
                                     textTransform: 'capitalize'
                                 }}
@@ -112,26 +122,40 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                         ))}
                     </div>
                 </Cell>
-                
-                <Cell
-                    before={
-                        <div className="refer-card__icon" style={{ width: 44, height: 44, margin: 0, borderRadius: 8 }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                <circle cx="9" cy="7" r="4" />
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                            </svg>
-                        </div>
-                    }
-                    subtitle="Coming soon to the platform"
-                >
-                    Refer & Earn
-                </Cell>
+            </Section>
 
-                <Cell
+            {/* ─── Contact Us Section ─── */}
+            <Section header="Contact Us">
+                <Cell 
+                    subtitle="Support Email" 
+                    onClick={() => {
+                        import('../../helpers/telegram').then(m => m.hapticSelection());
+                        window.location.href = 'mailto:Contact@paxyo.com';
+                    }}
+                >
+                    Contact@paxyo.com
+                </Cell>
+                <Cell 
+                    subtitle="Business Email" 
+                    onClick={() => {
+                        import('../../helpers/telegram').then(m => m.hapticSelection());
+                        window.location.href = 'mailto:Paxyo251@gmail.com';
+                    }}
+                >
+                    Paxyo251@gmail.com
+                </Cell>
+                <Cell 
+                    subtitle="Phone Number" 
+                    onClick={() => {
+                        import('../../helpers/telegram').then(m => m.hapticSelection());
+                        window.location.href = 'tel:0986411919';
+                    }}
+                >
+                    0986411919
+                </Cell>
+                <Cell 
                     before={
-                        <div className="refer-card__icon" style={{ 
+                        <div style={{ 
                             width: 44, height: 44, margin: 0, borderRadius: 8, 
                             background: 'rgba(42, 171, 238, 0.1)', 
                             display: 'flex', alignItems: 'center', justifyContent: 'center' 
@@ -141,65 +165,49 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                             </svg>
                         </div>
                     }
-                    subtitle="Latest updates & news"
+                    subtitle="Click to chat" 
                     onClick={() => {
-                        const tgLink = 'https://t.me/paxyo';
-                        if (window.Telegram?.WebApp) {
-                            (window.Telegram.WebApp as any).openTelegramLink?.(tgLink);
-                        } else {
-                            window.open(tgLink, '_blank');
-                        }
+                        import('../../helpers/telegram').then(m => m.hapticSelection());
+                        handleOpenLink('https://t.me/paxyo');
                     }}
                 >
-                    Telegram Channel
+                    @paxyo
+                </Cell>
+                <Cell 
+                    subtitle="Location" 
+                    onClick={() => {
+                        import('../../helpers/telegram').then(m => m.hapticSelection());
+                        handleOpenLink('https://share.google/VX1Hfdvnofu6zPcch');
+                    }}
+                >
+                    View Office Location 📍
                 </Cell>
             </Section>
 
-            {/* ─── Live Support ─── */}
-            <Section header="Live Support">
+            {/* ─── Support Chat ─── */}
+            <Section header="Live Support Chat">
                 <div className="support-card glass-card">
-                    <div className="support-card__header">
-                        <div className="support-card__icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                            </svg>
-                        </div>
-                        <div className="support-card__info">
-                            <span className="support-card__title">Chat with Support</span>
-                            <span className="support-card__status">
-                                <span className="support-card__status-dot" />
-                                ONLINE
-                            </span>
-                        </div>
-                    </div>
                     <div className="chat-container">
-                        <div className="chat-messages">
+                        <div className="chat-messages" style={{ height: '200px' }}>
                             {chatMessages.length === 0 ? (
                                 <div className="chat-empty">
-                                    <span className="chat-empty__icon">💬</span>
                                     <span>Start a conversation with support</span>
                                 </div>
                             ) : (
-                                chatMessages.map(msg => {
-                                    const isAdmin = msg.is_admin === 1 || msg.is_admin === true;
-                                    return (
-                                <div key={msg.id} style={{
-                                    alignSelf: isAdmin ? 'flex-start' : 'flex-end',
-                                    background: isAdmin ? 'var(--tg-theme-secondary-bg-color)' : 'var(--tg-theme-button-color)',
-                                    color: isAdmin ? 'var(--tg-theme-text-color)' : 'var(--tg-theme-button-text-color)',
-                                    padding: '10px 14px',
-                                    borderRadius: '16px',
-                                    borderBottomLeftRadius: isAdmin ? '4px' : '16px',
-                                    borderBottomRightRadius: isAdmin ? '16px' : '4px',
-                                    maxWidth: '80%',
-                                    marginBottom: '8px',
-                                    fontSize: '14px',
-                                    lineHeight: '1.4'
-                                }}>
-                                    {msg.message}
-                                </div>
-                                    );
-                                })
+                                chatMessages.map((msg, i) => (
+                                    <div key={i} style={{
+                                        alignSelf: msg.is_admin ? 'flex-start' : 'flex-end',
+                                        background: msg.is_admin ? 'var(--tg-theme-secondary-bg-color)' : 'var(--tg-theme-button-color)',
+                                        color: msg.is_admin ? 'var(--tg-theme-text-color)' : 'var(--tg-theme-button-text-color)',
+                                        padding: '10px 14px',
+                                        borderRadius: '16px',
+                                        maxWidth: '85%',
+                                        marginBottom: '8px',
+                                        fontSize: '14px'
+                                    }}>
+                                        {msg.message}
+                                    </div>
+                                ))
                             )}
                             <div ref={chatEndRef} />
                         </div>
@@ -209,14 +217,9 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                                 placeholder="Type a message..."
                                 value={chatInput}
                                 onChange={(e) => setChatInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
                                 disabled={isSending}
                             />
-                            <button
-                                className="chat-send-btn"
-                                onClick={handleSendChat}
-                                disabled={!chatInput.trim() || isSending}
-                            >
+                            <button className="chat-send-btn" onClick={handleSendChat} disabled={!chatInput.trim()}>
                                 {isSending ? '...' : '➤'}
                             </button>
                         </div>
@@ -224,8 +227,43 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                 </div>
             </Section>
 
-            {/* Bottom spacing */}
-            <div style={{ height: 24 }} />
+            {/* ─── Terms ─── */}
+            <div style={{ textAlign: 'center', marginTop: 16, marginBottom: 32 }}>
+                <button 
+                    onClick={() => {
+                        import('../../helpers/telegram').then(m => m.hapticSelection());
+                        import('sweetalert2').then(Swal => {
+                            Swal.default.fire({
+                                title: 'Paxyo: About Us',
+                                html: `
+                                    <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+                                        <p style="margin-bottom: 12px;">We don't usually speak. We work behind the scenes.</p>
+                                        <p style="margin-bottom: 12px;">We've helped build brands and businesses into successful names in the physical world and now we are doing the same in social media. Many creators, influencers and pages you may know have grown with our support.</p>
+                                        <p style="margin-bottom: 12px;">This tool is part of the Paxyo marketing system now made publicly accessible to help everyone grow at an affordable price.</p>
+                                        <p style="margin-bottom: 12px;">Our goal is simple: make your page look active and trusted so your content reaches more people, gets noticed and grows faster.</p>
+                                        <p style="margin-bottom: 16px;">Please support the team, use the platform responsibly and avoid misuse. We're always open to feedback. 🙏</p>
+                                    </div>
+                                `,
+                                confirmButtonText: 'Got it',
+                                confirmButtonColor: '#7C5CFC',
+                            });
+                        });
+                    }}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--tg-theme-hint-color)',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        padding: '4px 8px'
+                    }}
+                >
+                    Terms and Conditions
+                </button>
+            </div>
+
+            <div style={{ height: 100 }} /> {/* Spacer for bottom bar */}
         </div>
     );
 }

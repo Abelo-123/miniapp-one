@@ -186,7 +186,14 @@ export function App() {
   useEffect(() => {
     document.body.style.backgroundColor = activeAppearance === 'dark' ? '#000000' : '#ffffff';
     document.body.style.color = activeAppearance === 'dark' ? '#ffffff' : '#000000';
-  }, [activeAppearance]);
+    
+    // Also sync with Telegram SDK for native theme matching
+    import('../helpers/telegram').then(m => {
+      m.setBackgroundColor(activeAppearance === 'dark' ? '#000000' : '#ffffff');
+      m.setHeaderColor(activeAppearance === 'dark' ? '#000000' : '#ffffff');
+      m.setTheme(themeOverride === 'auto' ? 'system' : themeOverride === 'dark' ? 'dark' : 'light');
+    });
+  }, [activeAppearance, themeOverride]);
 
   return (
     <QueryClientProvider client={queryClient}>

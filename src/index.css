@@ -1526,5 +1526,22 @@ mark { background:rgba(124,92,252,0.3); color:var(--tg-theme-text-color,#f0f0f5)
         transform: translateY(0);
         opacity: 1;
     }
+}
+
+.modal-overlay, 
+[class^='tgui-modal'], 
+[class*='tgui-modal'],
+.search-page {
+    z-index: 10000 !important;
+}
+
+.bottom-nav {
+    z-index: 100 !important;
+}
+
+.modal-list-spacer {
+    height: 120px;
+    width: 100%;
+    pointer-events: none;
 } 
  

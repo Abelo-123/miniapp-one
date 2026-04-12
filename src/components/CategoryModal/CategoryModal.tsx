@@ -47,9 +47,9 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
             open
             onOpenChange={(open) => { if (!open) onClose(); }}
             header={<Modal.Header>Select Category</Modal.Header>}
-            snapPoints={[0.9]} 
+            snapPoints={[0.65]} 
         >
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingTop: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingTop: 0, paddingBottom: '150px' }}>
                 <div style={{ padding: '8px 16px 12px' }}>
                     <Input
                         inputMode="search"
@@ -97,6 +97,7 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
                                     {cat}
                                 </Cell>
                             ))}
+                            <div className="modal-list-spacer" />
                         </Section>
                     )}
                 </List>

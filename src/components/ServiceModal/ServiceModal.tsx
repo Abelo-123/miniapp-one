@@ -81,9 +81,9 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
             open
             onOpenChange={(open) => { if (!open) onClose(); }}
             header={<Modal.Header>Select Service</Modal.Header>}
-            snapPoints={[0.9]}
+            snapPoints={[0.65]}
         >
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingTop: 0 }} onScroll={handleScroll}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingTop: 0, paddingBottom: '150px' }} onScroll={handleScroll}>
                 <div style={{ padding: '8px 16px 12px' }}>
                     <Input
                         inputMode="search"
@@ -135,6 +135,7 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                                     Load more ({filtered.length - visibleCount} remaining)
                                 </Cell>
                             )}
+                            <div className="modal-list-spacer" />
                         </Section>
                     )}
                 </List>

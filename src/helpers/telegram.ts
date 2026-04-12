@@ -325,6 +325,21 @@ export function setBackgroundColor(color: string): void {
     } catch { /* noop */ }
 }
 
+/**
+ * Sets the Telegram mini app theme.
+ * Use 'dark' to switch to dark theme, 'light' for light theme, 'system' for auto.
+ * Note: Not available in all SDK versions - will fail silently if unavailable.
+ */
+export function setTheme(theme: 'light' | 'dark' | 'system'): void {
+    try {
+        // Use window.Telegram.WebApp directly as fallback since SDK may not expose this
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg && tg.theme && typeof tg.theme === 'function') {
+            tg.theme(theme);
+        }
+    } catch { /* noop */ }
+}
+
 // ─── Native Links ───────────────────────────────────────────
 
 /**
