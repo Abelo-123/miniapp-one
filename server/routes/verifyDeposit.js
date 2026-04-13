@@ -63,7 +63,12 @@ router.post('/', async (req, res) => {
 
         if (!isSuccess) {
             const realStatus = result.data?.status || result.raw?.status || 'pending';
-            const realMessage = result.data?.charge_message || result.data?.payment_message || result.message || result.raw?.message || 'Payment declined by bank or provider.';
+            let realMessage = result.data?.charge_message || result.data?.payment_message || result.message || result.raw?.message || 'Payment declined by bank or provider.';
+
+            // Prevent confusing "fetched successfully" message when it's actually just waiting for the user's PIN
+            if (realMessage.toLowerCase().includes('fetched successfully') && realStatus === 'pending') {
+                realMessage = 'Waiting for confirmation from your mobile provider...';
+            }
 
             return res.json({
                 success: false,

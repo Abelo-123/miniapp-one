@@ -259,24 +259,15 @@ export function DepositPage() {
         pollAbortRef.current = false;
         setStep('verifying');
 
-        // Mobile money (M-Pesa/Telebirr) can take 15-90 seconds for telco confirmation.
-        // We poll aggressively at first, then slow down. Total: ~3+ minutes of patience.
+        // Mobile money (M-Pesa/Telebirr) can take up to 5 minutes for telco confirmation.
+        // Extended polling with longer patience. Total: ~6+ minutes.
         const delays = [
-            2000,   // 2s  — quick first check
-            3000,   // 5s  total
-            5000,   // 10s total
-            5000,   // 15s total
-            8000,   // 23s total
-            8000,   // 31s total
-            10000,  // 41s total
-            10000,  // 51s total
-            15000,  // 1m 6s total
-            15000,  // 1m 21s total
-            15000,  // 1m 36s total
-            20000,  // 1m 56s total
-            20000,  // 2m 16s total
-            30000,  // 2m 46s total
-            30000,  // 3m 16s total
+            2000, 3000, 5000, 5000, // 15s
+            8000, 8000, 10000, 10000, // 51s
+            10000, 10000, 15000, 15000, // 1m 41s
+            15000, 15000, 20000, 20000, // 2m 51s
+            20000, 20000, 20000, // 3m 51s
+            30000, 30000, 30000, 30000 // 5m 51s
         ];
 
         for (let attempt = 0; attempt < delays.length; attempt++) {
@@ -297,7 +288,8 @@ export function DepositPage() {
 
             try {
                 const initData = await getInitDataString();
-                const res = await fetch(`${NODE_API_URL}/verify-deposit`, {
+                // Add timestamp to prevent browser caching
+                const res = await fetch(`${NODE_API_URL}/verify-deposit?t=${Date.now()}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tx_ref: txRef, initData }),
@@ -351,7 +343,8 @@ export function DepositPage() {
                 }
 
                 const statusStr = String(data.chapa_status || '').toLowerCase();
-                const isFailed = statusStr.includes('fail') || statusStr.includes('reject') || statusStr.includes('cancel');
+                // Extremely strict failure check: ensure "pending" isn't accidentally caught
+                const isFailed = statusStr === 'failed' || statusStr.includes('reject') || statusStr.includes('cancel');
 
                 // If Chapa reports the payment as failed (e.g. they typed the wrong PIN on their phone)
                 // Stop polling immediately and show the exact reason from the bank
@@ -369,6 +362,11 @@ export function DepositPage() {
                     showToast('error', 'Payment Declined');
                     hapticNotification('error');
                     return; // Stop polling
+                }
+
+                // If still pending, update UI with live message from the bank (if provided)
+                if (data.bank_message && data.bank_message !== 'Payment details fetched successfully') {
+                    console.log(`[verify] Bank says: ${data.bank_message}`);
                 }
 
                 // Otherwise continue polling — show progress to user

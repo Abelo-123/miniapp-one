@@ -58,10 +58,16 @@ class Chapa {
      * Low-level HTTP request to Chapa API.
      */
     async _request(method, endpoint, body = null) {
-        const url = `${CHAPA_BASE_URL}${endpoint}`;
+        // Add cache busting timestamp for GET requests to prevent stale "pending" loops
+        const separator = endpoint.includes('?') ? '&' : '?';
+        const url = `${CHAPA_BASE_URL}${endpoint}${method === 'GET' ? `${separator}_t=${Date.now()}` : ''}`;
+        
         const headers = {
             Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
         };
 
         const options = { method, headers };
