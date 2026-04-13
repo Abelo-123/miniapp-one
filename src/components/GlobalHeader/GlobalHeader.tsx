@@ -1,5 +1,4 @@
 import { useApp } from '../../context/AppContext';
-import { formatETB } from '../../constants';
 
 import { Avatar, Button } from '@telegram-apps/telegram-ui';
 
@@ -25,7 +24,7 @@ export function GlobalHeader({ onSearchClick, onNotificationClick }: Props) {
                         {user?.first_name || 'User'} 🕊
                     </div>
                     <div className="global-header__balance">
-                        {user ? formatETB(user.balance) : '0.00 ETB'}
+                        {user ? `${Number(user.balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ETB` : '0.00 ETB'}
                         <span 
                             onClick={() => setActiveTab('deposit')} 
                             style={{ marginLeft: 8, color: 'var(--tg-theme-link-color)', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}

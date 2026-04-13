@@ -15,7 +15,7 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
 
     const [chatInput, setChatInput] = useState('');
     const [isSending, setIsSending] = useState(false);
-    const chatEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
 
     const loadMessages = async () => {
         try {
@@ -29,7 +29,9 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     };
 
     useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
     }, [chatMessages]);
 
     useEffect(() => {
@@ -188,7 +190,7 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
             <Section header="Live Support Chat">
                 <div className="support-card glass-card">
                     <div className="chat-container">
-                        <div className="chat-messages" style={{ height: '200px' }}>
+                        <div className="chat-messages" style={{ height: '200px' }} ref={chatContainerRef}>
                             {chatMessages.length === 0 ? (
                                 <div className="chat-empty">
                                     <span>Start a conversation with support</span>
@@ -209,7 +211,6 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                                     </div>
                                 ))
                             )}
-                            <div ref={chatEndRef} />
                         </div>
                         <div className="chat-input-row">
                             <input
