@@ -3,157 +3,132 @@
  *
  * POST /api/complete-deposit
  *
- * Called by the frontend after the Chapa inline SDK payment succeeds.
- * Verifies the payment server-side with Chapa API, then credits the user's balance.
- *
- * Request body (JSON):
- *   { tx_ref: string, amount: number, chapa_ref?: string, initData: string }
- *
- * Response:
- *   Verified:  { success: true, new_balance, verified: true }
- *   Pending:   { success: true, pending: true, message: '...' }
- *   Already:   { success: true, new_balance, already_completed: true }
- *
- * Replaces: complete_deposit.php
+ * Fixed to prevent database deadlock by moving Chapa API call
+ * OUTSIDE the database transaction.
  */
+
 import { Router } from 'express';
 import pool from '../config/database.js';
 import Chapa from '../lib/chapa.js';
 import { getTelegramUserId } from '../lib/auth.js';
+import { processTransaction } from '../lib/wallet.js';
 
 const router = Router();
 
 router.post('/', async (req, res) => {
-    const conn = await pool.getConnection();
-
     try {
         const { tx_ref: txRef, amount: rawAmount, chapa_ref: chapaRef, initData } = req.body;
         const amount = parseFloat(rawAmount) || 0;
 
-        // ─── Authenticate user ───────────────────────────────
         const tgId = getTelegramUserId(initData);
         if (!tgId) {
-            conn.release();
             return res.json({ success: false, error: 'User not authenticated' });
         }
 
         if (!txRef) {
-            conn.release();
             return res.json({ success: false, error: 'Missing transaction reference' });
         }
 
-        // ─── Begin transaction ───────────────────────────────
-        await conn.beginTransaction();
-
-        // Lock the deposit row
-        const [deposits] = await conn.execute(
-            'SELECT * FROM deposits WHERE tx_ref = ? FOR UPDATE',
-            [txRef]
-        );
+        // 1. Check if already processed
+        let [deposits] = await pool.execute('SELECT * FROM deposits WHERE tx_ref = ?', [txRef]);
         let deposit = deposits[0];
 
-        // If deposit doesn't exist in DB, create it
-        if (!deposit) {
-            if (amount > 0) {
-                await conn.execute(
-                    "INSERT INTO deposits (user_id, amount, tx_ref, status) VALUES (?, ?, ?, 'pending')",
-                    [tgId, amount, txRef]
-                );
-
-                const [newDeposits] = await conn.execute(
-                    'SELECT * FROM deposits WHERE tx_ref = ? FOR UPDATE',
-                    [txRef]
-                );
-                deposit = newDeposits[0];
-            } else {
-                await conn.rollback();
-                conn.release();
-                return res.json({ success: false, error: 'Deposit not found' });
-            }
-        }
-
-        // Already completed — prevent double-crediting
-        if (deposit.status === 'success') {
-            await conn.commit();
-
-            const [balRows] = await conn.execute(
-                'SELECT balance FROM auth WHERE tg_id = ?',
-                [deposit.user_id]
-            );
-            const balance = parseFloat(balRows[0]?.balance) || 0;
-
-            conn.release();
+        if (deposit && deposit.status === 'success') {
+            const [balRows] = await pool.execute('SELECT balance FROM auth WHERE tg_id = ?', [deposit.user_id]);
             return res.json({
                 success: true,
-                new_balance: balance,
+                new_balance: parseFloat(balRows[0]?.balance) || 0,
                 already_completed: true,
             });
         }
 
-        // ─── VERIFY WITH CHAPA API ───────────────────────────
+        // 2. Verify with Chapa API OUTSIDE the lock
         const chapa = new Chapa();
         const verifyResult = await chapa.verify(txRef);
 
         const chapaStatus = (verifyResult.data?.status ?? '').toLowerCase();
+        const isSuccess = verifyResult.success && (chapaStatus === 'success' || chapaStatus === 'paid');
 
-        if (verifyResult.success && (chapaStatus === 'success' || chapaStatus === 'paid')) {
-            // Use Chapa's VERIFIED amount (security: never trust frontend amount)
-            const verifiedAmount = parseFloat(verifyResult.data?.amount) || deposit.amount;
-            const verifiedChapaRef = verifyResult.data?.reference || chapaRef || '';
-            const responseJson = JSON.stringify(verifyResult.raw);
+        // 3. Start transaction
+        const conn = await pool.getConnection();
+        try {
+            await conn.beginTransaction();
 
-            // Update deposit status
-            await conn.execute(
-                "UPDATE deposits SET status = 'success', chapa_tx_ref = ?, chapa_response = ?, completed_at = NOW() WHERE id = ?",
-                [verifiedChapaRef, responseJson, deposit.id]
+            const [lockedDeposits] = await conn.execute(
+                'SELECT * FROM deposits WHERE tx_ref = ? FOR UPDATE',
+                [txRef]
             );
+            deposit = lockedDeposits[0];
 
-            // Credit user balance
-            await conn.execute(
-                'UPDATE auth SET balance = balance + ? WHERE tg_id = ?',
-                [verifiedAmount, deposit.user_id]
-            );
+            if (!deposit) {
+                if (amount > 0) {
+                    await conn.execute(
+                        "INSERT INTO deposits (user_id, amount, tx_ref, status) VALUES (?, ?, ?, 'pending')",
+                        [tgId, amount, txRef]
+                    );
+                    const [newDeposits] = await conn.execute('SELECT * FROM deposits WHERE tx_ref = ? FOR UPDATE', [txRef]);
+                    deposit = newDeposits[0];
+                } else {
+                    await conn.rollback();
+                    conn.release();
+                    return res.json({ success: false, error: 'Deposit not found' });
+                }
+            }
 
-            // Get new balance
-            const [balRows] = await conn.execute(
-                'SELECT balance FROM auth WHERE tg_id = ?',
-                [deposit.user_id]
-            );
-            const newBalance = parseFloat(balRows[0]?.balance) || 0;
+            if (deposit.status === 'success') {
+                await conn.rollback();
+                const [balRows] = await conn.execute('SELECT balance FROM auth WHERE tg_id = ?', [deposit.user_id]);
+                conn.release();
+                return res.json({
+                    success: true,
+                    new_balance: parseFloat(balRows[0]?.balance) || 0,
+                    already_completed: true,
+                });
+            }
 
-            // Record transaction in ledger
-            await conn.execute(
-                `INSERT INTO transactions (user_id, type, amount, balance_after, reference_type, reference_id, description)
-                 VALUES (?, 'deposit', ?, ?, 'deposit', ?, 'Chapa deposit')`,
-                [deposit.user_id, verifiedAmount, newBalance, deposit.id]
-            );
+            if (isSuccess) {
+                const verifiedAmount = parseFloat(verifyResult.data?.amount) || deposit.amount;
+                const verifiedChapaRef = verifyResult.data?.reference || chapaRef || '';
+                const responseJson = JSON.stringify(verifyResult.raw);
 
-            await conn.commit();
+                await conn.execute(
+                    "UPDATE deposits SET status = 'success', chapa_tx_ref = ?, chapa_response = ?, completed_at = NOW() WHERE id = ?",
+                    [verifiedChapaRef, responseJson, deposit.id]
+                );
+
+                const newBalance = await processTransaction(
+                    String(deposit.user_id),
+                    'deposit',
+                    verifiedAmount,
+                    `Chapa deposit (verified) - ${verifiedChapaRef}`,
+                    conn,
+                    'deposit',
+                    deposit.id
+                );
+
+                await conn.commit();
+                conn.release();
+
+                return res.json({
+                    success: true,
+                    new_balance: newBalance,
+                    verified: true,
+                });
+            } else {
+                await conn.commit();
+                conn.release();
+                return res.json({
+                    success: true,
+                    pending: true,
+                    message: 'Payment is being processed. Your balance will update shortly.',
+                });
+            }
+        } catch (err) {
+            await conn.rollback();
             conn.release();
-
-            return res.json({
-                success: true,
-                new_balance: newBalance,
-                verified: true,
-            });
-        } else {
-            // Chapa hasn't confirmed yet — leave as pending, callback will handle later
-            await conn.commit();
-            conn.release();
-
-            console.log(
-                `[complete_deposit] Chapa verification for ${txRef}: ${verifyResult.data?.status ?? 'No status'}`
-            );
-
-            return res.json({
-                success: true,
-                pending: true,
-                message: 'Payment is being processed. Your balance will update shortly.',
-            });
+            throw err;
         }
     } catch (err) {
-        try { await conn.rollback(); } catch {}
-        conn.release();
         console.error('[complete_deposit] Error:', err);
         return res.json({ success: false, error: 'System error: ' + err.message });
     }

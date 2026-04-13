@@ -3,16 +3,10 @@
  *
  * GET/POST /api/chapa-callback
  *
- * This is the SAFETY NET. Chapa calls this URL after a payment is completed.
- * Even if the user closes the browser, this will credit the balance.
- *
- * Parameters:
- *   tx_ref (via GET query or POST body)
- *
- * No authentication required (called by Chapa's servers).
- *
- * Replaces: chapa_callback.php
+ * Fixed to prevent database deadlock by moving Chapa API call
+ * OUTSIDE the database transaction.
  */
+
 import { Router } from 'express';
 import crypto from 'crypto';
 import pool from '../config/database.js';
@@ -48,71 +42,81 @@ async function handleCallback(req, res) {
         return res.json({ success: false, message: 'Missing tx_ref' });
     }
 
-    const conn = await pool.getConnection();
-
     try {
-        await conn.beginTransaction();
-
-        // Lock the deposit row
-        const [pendingDeposits] = await conn.execute(
-            "SELECT * FROM deposits WHERE tx_ref = ? AND status = 'pending' FOR UPDATE",
-            [txRef]
-        );
-        const deposit = pendingDeposits[0];
-
-        if (!deposit) {
-            await conn.rollback();
-            conn.release();
-            return res.json({ success: false, message: 'No pending deposit found' });
+        // 1. Check status without locking to avoid pool exhaustion
+        const [initialCheck] = await pool.execute('SELECT status FROM deposits WHERE tx_ref = ?', [txRef]);
+        
+        if (!initialCheck[0]) {
+            return res.json({ success: false, message: 'Deposit not found' });
+        }
+        
+        if (initialCheck[0].status === 'success') {
+            return res.json({ success: true, message: 'Already processed' });
         }
 
-        // Verify with Chapa API
+        // 2. Call Chapa API outside the lock
         const chapa = new Chapa();
         const result = await chapa.verify(txRef);
 
         const chapaStatus = (result.data?.status ?? '').toLowerCase();
+        const isSuccess = result.success && (chapaStatus === 'success' || chapaStatus === 'paid');
 
-        if (result.success && (chapaStatus === 'success' || chapaStatus === 'paid')) {
-            const verifiedAmount = parseFloat(result.data?.amount) || deposit.amount;
-            const chapaRef = result.data?.reference || '';
-            const responseJson = JSON.stringify(result.raw);
+        // 3. Start transaction only for writing
+        const conn = await pool.getConnection();
+        try {
+            await conn.beginTransaction();
 
-            // Update deposit
-            await conn.execute(
-                "UPDATE deposits SET status = 'success', chapa_tx_ref = ?, chapa_response = ?, completed_at = NOW() WHERE id = ?",
-                [chapaRef, responseJson, deposit.id]
+            const [pendingDeposits] = await conn.execute(
+                "SELECT * FROM deposits WHERE tx_ref = ? FOR UPDATE",
+                [txRef]
             );
+            const deposit = pendingDeposits[0];
 
-            // 4. Update Balance & Record Transaction (Centralized)
-            const description = `Chapa deposit (callback) - ${chapaRef}`;
-            await processTransaction(
-                deposit.user_id,
-                'deposit',
-                verifiedAmount,
-                description,
-                conn,
-                'deposit',
-                deposit.id
-            );
+            if (!deposit || deposit.status === 'success') {
+                await conn.rollback();
+                conn.release();
+                return res.json({ success: true, message: 'Already processed or not found' });
+            }
 
-            await conn.commit();
+            if (isSuccess) {
+                const verifiedAmount = parseFloat(result.data?.amount) || deposit.amount;
+                const chapaRef = result.data?.reference || '';
+                const responseJson = JSON.stringify(result.raw);
+
+                await conn.execute(
+                    "UPDATE deposits SET status = 'success', chapa_tx_ref = ?, chapa_response = ?, completed_at = NOW() WHERE id = ?",
+                    [chapaRef, responseJson, deposit.id]
+                );
+
+                await processTransaction(
+                    String(deposit.user_id),
+                    'deposit',
+                    verifiedAmount,
+                    `Chapa deposit (callback) - ${chapaRef}`,
+                    conn,
+                    'deposit',
+                    deposit.id
+                );
+
+                await conn.commit();
+                conn.release();
+                return res.json({ success: true, message: 'Deposit completed successfully' });
+            } else {
+                const realStatus = result.data?.status || result.raw?.status || 'pending';
+                if (realStatus === 'failed') {
+                    await conn.execute("UPDATE deposits SET status = 'failed' WHERE id = ?", [deposit.id]);
+                }
+                
+                await conn.commit();
+                conn.release();
+                return res.json({ success: false, message: 'Payment verification failed or pending' });
+            }
+        } catch (err) {
+            await conn.rollback();
             conn.release();
-
-            return res.json({ success: true, message: 'Deposit completed successfully' });
-        } else {
-            // Mark as failed
-            await conn.execute(
-                "UPDATE deposits SET status = 'failed' WHERE id = ?",
-                [deposit.id]
-            );
-
-            await conn.commit();
-            conn.release();
-            return res.json({ success: false, message: 'Payment verification failed' });
+            throw err;
         }
     } catch (err) {
-        try { await conn.rollback(); } catch {}
-        conn.release();
         console.error('[chapa_callback] Error:', err);
         return res.json({ success: false, message: 'System error' });
     }
