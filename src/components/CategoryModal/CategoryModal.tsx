@@ -47,7 +47,7 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
             open
             onOpenChange={(open) => { if (!open) onClose(); }}
             header={<Modal.Header>Select Category</Modal.Header>}
-            snapPoints={[0.65]} 
+            snapPoints={[0.65]}
         >
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingTop: 0, paddingBottom: '150px' }}>
                 <div style={{ padding: '8px 16px 12px' }}>
@@ -60,8 +60,8 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                         after={
                             search.length > 0 ? (
-                                <div 
-                                    onClick={() => setSearch('')} 
+                                <div
+                                    onClick={() => setSearch('')}
                                     style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
                                 >
                                     ✕
@@ -97,7 +97,9 @@ export function CategoryModal({ platform, onSelect, onClose }: Props) {
                                     {cat}
                                 </Cell>
                             ))}
+                            <br /><br />      <br /><br />
                             <div className="modal-list-spacer" />
+
                         </Section>
                     )}
                 </List>

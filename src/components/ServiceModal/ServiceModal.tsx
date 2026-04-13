@@ -15,10 +15,10 @@ interface Props {
 const BATCH_SIZE = 50;
 
 // 1. Memoized Row Component to prevent re-renders while typing
-const ServiceRow = React.memo(({ 
-    svc, onSelect 
-}: { 
-    svc: Service, onSelect: (s: Service) => void 
+const ServiceRow = React.memo(({
+    svc, onSelect
+}: {
+    svc: Service, onSelect: (s: Service) => void
 }) => {
     return (
         <div className="svc-item" onClick={() => onSelect(svc)}>
@@ -36,7 +36,7 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
     const [search, setSearch] = useState('');
     const deferredSearch = useDeferredValue(search);
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
-    
+
     const { data: categoryServices = [], isLoading: loading, isError } = useCategoryServices(category, recommendedIds);
 
     // 2. Native Back Button Flow
@@ -94,8 +94,8 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                         after={
                             search.length > 0 ? (
-                                <div 
-                                    onClick={() => setSearch('')} 
+                                <div
+                                    onClick={() => setSearch('')}
                                     style={{ padding: '0 8px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
                                 >
                                     ✕
@@ -121,10 +121,10 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                     ) : (
                         <Section>
                             {visibleServices.map(svc => (
-                                <ServiceRow 
-                                    key={svc.id} 
-                                    svc={svc} 
-                                    onSelect={onSelect} 
+                                <ServiceRow
+                                    key={svc.id}
+                                    svc={svc}
+                                    onSelect={onSelect}
                                 />
                             ))}
                             {hasMore && (
@@ -135,6 +135,7 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                                     Load more ({filtered.length - visibleCount} remaining)
                                 </Cell>
                             )}
+                            <br /><br /> <br /><br /><br /><br /><br /><br />
                             <div className="modal-list-spacer" />
                         </Section>
                     )}
