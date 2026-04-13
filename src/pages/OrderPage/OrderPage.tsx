@@ -16,7 +16,7 @@ export function OrderPage() {
         user, refreshOrders,
         recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
-        showToast
+        showToast, discountPercent
     } = appContext;
 
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -37,8 +37,9 @@ export function OrderPage() {
     const totalCharge = useMemo(() => {
         if (!selectedService || !quantity) return 0;
         const q = parseInt(quantity, 10) || 0;
-        return (q / 1000) * selectedService.rate;
-    }, [selectedService, quantity]);
+        const original = (q / 1000) * selectedService.rate;
+        return discountPercent > 0 ? original * (1 - (discountPercent / 100)) : original;
+    }, [selectedService, quantity, discountPercent]);
 
     const handlePlaceOrder = async () => {
         // 1. Selection Security
