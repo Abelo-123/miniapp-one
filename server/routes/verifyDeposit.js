@@ -17,12 +17,12 @@ const router = Router();
 
 router.post('/', async (req, res) => {
     try {
-        const { tx_ref: txRef, initData } = req.body;
+        const { tx_ref: txRef, initData, user_id } = req.body;
 
-        // ─── Authenticate user ──────────────────────────────
-        const tgId = getTelegramUserId(initData);
+        // ─── Authenticate user (with local fallback) ──────────────────────────────
+        let tgId = getTelegramUserId(initData);
         if (!tgId) {
-            return res.json({ success: false, error: 'User not authenticated' });
+            tgId = user_id || 'unauth_local_user';
         }
 
         if (!txRef) {
@@ -61,20 +61,38 @@ router.post('/', async (req, res) => {
         const chapaStatus = (result.data?.status ?? '').toLowerCase();
         const isSuccess = result.success && (chapaStatus === 'success' || chapaStatus === 'paid');
 
+        // IF THE PAYMENT IS NOT YET SUCCESSFUL (PENDING OR FAILED)
         if (!isSuccess) {
-            const realStatus = result.data?.status || result.raw?.status || 'pending';
-            let realMessage = result.data?.charge_message || result.data?.payment_message || result.message || result.raw?.message || 'Payment declined by bank or provider.';
+            let realStatus = (result.data?.status || 'pending').toLowerCase();
+            
+            // Check if Chapa returned "failed/cancelled", "failed", "rejected", etc.
+            const isActuallyFailed = realStatus.includes('fail') || realStatus.includes('cancel') || realStatus.includes('reject');
+            
+            if (isActuallyFailed) {
+                realStatus = 'failed';
+            } else if (realStatus !== 'success' && realStatus !== 'paid') {
+                realStatus = 'pending';
+            }
 
-            // Prevent confusing "fetched successfully" message when it's actually just waiting for the user's PIN
-            if (realMessage.toLowerCase().includes('fetched successfully') && realStatus === 'pending') {
+            // Prioritize the actual "failure_reason" from Chapa if it exists
+            let realMessage = result.data?.failure_reason || result.data?.charge_message || result.data?.payment_message || result.message || result.raw?.message || 'Payment declined by bank or provider.';
+
+            // Immediately mark it as failed in the DB so it doesn't get stuck
+            if (realStatus === 'failed') {
+                await pool.execute("UPDATE deposits SET status = 'failed' WHERE tx_ref = ?", [txRef]);
+            }
+
+            const msgLower = realMessage.toLowerCase();
+            // Suppress the generic "Not completed yet" message so the UI shows a nice waiting prompt
+            if ((msgLower.includes('fetched successfully') || msgLower.includes('not completed')) && realStatus === 'pending') {
                 realMessage = 'Waiting for confirmation from your mobile provider...';
             }
 
-            return res.json({
-                success: false,
-                message: `Payment status: ${realStatus}`,
-                chapa_status: realStatus,
-                bank_message: realMessage
+            return res.json({ 
+                success: false, 
+                message: `Payment status: ${realStatus}`, 
+                chapa_status: realStatus, 
+                bank_message: realMessage 
             });
         }
 

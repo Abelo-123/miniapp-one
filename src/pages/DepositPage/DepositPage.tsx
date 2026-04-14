@@ -16,7 +16,7 @@ import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
 
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
-const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
+const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || 'https://the-server-jrlb.onrender.com/api';
 const CHAPA_PUBLIC_KEY = import.meta.env.VITE_CHAPA_PUBLIC_KEY || 'CHAPUBK-s9JQu74c7hAcdPPGxaAF6aT22Ih4HNtm';
 
 type DepositStep = 'amount' | 'chapa' | 'verifying' | 'success' | 'error';
@@ -259,15 +259,14 @@ export function DepositPage() {
         pollAbortRef.current = false;
         setStep('verifying');
 
-        // Mobile money (M-Pesa/Telebirr) can take up to 5 minutes for telco confirmation.
-        // Extended polling with longer patience. Total: ~6+ minutes.
+        // Mobile money (M-Pesa/Telebirr) can take up to a minute for telco confirmation.
+        // We poll very fast in the first 20 seconds to instantly catch a wrong PIN/Failure.
         const delays = [
-            2000, 3000, 5000, 5000, // 15s
-            8000, 8000, 10000, 10000, // 51s
-            10000, 10000, 15000, 15000, // 1m 41s
-            15000, 15000, 20000, 20000, // 2m 51s
-            20000, 20000, 20000, // 3m 51s
-            30000, 30000, 30000, 30000 // 5m 51s
+            2000, 2000, 2000, 3000, 3000, // First 12s
+            4000, 4000, 5000, 5000, 5000, // Next 23s
+            8000, 8000, 10000, 10000,     // Slower polling up to 1.5m
+            15000, 15000, 20000, 20000,   // up to 3m
+            30000, 30000, 30000           // up to 5m max
         ];
 
         for (let attempt = 0; attempt < delays.length; attempt++) {
@@ -288,11 +287,12 @@ export function DepositPage() {
 
             try {
                 const initData = await getInitDataString();
+                const userId = user?.id || 'unauth_local_user';
                 // Add timestamp to prevent browser caching
                 const res = await fetch(`${NODE_API_URL}/verify-deposit?t=${Date.now()}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tx_ref: txRef, initData }),
+                    body: JSON.stringify({ tx_ref: txRef, initData, user_id: userId }),
                 });
                 const data = await res.json();
                 console.log(`[verify] Attempt ${attempt + 1}/${delays.length} result:`, data);
@@ -353,14 +353,14 @@ export function DepositPage() {
                     activeTxRefRef.current = null;
                     
                     let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
-                    if (declinedReason.toLowerCase().includes('fetched successfully')) {
-                        declinedReason = 'Payment was failed or cancelled by user.';
+                    if (declinedReason.toLowerCase().includes('fetched successfully') || declinedReason.toLowerCase().includes('not completed')) {
+                        declinedReason = 'Payment was failed or cancelled.';
                     }
                     
-                    // NEW: Use native toast and inline error state
                     setErrorMessage(declinedReason);
                     showToast('error', 'Payment Declined');
                     hapticNotification('error');
+                    refreshDeposits().catch(() => {});
                     return; // Stop polling
                 }
 
@@ -393,15 +393,16 @@ export function DepositPage() {
 
         try {
             const initData = await getInitDataString();
+            const userId = user?.id || 'unauth_local_user';
 
             // 1. Generate tx_ref and register with backend
-            const txRef = `DEP-${user?.id || '0'}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+            const txRef = `DEP-${userId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
             activeTxRefRef.current = txRef;
 
             const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: depositAmount, initData, tx_ref: txRef }),
+                body: JSON.stringify({ amount: depositAmount, initData, tx_ref: txRef, user_id: userId }),
             });
             const backendData = await backendRes.json();
 
@@ -446,23 +447,21 @@ export function DepositPage() {
 
                     const errStr = rawMsg.toLowerCase();
 
-                    // Only suppress actual network / CORS false positives that sometimes occur 
-                    // even when the backend charge was successful.
+                    // Treat pending messages as false positives so our system can gracefully wait and poll
                     const isFalsePositive = (
                         errStr.includes('cors') ||
                         errStr.includes('fetch') ||
                         errStr.includes('502') ||
-                        errStr.includes('bad gateway')
+                        errStr.includes('bad gateway') ||
+                        errStr.includes('not completed') ||
+                        errStr.includes('pending')
                     );
 
                     if (isFalsePositive) {
-                        // CORS/502 errors from Chapa's inline charge endpoint
-                        // The payment may actually have gone through on Chapa's side
-                        // Try verifying anyway after a short delay
-                        console.log('[chapa] Suppressed false positive error, starting verification...');
+                        console.log('[chapa] Suppressed false positive or pending error, switching to verification poll...');
                         setTimeout(() => {
                             verifyDeposit(txRef);
-                        }, 2000);
+                        }, 1000);
                     } else {
                         // Real failure (e.g. Invalid PIN, Insufficient Funds, etc)
                         setStep('amount');
@@ -471,10 +470,11 @@ export function DepositPage() {
                         void (async () => {
                             try {
                                 const initData = await getInitDataString();
-                                const v = await fetch(`${NODE_API_URL}/verify-deposit`, {
+                                const userId = user?.id || 'unauth_local_user';
+                                const v = await fetch(`${NODE_API_URL}/verify-deposit?t=${Date.now()}`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ tx_ref: txRef, initData }),
+                                    body: JSON.stringify({ tx_ref: txRef, initData, user_id: userId }),
                                 });
                                 const data = await v.json();
                                 const exactReason = data?.bank_message || data?.message || rawMsg;

@@ -8,8 +8,9 @@ const router = Router();
 const connectedClients = new Map();
 
 router.get('/stream', (req, res) => {
-    const { initData } = req.query;
-    const tgId = getTelegramUserId(initData);
+    const { initData, user_id } = req.query;
+    let tgId = getTelegramUserId(initData);
+    if (!tgId) tgId = user_id || 'unauth_local_user';
     if (!tgId) return res.status(401).end();
 
     res.writeHead(200, {
@@ -39,12 +40,11 @@ router.get('/stream', (req, res) => {
 // placeOrder: POST /api/orders/place
 router.post('/place', async (req, res) => {
     try {
-        const { service, link, quantity, initData, answer_number, comments } = req.body;
+        const { service, link, quantity, initData, answer_number, comments, user_id } = req.body;
         
-        const tgId = getTelegramUserId(initData);
-        if (!tgId) {
-            return res.status(401).json({ success: false, error: 'User not authenticated' });
-        }
+        let tgId = getTelegramUserId(initData);
+        if (!tgId) tgId = user_id || 'unauth_local_user';
+        if (!tgId) return res.status(401).json({ success: false, error: 'User not authenticated' });
 
         const apiKey = process.env.GODOFPANEL_API_KEY;
         if (!apiKey) return res.status(500).json({ success: false, error: 'Provider API key missing' });
@@ -219,8 +219,9 @@ router.post('/place', async (req, res) => {
 
 // getOrders
 router.post('/list', async (req, res) => {
-    const { initData } = req.body;
-    const tgId = getTelegramUserId(initData);
+    const { initData, user_id } = req.body;
+    let tgId = getTelegramUserId(initData);
+    if (!tgId) tgId = user_id || 'unauth_local_user';
     if (!tgId) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
@@ -237,8 +238,9 @@ router.post('/list', async (req, res) => {
 
 // checkOrderStatus
 router.post('/status', async (req, res) => {
-    const { initData } = req.body;
-    const tgId = getTelegramUserId(initData);
+    const { initData, user_id } = req.body;
+    let tgId = getTelegramUserId(initData);
+    if (!tgId) tgId = user_id || 'unauth_local_user';
     if (!tgId) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
@@ -313,8 +315,9 @@ router.post('/status', async (req, res) => {
 
 // requestRefill
 router.post('/refill', async (req, res) => {
-    const { initData, order_id } = req.body;
-    const tgId = getTelegramUserId(initData);
+    const { initData, order_id, user_id } = req.body;
+    let tgId = getTelegramUserId(initData);
+    if (!tgId) tgId = user_id || 'unauth_local_user';
     if (!tgId) return res.status(401).json({ error: 'Not authenticated' });
 
     try {

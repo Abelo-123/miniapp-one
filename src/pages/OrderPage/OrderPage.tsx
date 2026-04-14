@@ -96,7 +96,7 @@ export function OrderPage() {
 
         try {
             const initData = await getInitDataString();
-            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || '/api'}/orders/place`, {
+            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || 'https://the-server-jrlb.onrender.com/api'}/orders/place`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
