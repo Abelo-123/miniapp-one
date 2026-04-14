@@ -1,6 +1,6 @@
 import type { Todo } from './types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://paxyo.com/backend/todos.php';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://the-server-jrlb.onrender.com/api/todos';
 
 const HABIT_DELIMITER = ' ||| ';
 
