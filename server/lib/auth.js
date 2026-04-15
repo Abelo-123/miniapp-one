@@ -4,39 +4,8 @@ import crypto from 'crypto';
  * Validates Telegram initData and returns the user ID if valid.
  */
 export function getTelegramUserId(initData) {
-    if (!initData || typeof initData !== 'string') return null;
-
-    try {
-        const params = new URLSearchParams(initData);
-        const hash = params.get('hash');
-        
-        // If there's no hash, it's not valid Telegram data
-        if (!hash) return null;
-        
-        params.delete('hash');
-        
-        const dataCheckString = Array.from(params.entries())
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([key, value]) => `${key}=${value}`)
-            .join('\n');
-
-        // Safely fallback if BOT_TOKEN is missing in local .env
-        const botToken = process.env.BOT_TOKEN || 'dummy_local_token';
-        const secret = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
-        const calculatedHash = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
-
-        if (hash !== calculatedHash) {
-            return null;
-        }
-        
-        const userStr = params.get('user');
-        if (!userStr) return null;
-
-        const userData = JSON.parse(userStr);
-        return userData?.id ? String(userData.id) : null;
-    } catch (err) {
-        return null;
-    }
+    const user = getTelegramUser(initData);
+    return user?.id ? String(user.id) : null;
 }
 
 /**
@@ -48,27 +17,44 @@ export function getTelegramUser(initData) {
     try {
         const params = new URLSearchParams(initData);
         const hash = params.get('hash');
-        if (!hash) return null;
+        
+        const userStr = params.get('user');
+        const userData = userStr ? JSON.parse(userStr) : null;
+
+        if (!hash) {
+            if (!process.env.BOT_TOKEN) {
+                return userData;
+            }
+            return null;
+        }
         
         params.delete('hash');
         
         const dataCheckString = Array.from(params.entries())
-            .sort(([a], [b]) => a.localeCompare(b))
+            .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
             .map(([key, value]) => `${key}=${value}`)
             .join('\n');
 
-        const botToken = process.env.BOT_TOKEN || 'dummy_local_token';
+        const botToken = process.env.BOT_TOKEN;
+
+        if (!botToken) {
+            console.warn('⚠️ WARNING: BOT_TOKEN is missing in your backend .env file!');
+            console.warn('⚠️ Bypassing Telegram authentication. Accounts will work, but this is insecure for production.');
+            return userData;
+        }
+
         const secret = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
         const calculatedHash = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
 
-        if (hash !== calculatedHash) return null;
+        if (hash !== calculatedHash) {
+            console.error('❌ ERROR: Telegram validation failed! Your BOT_TOKEN in .env might be incorrect.');
+            console.error('❌ Calculated:', calculatedHash, 'Provided:', hash);
+            return null;
+        }
 
-        const userStr = params.get('user');
-        if (!userStr) return null;
-
-        return JSON.parse(userStr);
-    } catch {
+        return userData;
+    } catch (err) {
+        console.error('Error in getTelegramUser:', err.message);
         return null;
     }
 }
-
