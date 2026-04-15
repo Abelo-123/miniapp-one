@@ -1,7 +1,7 @@
 import type { SocialPlatform } from './types';
 
 // ─── API Configuration ───────────────────────────────────────
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://the-server-jrlb.onrender.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // ─── Social Platforms ─────────────────────────────────────────
 export interface PlatformDef {

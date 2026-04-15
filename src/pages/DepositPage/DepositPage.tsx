@@ -16,7 +16,7 @@ import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
 
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
-const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || 'https://the-server-jrlb.onrender.com/api';
+const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
 const CHAPA_PUBLIC_KEY = import.meta.env.VITE_CHAPA_PUBLIC_KEY || 'CHAPUBK-s9JQu74c7hAcdPPGxaAF6aT22Ih4HNtm';
 
 type DepositStep = 'amount' | 'chapa' | 'verifying' | 'success' | 'error';

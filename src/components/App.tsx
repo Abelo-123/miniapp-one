@@ -66,8 +66,8 @@ function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
     }
 
     // Silent background pre-fetch (Warm up the cache)
-    fetch('https://the-server-jrlb.onrender.com/api/services').catch(() => {});
-    fetch('https://the-server-jrlb.onrender.com/api/categories').catch(() => {});
+    fetch('/api/services').catch(() => {});
+    fetch('/api/categories').catch(() => {});
   }, []);
 
   // Combined Back Button logic for Modals and Tabs

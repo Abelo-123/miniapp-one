@@ -5,7 +5,7 @@ import type {
 } from './types';
 import { getInitDataRaw, getInitDataString } from './helpers/telegram';
 
-export const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || 'https://the-server-jrlb.onrender.com/api';
+export const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
 
 const isDev = import.meta.env.DEV;
 
