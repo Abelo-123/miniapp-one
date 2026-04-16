@@ -657,7 +657,9 @@ export function DepositPage() {
                                 className={`preset-btn${amount === String(amt) ? ' preset-btn--active' : ''}`}
                                 onClick={() => {
                                     hapticSelection();
-                                    setAmount(String(amt));
+                                    const currentVal = parseInt(amount || '0', 10);
+                                    const newVal = currentVal + amt;
+                                    setAmount(String(newVal > 100000 ? 100000 : newVal));
                                 }}
                             >
                                 +{amt >= 1000 ? `${amt / 1000}k` : amt}

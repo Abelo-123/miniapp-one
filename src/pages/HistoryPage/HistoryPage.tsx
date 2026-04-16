@@ -226,7 +226,7 @@ export function HistoryPage() {
                                             <span className={`status-badge status-${status}`}>{status.toUpperCase()}</span>
                                         </td>
                                         <td className="col-service">
-                                            <div className="service-name-text">#{order.api_order_id} {order.service_name}</div>
+                                            <div className="service-name-text">#{order.service_id} {order.service_name}</div>
                                             <div className="service-link-text">{order.link}</div>
                                         </td>
                                         <td className="col-center">{order.quantity}</td>
