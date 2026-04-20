@@ -1,4 +1,4 @@
-import type { SocialPlatform } from './types';
+import type { SocialPlatform, Service } from './types';
 
 // ─── API Configuration ───────────────────────────────────────
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
@@ -90,11 +90,57 @@ export const STATUS_LABELS: Record<string, string> = {
     partial: 'Partial',
 };
 
-// ─── Category → Placeholder mapping ──────────────────────────
-export function getLinkPlaceholder(category: string, platform: SocialPlatform): string {
-    const cat = category.toLowerCase();
-    if (cat.includes('follower') || cat.includes('subscriber')) return 'Profile URL';
-    if (cat.includes('like') || cat.includes('view') || cat.includes('comment')) return 'Post/Video URL';
+// ─── Category & Service → Placeholder mapping ─────────────────
+export function getLinkPlaceholder(service: Service | null | undefined, platform: SocialPlatform): string {
+    if (!service) {
+        const def = PLATFORMS.find(p => p.id === platform);
+        return def?.placeholder || 'https://...';
+    }
+
+    const searchString = `${service.category} ${service.name}`.toLowerCase();
+
+    if (platform === 'telegram' || searchString.includes('telegram') || searchString.includes('tg ')) {
+        if (searchString.includes('view') || searchString.includes('reaction') || searchString.includes('comment') || searchString.includes('post')) {
+            return 'https://t.me/channel_name/1234';
+        }
+        return 'https://t.me/channel_name';
+    }
+
+    if (platform === 'instagram' || searchString.includes('instagram') || searchString.includes('ig ')) {
+        if (searchString.includes('reel')) return 'https://instagram.com/reel/XXXXX/';
+        if (searchString.includes('story') || searchString.includes('stories')) return 'https://instagram.com/stories/username/XXXXX/';
+        if (searchString.includes('tv') || searchString.includes('igtv')) return 'https://instagram.com/tv/XXXXX/';
+        if (searchString.includes('like') || searchString.includes('view') || searchString.includes('comment') || searchString.includes('save') || searchString.includes('reach') || searchString.includes('impression')) {
+            return 'https://instagram.com/p/XXXXX/';
+        }
+        return 'https://instagram.com/username';
+    }
+
+    if (platform === 'tiktok' || searchString.includes('tiktok')) {
+        if (searchString.includes('follower') || searchString.includes('profile')) return 'https://tiktok.com/@username';
+        return 'https://tiktok.com/@username/video/XXXXX';
+    }
+
+    if (platform === 'youtube' || searchString.includes('youtube') || searchString.includes('yt ')) {
+        if (searchString.includes('short')) return 'https://youtube.com/shorts/XXXXX';
+        if (searchString.includes('subscriber') || searchString.includes('channel')) return 'https://youtube.com/@username';
+        return 'https://youtube.com/watch?v=XXXXX';
+    }
+
+    if (platform === 'twitter' || searchString.includes('twitter') || searchString.includes('x.com')) {
+        if (searchString.includes('follower')) return 'https://x.com/username';
+        return 'https://x.com/username/status/XXXXX';
+    }
+
+    if (platform === 'facebook' || searchString.includes('facebook') || searchString.includes('fb ')) {
+        if (searchString.includes('follower') || searchString.includes('page like') || searchString.includes('profile')) return 'https://facebook.com/pagename';
+        if (searchString.includes('post') || searchString.includes('photo') || searchString.includes('video')) return 'https://facebook.com/pagename/posts/XXXXX';
+        return 'https://facebook.com/...';
+    }
+
+    if (searchString.includes('follower') || searchString.includes('subscriber') || searchString.includes('member')) return 'Profile URL (e.g., https://...)';
+    if (searchString.includes('like') || searchString.includes('view') || searchString.includes('comment')) return 'Post/Video URL (e.g., https://...)';
+
     const def = PLATFORMS.find(p => p.id === platform);
     return def?.placeholder || 'https://...';
 }

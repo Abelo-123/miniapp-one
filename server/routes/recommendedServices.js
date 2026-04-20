@@ -23,16 +23,18 @@ router.get('/top', async (req, res) => {
             });
         }
 
-        // Get all services and filter by recommended IDs
-        const [allRows] = await pool.execute('SELECT * FROM service_custom WHERE is_enabled = 1');
-        
         // Fetch from GodOfPanel for full service details
         const apiKey = process.env.GODOFPANEL_API_KEY;
         if (!apiKey) {
             return res.status(500).json({ error: 'API key not configured' });
         }
 
-        const response = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=services`);
+        const params = new URLSearchParams({ key: apiKey, action: 'services' });
+        const response = await fetch('https://godofpanel.com/api/v2', {
+            method: 'POST',
+            headers: { 'User-Agent': 'PaxyoServer/2.0' },
+            body: params
+        });
         const allServices = await response.json();
 
         if (!Array.isArray(allServices)) {
@@ -59,8 +61,8 @@ router.get('/top', async (req, res) => {
             rate: (parseFloat(svc.rate) * rateMultiplier).toFixed(2),
             min: parseInt(svc.min),
             max: parseInt(svc.max),
-            refill: svc.refill === true || svc.refill === 1,
-            cancel: svc.cancel === true || svc.cancel === 1,
+            refill: svc.refill === true || svc.refill === 1 || svc.refill === '1',
+            cancel: svc.cancel === true || svc.cancel === 1 || svc.cancel === '1',
         }));
 
         res.json({
@@ -78,7 +80,7 @@ router.get('/top', async (req, res) => {
 // Admin: Add recommended service
 router.post('/recommended', async (req, res) => {
     try {
-        const { service_id, action } = req.body; // action: 'add' or 'remove'
+        const { service_id, action } = req.body; 
         
         if (!service_id) {
             return res.status(400).json({ error: 'service_id required' });
@@ -89,7 +91,6 @@ router.post('/recommended', async (req, res) => {
             return res.json({ success: true, message: `Service ${service_id} removed from recommended` });
         }
 
-        // Add (check if already exists)
         await pool.execute(
             'INSERT IGNORE INTO recommended_services (service_id) VALUES (?)',
             [service_id]

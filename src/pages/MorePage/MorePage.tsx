@@ -200,10 +200,10 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                     subtitle="Join our channel for updates"
                     onClick={() => {
                         import('../../helpers/telegram').then(m => m.hapticSelection());
-                        handleOpenLink('https://t.me/paxyoo');
+                        handleOpenLink('https://t.me/paxyo251');
                     }}
                 >
-                    @paxyoo
+                    @paxyo251
                 </Cell>
             </Section>
 

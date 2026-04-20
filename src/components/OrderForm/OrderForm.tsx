@@ -72,7 +72,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         };
     }, [quantity, service.rate, rateMultiplier, discountPercent, service.type]);
 
-    const placeholder = getLinkPlaceholder(selectedCategory || '', selectedPlatform || 'other');
+    const placeholder = getLinkPlaceholder(service, selectedPlatform || 'other');
     const showComments = ['Custom Comments', 'Custom Comments Package', 'Mentions with Hashtags'].includes(service.type);
     const showQuantity = service.type !== 'Package';
     const showPoll = service.type === 'Poll';

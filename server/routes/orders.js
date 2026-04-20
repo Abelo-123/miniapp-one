@@ -26,7 +26,7 @@ router.get('/stream', (req, res) => {
         connectedClients.set(tgId, new Set());
     }
     connectedClients.get(tgId).add(res);
-    ensurePolling(); // Start polling loop if not already running
+    ensurePolling();
 
     req.on('close', () => {
         const set = connectedClients.get(tgId);
@@ -65,10 +65,13 @@ router.post('/place', async (req, res) => {
                 return res.json({ success: false, error: 'User not found' });
             }
 
-            // 3. Fetch specific service from GodOfPanel
-            // Actually, we should fetch services, but since GOP API is slow and we don't know the rate of this single service easily,
-            // We can fetch from GOP: action=services
-            const gopRes = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=services`);
+            // 3. Fetch specific service from GodOfPanel (POST)
+            const gopParams = new URLSearchParams({ key: apiKey, action: 'services' });
+            const gopRes = await fetch('https://godofpanel.com/api/v2', {
+                method: 'POST',
+                headers: { 'User-Agent': 'PaxyoServer/2.0' },
+                body: gopParams
+            });
             const allServices = await gopRes.json();
             const serviceData = allServices.find(s => parseInt(s.service) === parseInt(service));
 
@@ -100,6 +103,7 @@ router.post('/place', async (req, res) => {
 
             const orderRes = await fetch('https://godofpanel.com/api/v2', {
                 method: 'POST',
+                headers: { 'User-Agent': 'PaxyoServer/2.0' },
                 body: orderParams
             });
             const orderData = await orderRes.json();
@@ -117,9 +121,14 @@ router.post('/place', async (req, res) => {
             let finalOrderStatus = null;
             
             while (verifyAttempts < 3 && !orderVerified) {
-                await new Promise(r => setTimeout(r, 500)); // Wait 500ms
+                await new Promise(r => setTimeout(r, 500)); 
                 
-                const checkRes = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=status&order=${providerOrderId}`);
+                const statusParams = new URLSearchParams({ key: apiKey, action: 'status', order: providerOrderId.toString() });
+                const checkRes = await fetch('https://godofpanel.com/api/v2', {
+                    method: 'POST',
+                    headers: { 'User-Agent': 'PaxyoServer/2.0' },
+                    body: statusParams
+                });
                 const statusData = await checkRes.json();
                 
                 if (statusData && statusData.status) {
@@ -131,10 +140,6 @@ router.post('/place', async (req, res) => {
                 verifyAttempts++;
             }
 
-            if (!orderVerified) {
-                console.log('[place_order] Warning: Could not verify order with provider, but order was placed');
-            }
-
             // 5. Insert Order into DB
             const [insertRes] = await conn.execute(
                 `INSERT INTO orders 
@@ -144,7 +149,7 @@ router.post('/place', async (req, res) => {
             );
             const dbId = insertRes.insertId;
 
-            // 6. Update user balance & Log Transaction (Centralized)
+            // 6. Update user balance & Log Transaction
             const newBalance = await processTransaction(
                 tgId,
                 'order',
@@ -157,8 +162,6 @@ router.post('/place', async (req, res) => {
 
             await conn.commit();
 
-            // Notify admin bot about new order
-            console.log('[orders] Calling notifyNewOrder with:', { uid: tgId, uuid: user.username || user.first_name || 'User', service: serviceData.name, order: dbId.toString(), amount: totalCostEtb.toString() });
             notifyNewOrder({
                 uid: tgId,
                 uuid: user.username || user.first_name || 'User',
@@ -167,11 +170,9 @@ router.post('/place', async (req, res) => {
                 amount: totalCostEtb.toString()
             });
 
-            // Register in the in-memory tracker → polling picks it up on next tick
             trackOrder(providerOrderId, { dbId, userId: tgId, charge: totalCostEtb, quantity, status: 'pending' });
             ensurePolling();
 
-            // ── SSE: Instantly broadcast ORDER_PLACED to connected clients ──
             const userConnections = connectedClients.get(tgId);
             if (userConnections) {
                 const placedPayload = JSON.stringify({
@@ -244,7 +245,6 @@ router.post('/status', async (req, res) => {
     if (!tgId) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
-        // Find pending/in_progress orders for this user
         const [orders] = await pool.execute(
             "SELECT id, api_order_id, charge, quantity, status FROM orders WHERE user_id = ? AND status IN ('pending', 'in_progress', 'processing')",
             [tgId]
@@ -255,7 +255,12 @@ router.post('/status', async (req, res) => {
         const apiKey = process.env.GODOFPANEL_API_KEY;
         const reqOrderIds = orders.map(o => o.api_order_id).join(',');
         
-        const gopRes = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=status&orders=${reqOrderIds}`);
+        const params = new URLSearchParams({ key: apiKey, action: 'status', orders: reqOrderIds });
+        const gopRes = await fetch('https://godofpanel.com/api/v2', {
+            method: 'POST',
+            headers: { 'User-Agent': 'PaxyoServer/2.0' },
+            body: params
+        });
         const statusMap = await gopRes.json();
 
         const updated = [];
@@ -280,7 +285,6 @@ router.post('/status', async (req, res) => {
                         const conn = await pool.getConnection();
                         try {
                             await conn.beginTransaction();
-                            // Process Refund (Centralized)
                             await processTransaction(
                                 tgId,
                                 'refund',
@@ -293,7 +297,6 @@ router.post('/status', async (req, res) => {
                             await conn.commit();
                         } catch (e) {
                             await conn.rollback();
-                            console.error('[refund_tx]', e);
                         } finally {
                             conn.release();
                         }
@@ -321,12 +324,16 @@ router.post('/refill', async (req, res) => {
     if (!tgId) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
-        // Find provider order ID
         const [orders] = await pool.execute('SELECT api_order_id FROM orders WHERE id = ? AND user_id = ?', [order_id, tgId]);
         if (!orders[0]) return res.json({ success: false, message: 'Order not found' });
 
         const apiKey = process.env.GODOFPANEL_API_KEY;
-        const gopRes = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=refill&order=${orders[0].api_order_id}`);
+        const params = new URLSearchParams({ key: apiKey, action: 'refill', order: orders[0].api_order_id });
+        const gopRes = await fetch('https://godofpanel.com/api/v2', {
+            method: 'POST',
+            headers: { 'User-Agent': 'PaxyoServer/2.0' },
+            body: params
+        });
         const refillData = await gopRes.json();
 
         if (refillData.error) return res.json({ success: false, message: refillData.error });
@@ -338,27 +345,20 @@ router.post('/refill', async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════════
 // ULTRA-LEAN POLLING ENGINE
-// ─ In-memory order tracker: zero DB queries per tick
-// ─ Single batched GodOfPanel request per tick
-// ─ 3-second adaptive loop (idle when no pending orders)
 // ═══════════════════════════════════════════════════════════════
 
-// In-memory tracker: apiOrderId → { dbId, userId, charge, quantity, status }
 const pendingOrders = new Map();
 
-// Register a new order into the tracker (called after placement)
 function trackOrder(apiOrderId, { dbId, userId, charge, quantity, status }) {
     pendingOrders.set(String(apiOrderId), { dbId, userId, charge: parseFloat(charge), quantity: parseInt(quantity), status });
 }
 
-// Remove terminal orders from tracker
 function untrackOrder(apiOrderId) {
     pendingOrders.delete(String(apiOrderId));
 }
 
 const TERMINAL_STATUSES = new Set(['completed', 'canceled', 'cancelled', 'refunded', 'fail', 'failed', 'partial']);
 
-// Hydrate tracker from DB on boot (catch orders from before restart)
 (async () => {
     try {
         const [rows] = await pool.execute(
@@ -373,19 +373,22 @@ const TERMINAL_STATUSES = new Set(['completed', 'canceled', 'cancelled', 'refund
     }
 })();
 
-// ─── Consolidation: Master Poller (Consolidated Engine) ──────
 let pollTimer = null;
 
 async function masterPoller() {
     if (pendingOrders.size === 0) return;
 
-    // Collect ALL pending orders currently in the tracker
     const ids = Array.from(pendingOrders.keys()).join(',');
     const apiKey = process.env.GODOFPANEL_API_KEY;
     if (!apiKey) return;
 
     try {
-        const res = await fetch(`https://godofpanel.com/api/v2?key=${apiKey}&action=status&orders=${ids}`);
+        const params = new URLSearchParams({ key: apiKey, action: 'status', orders: ids });
+        const res = await fetch('https://godofpanel.com/api/v2', {
+            method: 'POST',
+            headers: { 'User-Agent': 'PaxyoServer/2.0' },
+            body: params
+        });
         const statusMap = await res.json();
 
         if (statusMap.error) {
@@ -400,7 +403,6 @@ async function masterPoller() {
             const newStatus = info.status.toLowerCase().replace(/\s+/g, '_');
             if (newStatus === order.status) continue;
 
-            // 1. Calculate Refund if status changed to terminal/partial
             let refundAmt = 0;
             if (['canceled', 'cancelled', 'refunded', 'fail', 'failed'].includes(newStatus)) {
                 refundAmt = order.charge;
@@ -411,7 +413,6 @@ async function masterPoller() {
                 }
             }
 
-            // 2. Database updates (Atomically process refund if needed)
             if (refundAmt > 0) {
                 const conn = await pool.getConnection();
                 try {
@@ -427,18 +428,15 @@ async function masterPoller() {
                 }
             }
 
-            // Update order status in DB
             await pool.execute('UPDATE orders SET status = ?, start_count = ?, remains = ? WHERE id = ?',
                 [newStatus, info.start_count || 0, info.remains || 0, order.dbId]);
 
-            // 3. Update memory state
             if (TERMINAL_STATUSES.has(newStatus)) {
                 untrackOrder(apiId);
             } else {
                 order.status = newStatus;
             }
 
-            // 4. BROADCAST to connected SSE clients
             const clients = connectedClients.get(order.userId);
             if (clients) {
                 const payload = JSON.stringify({
@@ -454,18 +452,15 @@ async function masterPoller() {
     }
 }
 
-// Global loop: 5 seconds interval
 function startPolling() {
     if (pollTimer) return;
     pollTimer = setInterval(masterPoller, 5000);
 }
 
-// Auto-start polling when SSE clients connect or orders are placed
 function ensurePolling() {
     if (!pollTimer) startPolling();
 }
 
-// ─── Keepalive (lightweight comment ping) ───────────────────
 setInterval(() => {
     for (const [, clients] of connectedClients) {
         for (const c of clients) c.write(': keepalive\n\n');
@@ -474,4 +469,3 @@ setInterval(() => {
 
 export { trackOrder, ensurePolling };
 export default router;
-
