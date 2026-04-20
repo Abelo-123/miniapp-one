@@ -28,7 +28,7 @@ export type OrderFormHandle = { submit: () => Promise<void> };
 export type OrderFormProps = { onClose?: () => void };
 export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function OrderForm({ onClose }, ref) {
     const {
-        selectedService, selectedPlatform, selectedCategory,
+        selectedService, selectedPlatform, // <-- Removed selectedCategory from here
         rateMultiplier, discountPercent,
         user, userCanOrder, isTelegramApp,
         setBalance, 
@@ -71,7 +71,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         };
     }, [quantity, service.rate, rateMultiplier, discountPercent, service.type]);
 
-    // UPDATED: Now passing the entire service object to get context-aware placeholders
+    // Passing the entire service object to get context-aware placeholders
     const placeholder = getLinkPlaceholder(service, selectedPlatform || 'other');
     
     const showComments = ['Custom Comments', 'Custom Comments Package', 'Mentions with Hashtags'].includes(service.type);
