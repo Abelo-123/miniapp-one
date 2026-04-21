@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { formatETB } from '../../constants';
+import { formatETB, getLinkPlaceholder } from '../../constants';
 
 import { useApp } from '../../context/AppContext';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
@@ -40,6 +40,8 @@ export function OrderPage() {
         const original = (q / 1000) * selectedService.rate;
         return discountPercent > 0 ? original * (1 - (discountPercent / 100)) : original;
     }, [selectedService, quantity, discountPercent]);
+
+    const linkPlaceholder = getLinkPlaceholder(selectedService, selectedPlatform || 'other');
 
     const handlePlaceOrder = async () => {
         // 1. Selection Security
@@ -240,7 +242,7 @@ export function OrderPage() {
                         <label>Link / URL</label>
                         <input 
                             type="text" 
-                            placeholder="https://" 
+                            placeholder={linkPlaceholder} 
                             value={link} 
                             onChange={(e) => setLink(e.target.value)} 
                             className="order-custom-input"
