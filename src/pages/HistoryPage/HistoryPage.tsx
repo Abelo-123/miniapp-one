@@ -227,7 +227,18 @@ export function HistoryPage() {
                                         </td>
                                         <td className="col-service">
                                             <div className="service-name-text">#{order.service_id} {order.service_name}</div>
-                                            <div className="service-link-text">{order.link}</div>
+                                            <a 
+                                                href={order.link.startsWith('http') || order.link.startsWith('t.me') || order.link.startsWith('@') 
+                                                    ? (order.link.startsWith('@') ? `https://t.me/${order.link.slice(1)}` : order.link)
+                                                    : `https://${order.link}`
+                                                }
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="service-link-text"
+                                                style={{ color: 'var(--tg-theme-link-color)', textDecoration: 'underline', cursor: 'pointer' }}
+                                            >
+                                                {order.link}
+                                            </a>
                                         </td>
                                         <td className="col-center">{order.quantity}</td>
                                         <td className="col-center">{order.start_count || 0}</td>

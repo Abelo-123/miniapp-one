@@ -60,14 +60,9 @@ export function OrderPage() {
 
         // 2. Input Security
         const q = parseInt(quantity, 10);
-        const urlPattern = /^(https?:\/\/|t\.me\/|@)/i;
         
         if (!link.trim()) {
-            showToast('error', 'Missing Link: Please enter the target URL or @username for this order.');
-            return hapticNotification('error');
-        }
-        if (!urlPattern.test(link.trim())) {
-            showToast('error', 'Invalid Link Format: Link must start with http://, https://, t.me/, or @username.');
+            showToast('error', 'Missing Link: Please enter the link or username for this order.');
             return hapticNotification('error');
         }
         if (!quantity || isNaN(q)) {
