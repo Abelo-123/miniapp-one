@@ -28,7 +28,7 @@ export type OrderFormHandle = { submit: () => Promise<void> };
 export type OrderFormProps = { onClose?: () => void };
 export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function OrderForm({ onClose }, ref) {
     const {
-        selectedService, selectedPlatform, selectedCategory,
+        selectedService, selectedPlatform,
         rateMultiplier, discountPercent,
         user, userCanOrder, isTelegramApp,
         setBalance, 
