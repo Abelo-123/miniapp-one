@@ -28,7 +28,11 @@ export type OrderFormHandle = { submit: () => Promise<void> };
 export type OrderFormProps = { onClose?: () => void };
 export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function OrderForm({ onClose }, ref) {
     const {
+<<<<<<< HEAD
         selectedService, selectedPlatform,
+=======
+        selectedService, selectedPlatform, // <-- Removed selectedCategory from here
+>>>>>>> 9a738484f3c9c3a4c31fd225d782f71c1b449785
         rateMultiplier, discountPercent,
         user, userCanOrder, isTelegramApp,
         setBalance, 
@@ -50,7 +54,6 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         answerNumber?: boolean;
     }>({});
     
-    // We only need the type for the errors, not the setter, as it's derived state now
     type FormErrors = {
         link?: string;
         quantity?: string;
@@ -72,7 +75,9 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         };
     }, [quantity, service.rate, rateMultiplier, discountPercent, service.type]);
 
+    // Passing the entire service object to get context-aware placeholders
     const placeholder = getLinkPlaceholder(service, selectedPlatform || 'other');
+    
     const showComments = ['Custom Comments', 'Custom Comments Package', 'Mentions with Hashtags'].includes(service.type);
     const showQuantity = service.type !== 'Package';
     const showPoll = service.type === 'Poll';
@@ -235,6 +240,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
 
     // Imperative submit binding for non-Telegram path
     useImperativeHandle(ref, () => ({ submit: handleSubmit }), [handleSubmit]);
+    
     // MainButton Effect — all via SDK helpers
     const handleSubmitRef = useRef(handleSubmit);
     useEffect(() => { handleSubmitRef.current = handleSubmit; }, [handleSubmit]);
@@ -312,114 +318,114 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                 
                 <div style={{ maxHeight: '80vh', overflowY: 'auto', paddingBottom: '80px' }} ref={containerRef}>
                     <Section
-                header={`Selected Service: ${service.name}`}
-                footer={user && charge > user.balance ? `Insufficient Balance (Have: ${formatETB(user.balance)})` : `Total Charge: ${formatETB(charge)}`}
-            >
-                <Cell
-                    subtitle={`${service.min} - ${service.max.toLocaleString()} • Rate: ${formatETB(service.rate)} `}
-                    multiline
-                >
-                    {service.category}
-                </Cell>
+                        header={`Selected Service: ${service.name}`}
+                        footer={user && charge > user.balance ? `Insufficient Balance (Have: ${formatETB(user.balance)})` : `Total Charge: ${formatETB(charge)}`}
+                    >
+                        <Cell
+                            subtitle={`${service.min} - ${service.max.toLocaleString()} • Rate: ${formatETB(service.rate)} `}
+                            multiline
+                        >
+                            {service.category}
+                        </Cell>
 
-                {hasDiscount && (
-                    <Cell before="🔥" after={`- ${discountPercent}% `}>
-                        Discount applied
-                    </Cell>
-                )}
-            </Section>
+                        {hasDiscount && (
+                            <Cell before="🔥" after={`- ${discountPercent}% `}>
+                                Discount applied
+                            </Cell>
+                        )}
+                    </Section>
 
-            <Section header="Order Details">
-                <Input
-                    header="Link"
-                    placeholder={placeholder}
-                    value={link}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setLink(e.target.value);
-                    }}
-                    status={validation.errors.link ? 'error' : 'default'}
-                />
-                {validation.errors.link && (
-                    <div className="order-form-error">{validation.errors.link}</div>
-                )}
-
-                {showQuantity && !showComments && (
-                    <>
+                    <Section header="Order Details">
                         <Input
-                            header="Quantity"
-                            placeholder={`Min: ${service.min} - Max: ${service.max.toLocaleString()}`}
-                            type="number"
-                            value={quantity}
+                            header="Link"
+                            placeholder={placeholder}
+                            value={link}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                setQuantity(e.target.value);
+                                setLink(e.target.value);
                             }}
-                            status={validation.errors.quantity ? 'error' : 'default'}
+                            status={validation.errors.link ? 'error' : 'default'}
                         />
-                        {validation.errors.quantity && (
-                            <div className="order-form-error">{validation.errors.quantity}</div>
+                        {validation.errors.link && (
+                            <div className="order-form-error">{validation.errors.link}</div>
                         )}
-                    </>
-                )}
 
-                {showComments && (
-                    <>
-                        <Textarea
-                            header="Comments (One per line)"
-                            placeholder="Enter list of comments..."
-                            value={comments}
-                            onChange={(e: any) => {
-                                setComments(e.target.value);
-                            }}
-                            status={validation.errors.comments ? 'error' : 'default'}
-                        />
-                        {validation.errors.comments && (
-                            <div className="order-form-error">{validation.errors.comments}</div>
+                        {showQuantity && !showComments && (
+                            <>
+                                <Input
+                                    header="Quantity"
+                                    placeholder={`Min: ${service.min} - Max: ${service.max.toLocaleString()}`}
+                                    type="number"
+                                    value={quantity}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        setQuantity(e.target.value);
+                                    }}
+                                    status={validation.errors.quantity ? 'error' : 'default'}
+                                />
+                                {validation.errors.quantity && (
+                                    <div className="order-form-error">{validation.errors.quantity}</div>
+                                )}
+                            </>
                         )}
-                        <div className="order-form-hint">
-                            {comments.split('\n').filter((l: string) => l.trim()).length} / {service.max} comments
+
+                        {showComments && (
+                            <>
+                                <Textarea
+                                    header="Comments (One per line)"
+                                    placeholder="Enter list of comments..."
+                                    value={comments}
+                                    onChange={(e: any) => {
+                                        setComments(e.target.value);
+                                    }}
+                                    status={validation.errors.comments ? 'error' : 'default'}
+                                />
+                                {validation.errors.comments && (
+                                    <div className="order-form-error">{validation.errors.comments}</div>
+                                )}
+                                <div className="order-form-hint">
+                                    {comments.split('\n').filter((l: string) => l.trim()).length} / {service.max} comments
+                                </div>
+                            </>
+                        )}
+
+                        {showPoll && (
+                            <>
+                                <Input
+                                    header="Answer Number"
+                                    type="number"
+                                    value={answerNumber}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        setAnswerNumber(e.target.value);
+                                    }}
+                                    status={validation.errors.answerNumber ? 'error' : 'default'}
+                                />
+                                {validation.errors.answerNumber && (
+                                    <div className="order-form-error">{validation.errors.answerNumber}</div>
+                                )}
+                            </>
+                        )}
+                    </Section>
+
+                    {/* General Error Message */}
+                    {validation.errors.general && (
+                        <div className="order-form-error order-form-error--general">
+                            {validation.errors.general}
                         </div>
-                    </>
-                )}
+                    )}
 
-                {showPoll && (
-                    <>
-                        <Input
-                            header="Answer Number"
-                            type="number"
-                            value={answerNumber}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                setAnswerNumber(e.target.value);
-                            }}
-                            status={validation.errors.answerNumber ? 'error' : 'default'}
-                        />
-                        {validation.errors.answerNumber && (
-                            <div className="order-form-error">{validation.errors.answerNumber}</div>
-                        )}
-                    </>
-                )}
-            </Section>
-
-            {/* General Error Message */}
-            {validation.errors.general && (
-                <div className="order-form-error order-form-error--general">
-                    {validation.errors.general}
+                    {/* Fallback Button for Modal */}
+                    <Section>
+                        <Button
+                            size="l"
+                            stretched
+                            disabled={submitting}
+                            onClick={handleSubmit}
+                            loading={submitting}
+                        >
+                            {submitting ? 'Ordering...' : `Pay ${formatETB(charge)} `}
+                        </Button>
+                    </Section>
                 </div>
-            )}
-
-            {/* Fallback Button for Modal */}
-            <Section>
-                <Button
-                    size="l"
-                    stretched
-                    disabled={submitting}
-                    onClick={handleSubmit}
-                    loading={submitting}
-                >
-                    {submitting ? 'Ordering...' : `Pay ${formatETB(charge)} `}
-                </Button>
-            </Section>
             </div>
         </div>
-    </div>
     );
 });
