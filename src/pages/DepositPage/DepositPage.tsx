@@ -742,28 +742,49 @@ export function DepositPage() {
             {/* ─── Verifying State ─── */}
             {step === 'verifying' && (
                 <div className="deposit-processing">
-                    <div className="skeleton-bar" style={{ width: '40px', height: '40px', borderRadius: '50%', margin: '0 auto 16px' }}></div>
-                    <div className="skeleton-bar" style={{ width: '60%', margin: '0 auto 12px' }}></div>
-                    <div className="deposit-processing__text">Confirming Payment...</div>
-                    <div className="deposit-processing__subtext">
-                        Waiting for confirmation from your mobile provider.
-                        <br />
-                        M-Pesa & Telebirr can take up to 60 seconds.
+                    <div className="deposit-processing__spinner-container">
+                        <div className="deposit-processing__spinner"></div>
                     </div>
-                    <div className="deposit-fallback-help" style={{ width: '100%', marginTop: 20 }}>
-                        <p style={{ fontSize: '12px', marginBottom: 8 }}>
-                            ✅ If you already confirmed on your phone, just wait — we're checking automatically.
-                        </p>
+                    <div className="deposit-processing__text">Verifying Payment</div>
+                    <div className="deposit-processing__subtext">
+                        We're checking your payment status with the bank.
+                        <br />
+                        This usually takes 10-60 seconds for Telebirr/M-Pesa.
+                    </div>
+                    
+                    <div className="deposit-status-card">
+                        <div className="deposit-status-item">
+                            <span className="status-dot status-dot--active"></span>
+                            <span>Money Deducuted from Phone</span>
+                        </div>
+                        <div className="deposit-status-item">
+                            <span className="status-dot status-dot--pulse"></span>
+                            <span>Waiting for Bank Confirmation</span>
+                        </div>
+                    </div>
+
+                    <div className="deposit-processing__actions">
                         <Button
-                            mode="outline"
-                            className="deposit-fallback-btn"
+                            mode="beveled"
+                            stretched
+                            size="l"
+                            className="deposit-retry-btn"
                             onClick={() => {
                                 if (activeTxRefRef.current) {
                                     verifyDeposit(activeTxRefRef.current);
                                 }
                             }}
                         >
-                            🔄 Check Again Now
+                            🔄 Re-Check Balance Now
+                        </Button>
+                        
+                        <Button
+                            mode="plain"
+                            stretched
+                            onClick={() => setStep('amount')}
+                            style={{ marginTop: 12, opacity: 0.7 }}
+                        >
+                            Wait in Background
                         </Button>
                     </div>
                 </div>

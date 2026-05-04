@@ -20,128 +20,108 @@ router.post('/', async (req, res) => {
     try {
         const { tx_ref: txRef, initData, user_id } = req.body;
 
-        // ─── Authenticate user (with local fallback) ──────────────────────────────
+        // 1. Basic Validation
+        if (!txRef) {
+            return res.json({ success: false, error: 'Missing transaction reference' });
+        }
+
+        // 2. Authenticate user (with local fallback)
         let tgId = getTelegramUserId(initData);
         if (!tgId) {
             tgId = user_id || 'unauth_local_user';
         }
 
-        if (!txRef) {
-            return res.json({ success: false, error: 'Missing transaction reference' });
-        }
-
-        // 1. Check if already completed WITHOUT locking first
+        // 3. Check local database first (idempotency & speed)
         const [initialCheck] = await pool.execute(
-            'SELECT status FROM deposits WHERE tx_ref = ?',
+            'SELECT status, amount FROM deposits WHERE tx_ref = ?',
             [txRef]
         );
         const depositCheck = initialCheck[0];
 
         if (!depositCheck) {
-            return res.json({ success: false, message: 'Deposit not found' });
+            return res.json({ success: false, message: 'Deposit record not found in our system' });
         }
 
+        // If already successful, return immediately
         if (depositCheck.status === 'success') {
-            const [balRows] = await pool.execute(
-                'SELECT balance FROM auth WHERE tg_id = ?',
-                [tgId]
-            );
+            const [balRows] = await pool.execute('SELECT balance FROM auth WHERE tg_id = ?', [tgId]);
             return res.json({
                 success: true,
                 new_balance: parseFloat(balRows[0]?.balance) || 0,
                 already_completed: true,
+                message: 'Payment already verified and credited.'
             });
         }
 
-        // 2. Make the slow Chapa API call OUTSIDE the database transaction/lock
+        // 4. Verify with Chapa API
         const chapa = new Chapa();
         const result = await chapa.verify(txRef);
         
         console.log(`[verify_deposit] Chapa Result for ${txRef}:`, JSON.stringify(result));
 
-        const chapaStatus = (result.data?.status ?? '').toLowerCase();
-        const isSuccess = result.success && (chapaStatus === 'success' || chapaStatus === 'paid');
+        const chapaData = result.data || {};
+        const chapaStatus = (chapaData.status || result.raw?.status || '').toLowerCase();
+        
+        // Terminal Success Statuses
+        const isActuallySuccess = (chapaStatus === 'success' || chapaStatus === 'paid' || chapaStatus === 'completed');
 
-        // IF THE PAYMENT IS NOT YET SUCCESSFUL (PENDING OR FAILED)
-        if (!isSuccess) {
-            let realStatus = (result.data?.status || 'pending').toLowerCase();
+        if (!isActuallySuccess) {
+            // Check for Terminal Failure Statuses
+            const isFailed = chapaStatus === 'failed' || chapaStatus.includes('reject') || chapaStatus.includes('cancel');
             
-            // Check if Chapa returned "failed/cancelled", "failed", "rejected", etc.
-            const isActuallyFailed = realStatus.includes('fail') || realStatus.includes('cancel') || realStatus.includes('reject');
-            
-            if (isActuallyFailed) {
-                realStatus = 'failed';
-            } else if (realStatus !== 'success' && realStatus !== 'paid') {
-                realStatus = 'pending';
-            }
-
-            // Prioritize the actual "failure_reason" from Chapa if it exists
-            let realMessage = result.data?.failure_reason || result.data?.charge_message || result.data?.payment_message || result.message || result.raw?.message || 'Payment declined by bank or provider.';
-
-            // Immediately mark it as failed in the DB so it doesn't get stuck
-            if (realStatus === 'failed') {
+            if (isFailed) {
                 await pool.execute("UPDATE deposits SET status = 'failed' WHERE tx_ref = ?", [txRef]);
+                return res.json({
+                    success: false,
+                    chapa_status: 'failed',
+                    message: chapaData.failure_reason || 'Payment was declined or cancelled.',
+                    bank_message: chapaData.charge_message || 'Transaction failed.'
+                });
             }
 
-            const msgLower = realMessage.toLowerCase();
-            // Suppress the generic "Not completed yet" message so the UI shows a nice waiting prompt
-            if ((msgLower.includes('fetched successfully') || msgLower.includes('not completed')) && realStatus === 'pending') {
-                realMessage = 'Waiting for confirmation from your mobile provider...';
-            }
-
+            // Otherwise, it's still pending
             return res.json({ 
                 success: false, 
-                message: `Payment status: ${realStatus}`, 
-                chapa_status: realStatus, 
-                bank_message: realMessage 
+                chapa_status: 'pending', 
+                message: 'Waiting for provider confirmation...', 
+                bank_message: chapaData.charge_message || 'Transaction is still processing on the provider side.'
             });
         }
 
-        // 3. If Chapa says success, start transaction to safely credit balance
+        // 5. Success Flow: Start transaction to safely credit balance
         const conn = await pool.getConnection();
         try {
             await conn.beginTransaction();
 
-            // Lock deposit NOW
+            // Lock the deposit row
             const [pendingDeposits] = await conn.execute(
                 "SELECT * FROM deposits WHERE tx_ref = ? FOR UPDATE",
                 [txRef]
             );
             const deposit = pendingDeposits[0];
 
-            if (!deposit) {
+            if (!deposit || deposit.status === 'success') {
                 await conn.rollback();
                 conn.release();
-                return res.json({ success: false, message: 'Deposit not found' });
-            }
-
-            // Double check if another process (like a webhook) already completed it while we were waiting for Chapa
-            if (deposit.status === 'success') {
-                await conn.rollback();
-                
-                const [balRows] = await conn.execute(
-                    'SELECT balance FROM auth WHERE tg_id = ?',
-                    [tgId]
-                );
-                conn.release();
+                const [balRows] = await pool.execute('SELECT balance FROM auth WHERE tg_id = ?', [tgId]);
                 return res.json({
                     success: true,
                     new_balance: parseFloat(balRows[0]?.balance) || 0,
-                    already_completed: true,
+                    already_completed: true
                 });
             }
 
-            const verifiedAmount = parseFloat(result.data?.amount) || deposit.amount;
-            const chapaRef = result.data?.reference || '';
+            const verifiedAmount = parseFloat(chapaData.amount) || deposit.amount;
+            const chapaRef = chapaData.reference || '';
             const responseJson = JSON.stringify(result.raw);
 
-            // Update deposit
+            // Update deposit record
             await conn.execute(
                 "UPDATE deposits SET status = 'success', chapa_tx_ref = ?, chapa_response = ?, completed_at = NOW() WHERE id = ?",
                 [chapaRef, responseJson, deposit.id]
             );
 
-            // 4. Update Balance & Record Transaction
+            // Update balance and log transaction
             const newBalance = await processTransaction(
                 String(deposit.user_id),
                 'deposit',
@@ -154,21 +134,25 @@ router.post('/', async (req, res) => {
 
             await conn.commit();
             
-            // Notify Bot Admin
-            const [userRows] = await pool.execute('SELECT first_name FROM auth WHERE tg_id = ?', [String(deposit.user_id)]);
-            const firstName = userRows[0]?.first_name || 'User';
-            notifyDeposit({ uid: String(deposit.user_id), amount: verifiedAmount, uuid: firstName }).catch(e => console.error('Notify deposit error:', e));
+            // Async notification (don't wait for it)
+            pool.execute('SELECT first_name FROM auth WHERE tg_id = ?', [String(deposit.user_id)])
+                .then(([rows]) => {
+                    const firstName = rows[0]?.first_name || 'User';
+                    notifyDeposit({ uid: String(deposit.user_id), amount: verifiedAmount, uuid: firstName })
+                        .catch(e => console.error('Notify deposit error:', e));
+                }).catch(() => {});
 
             conn.release();
 
             return res.json({
                 success: true,
                 new_balance: newBalance,
+                message: 'Payment verified and balance updated!'
             });
         } catch (err) {
             await conn.rollback();
             conn.release();
-            throw err; // caught by outer try-catch
+            throw err;
         }
     } catch (err) {
         console.error('[verify_deposit] Error:', err);
