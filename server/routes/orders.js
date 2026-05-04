@@ -167,7 +167,9 @@ router.post('/place', async (req, res) => {
                 uuid: user.username || user.first_name || 'User',
                 service: serviceData.name,
                 order: dbId.toString(),
-                amount: totalCostEtb.toString()
+                amount: totalCostEtb.toString(),
+                panel: 'GodOfPanel',
+                pb: parseFloat(user.balance).toString()
             });
 
             trackOrder(providerOrderId, { dbId, userId: tgId, charge: totalCostEtb, quantity, status: 'pending' });

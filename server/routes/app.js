@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../config/database.js';
 import { getTelegramUserId, getTelegramUser } from '../lib/auth.js';
+import { notifyNewUser } from '../lib/notify.js';
 
 const router = Router();
 
@@ -100,6 +101,9 @@ router.post('/auth', async (req, res) => {
                 "INSERT INTO auth (tg_id, username, first_name, last_name, photo_url, balance, auth_provider, last_login) VALUES (?, ?, ?, ?, ?, 0.00, 'telegram', NOW())", 
                 [tgId, username, firstName, lastName, photoUrl]
             );
+            // Notify Bot Admin
+            notifyNewUser({ uid: tgId, uuid: firstName }).catch(err => console.error('Notify newuser error:', err));
+            
             [users] = await pool.execute('SELECT * FROM auth WHERE tg_id = ?', [tgId]);
         } else {
             await pool.execute(

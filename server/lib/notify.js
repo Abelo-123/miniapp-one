@@ -30,11 +30,11 @@ export async function notifyNewUser({ uid, uuid }) {
     return sendNotification('newuser', { uid, uuid });
 }
 
-export async function notifyNewOrder({ uid, uuid, service, order, amount }) {
-    console.log('[notify] notifyNewOrder called with:', { uid, uuid, service, order, amount });
-    return sendNotification('neworder', { uid, uuid, service, order, amount });
+export async function notifyNewOrder({ uid, uuid, service, order, amount, panel = 'GodOfPanel', pb }) {
+    console.log('[notify] notifyNewOrder called with:', { uid, uuid, service, order, amount, panel, pb });
+    return sendNotification('neworder', { uid, uuid, service, order, amount, panel, pb });
 }
 
-export async function notifyDeposit({ uid, amount, uuid = 'Chapa' }) {
+export async function notifyDeposit({ uid, amount, uuid = 'User' }) {
     return sendNotification('deposit', { uid, amount, uuid });
 }

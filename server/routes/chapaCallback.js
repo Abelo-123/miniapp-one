@@ -12,6 +12,7 @@ import crypto from 'crypto';
 import pool from '../config/database.js';
 import Chapa from '../lib/chapa.js';
 import { processTransaction } from '../lib/wallet.js';
+import { notifyDeposit } from '../lib/notify.js';
 
 const router = Router();
 
@@ -99,6 +100,12 @@ async function handleCallback(req, res) {
                 );
 
                 await conn.commit();
+                
+                // Notify Bot Admin
+                const [userRows] = await pool.execute('SELECT first_name FROM auth WHERE tg_id = ?', [String(deposit.user_id)]);
+                const firstName = userRows[0]?.first_name || 'User';
+                notifyDeposit({ uid: String(deposit.user_id), amount: verifiedAmount, uuid: firstName }).catch(e => console.error('Notify deposit error:', e));
+
                 conn.release();
                 return res.json({ success: true, message: 'Deposit completed successfully' });
             } else {
