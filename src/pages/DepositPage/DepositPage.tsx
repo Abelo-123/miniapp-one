@@ -343,22 +343,20 @@ export function DepositPage() {
                 }
 
                 const statusStr = String(data.chapa_status || '').toLowerCase();
-                // Extremely strict failure check: ensure "pending" isn't accidentally caught
                 const isFailed = statusStr === 'failed' || statusStr.includes('reject') || statusStr.includes('cancel');
+                const isConfigError = statusStr === 'error';
 
-                // If Chapa reports the payment as failed (e.g. they typed the wrong PIN on their phone)
-                // Stop polling immediately and show the exact reason from the bank
-                if (isFailed) {
+                if (isFailed || isConfigError) {
                     setStep('amount');
                     activeTxRefRef.current = null;
                     
                     let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
                     if (declinedReason.toLowerCase().includes('fetched successfully') || declinedReason.toLowerCase().includes('not completed')) {
-                        declinedReason = 'Payment was failed or cancelled.';
+                        declinedReason = isConfigError ? 'Server configuration error.' : 'Payment was failed or cancelled.';
                     }
                     
                     setErrorMessage(declinedReason);
-                    showToast('error', 'Payment Declined');
+                    showToast('error', isConfigError ? 'Configuration Error' : 'Payment Declined');
                     hapticNotification('error');
                     refreshDeposits().catch(() => {});
                     return; // Stop polling

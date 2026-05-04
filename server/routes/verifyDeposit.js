@@ -59,6 +59,16 @@ router.post('/', async (req, res) => {
         
         console.log(`[verify_deposit] Chapa Result for ${txRef}:`, JSON.stringify(result));
 
+        // CRITICAL: If Chapa API itself failed (e.g., 401 Unauthorized, 404 Not Found)
+        if (!result.success && result.httpCode !== 200) {
+            return res.json({
+                success: false,
+                chapa_status: 'error',
+                message: 'Chapa API Error: ' + (result.message || 'Verification failed'),
+                bank_message: `The payment provider returned an error (${result.httpCode}). Please contact support with Ref: ${txRef}`
+            });
+        }
+
         const chapaData = result.data || {};
         const chapaStatus = (chapaData.status || result.raw?.status || '').toLowerCase();
         
@@ -84,7 +94,7 @@ router.post('/', async (req, res) => {
                 success: false, 
                 chapa_status: 'pending', 
                 message: 'Waiting for provider confirmation...', 
-                bank_message: chapaData.charge_message || 'Transaction is still processing on the provider side.'
+                bank_message: chapaData.charge_message || 'Transaction is still processing. If you already confirmed the PIN, please wait a moment.'
             });
         }
 

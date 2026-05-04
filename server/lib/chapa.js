@@ -58,10 +58,17 @@ class Chapa {
      * Low-level HTTP request to Chapa API.
      */
     async _request(method, endpoint, body = null) {
+        if (!CHAPA_SECRET_KEY) {
+            console.error('[chapa] ERROR: CHAPA_SECRET_KEY is missing!');
+            return { success: false, httpCode: 0, message: 'Server configuration error: Missing API Key' };
+        }
+
         // Add cache busting timestamp for GET requests to prevent stale "pending" loops
         const separator = endpoint.includes('?') ? '&' : '?';
         const url = `${CHAPA_BASE_URL}${endpoint}${method === 'GET' ? `${separator}_t=${Date.now()}` : ''}`;
         
+        console.log(`[chapa] Request: ${method} ${url}`);
+
         const headers = {
             Authorization: `Bearer ${CHAPA_SECRET_KEY}`,
             'Content-Type': 'application/json',
@@ -77,7 +84,7 @@ class Chapa {
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
             options.signal = controller.signal;
 
             const res = await fetch(url, options);
@@ -85,6 +92,10 @@ class Chapa {
 
             const httpCode = res.status;
             const decoded = await res.json().catch(() => null);
+
+            if (httpCode !== 200) {
+                console.warn(`[chapa] API Warning: ${url} returned ${httpCode}`, decoded);
+            }
 
             return {
                 success: httpCode === 200 && (decoded?.status ?? '') === 'success',
@@ -94,6 +105,7 @@ class Chapa {
                 raw: decoded,
             };
         } catch (err) {
+            console.error(`[chapa] Fetch Error for ${url}:`, err.message);
             return {
                 success: false,
                 httpCode: 0,
