@@ -765,7 +765,7 @@ export function DepositPage() {
 
                     <div className="deposit-processing__actions">
                         <Button
-                            mode="beveled"
+                            mode="bezeled"
                             stretched
                             size="l"
                             className="deposit-retry-btn"
