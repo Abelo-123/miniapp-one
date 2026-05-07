@@ -80,10 +80,36 @@ router.post('/place', async (req, res) => {
                 return res.json({ success: false, error: 'Service not found or unavailable' });
             }
 
+            // 3.5 Fetch custom pricing for this service
+            const [customRows] = await conn.execute(
+                'SELECT custom_rate, profit_margin, is_enabled FROM service_custom WHERE service_id = ?', 
+                [service]
+            );
+            const custom = customRows.length > 0 ? customRows[0] : null;
+
+            if (custom && (custom.is_enabled === 0 || custom.is_enabled === false)) {
+                await conn.rollback();
+                return res.json({ success: false, error: 'This service is currently disabled' });
+            }
+
             // Calculate cost
-            const unitRateUsd = parseFloat(serviceData.rate);
-            const totalCostUsd = unitRateUsd * (quantity / 1000);
-            const totalCostEtb = totalCostUsd * rateMultiplier;
+            const unitRateUsd = parseFloat(serviceData.rate) || 0;
+            const baseRateEtb = unitRateUsd * rateMultiplier;
+            
+            let finalRateEtb;
+            if (custom) {
+                if (custom.custom_rate !== null && custom.custom_rate !== undefined) {
+                    finalRateEtb = parseFloat(custom.custom_rate);
+                } else if (custom.profit_margin > 0) {
+                    finalRateEtb = baseRateEtb * (1 + custom.profit_margin / 100);
+                } else {
+                    finalRateEtb = baseRateEtb;
+                }
+            } else {
+                finalRateEtb = baseRateEtb;
+            }
+
+            const totalCostEtb = parseFloat((finalRateEtb * (quantity / 1000)).toFixed(2));
 
             if (parseFloat(user.balance) < totalCostEtb) {
                 await conn.rollback();

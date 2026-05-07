@@ -50,10 +50,16 @@ router.get('/', async (req, res) => {
             if (settingsRows.length > 0) rateMultiplier = parseFloat(settingsRows[0].setting_value) || 55.0;
         } catch (e) { /* ignore DB error */ }
 
-        let disabledServiceIds = new Set();
+        let customPricingMap = {};
         try {
-            const [disabledRows] = await pool.execute('SELECT service_id FROM service_custom WHERE is_enabled = 0');
-            disabledRows.forEach(row => disabledServiceIds.add(row.service_id));
+            const [customRows] = await pool.execute('SELECT service_id, custom_rate, profit_margin, is_enabled FROM service_custom');
+            customRows.forEach(row => {
+                customPricingMap[row.service_id] = {
+                    custom_rate: row.custom_rate,
+                    profit_margin: row.profit_margin,
+                    is_enabled: row.is_enabled
+                };
+            });
         } catch (e) { }
 
         let adjustmentsMap = {};
@@ -65,12 +71,31 @@ router.get('/', async (req, res) => {
         // Centralized processor applies formatting dynamically so cache doesn't bake in old rates
         processServices = (services) => {
             return services
-                .filter(svc => !disabledServiceIds.has(parseInt(svc.service)))
                 .map(svc => {
+                    const svcId = parseInt(svc.service);
+                    const custom = customPricingMap[svcId];
+                    const isEnabled = custom ? (custom.is_enabled !== 0 && custom.is_enabled !== false) : true;
+                    
+                    if (!isEnabled) return null;
+
                     const numericRate = parseFloat(svc.rate) || 0;
-                    const finalRate = (numericRate * rateMultiplier).toFixed(2);
+                    const baseRate = numericRate * rateMultiplier;
+                    
+                    let finalRate;
+                    if (custom) {
+                        if (custom.custom_rate !== null && custom.custom_rate !== undefined) {
+                            finalRate = parseFloat(custom.custom_rate).toFixed(2);
+                        } else if (custom.profit_margin > 0) {
+                            finalRate = (baseRate * (1 + custom.profit_margin / 100)).toFixed(2);
+                        } else {
+                            finalRate = baseRate.toFixed(2);
+                        }
+                    } else {
+                        finalRate = baseRate.toFixed(2);
+                    }
+
                     return {
-                        service: parseInt(svc.service),
+                        service: svcId,
                         name: svc.name,
                         type: svc.type,
                         category: svc.category,
@@ -79,10 +104,11 @@ router.get('/', async (req, res) => {
                         max: parseInt(svc.max),
                         refill: svc.refill === true || svc.refill === 1 || svc.refill === '1',
                         cancel: svc.cancel === true || svc.cancel === 1 || svc.cancel === '1',
-                        average_time: adjustmentsMap[svc.service] || svc.average_time || 'Not specified',
+                        average_time: adjustmentsMap[svcId] || svc.average_time || 'Not specified',
                         platform_id: determinePlatform(svc.category)
                     };
-                });
+                })
+                .filter(svc => svc !== null);
         };
 
         const now = Date.now();
