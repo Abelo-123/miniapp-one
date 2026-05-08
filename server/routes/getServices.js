@@ -94,6 +94,11 @@ router.get('/', async (req, res) => {
                         finalRate = baseRate.toFixed(2);
                     }
 
+                    // Log for service 2807 specifically to debug the discrepancy
+                    if (svcId === 2807) {
+                        console.log(`[get_services] Debug 2807: Raw API Rate=${svc.rate}, Numeric=${numericRate}, Multiplier=${rateMultiplier}, Final=${finalRate}`);
+                    }
+
                     return {
                         service: svcId,
                         name: svc.name,

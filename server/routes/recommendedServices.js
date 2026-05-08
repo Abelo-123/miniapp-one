@@ -59,6 +59,7 @@ router.get('/top', async (req, res) => {
             type: svc.type,
             category: svc.category,
             rate: (parseFloat(svc.rate) * rateMultiplier).toFixed(2),
+            original_rate: parseFloat(svc.rate),
             min: parseInt(svc.min),
             max: parseInt(svc.max),
             refill: svc.refill === true || svc.refill === 1 || svc.refill === '1',
