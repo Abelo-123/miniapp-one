@@ -10,7 +10,8 @@ export const MOCK_USER: UserProfile = {
     username: 'john_doe',
 };
 
-// â”€â”    { id: 1001, category: 'Instagram Followers', name: 'Instagram Followers [Real] [Max: 100K]', type: 'Default', rate: 2.50, original_rate: 2.50, min: 100, max: 100000, averageTime: '0-2 Hours', refill: true, cancel: false },
+export const MOCK_SERVICES: Service[] = [
+    { id: 1001, category: 'Instagram Followers', name: 'Instagram Followers [Real] [Max: 100K]', type: 'Default', rate: 2.50, original_rate: 2.50, min: 100, max: 100000, averageTime: '0-2 Hours', refill: true, cancel: false },
     { id: 1002, category: 'Instagram Followers', name: 'Instagram Followers [Premium] [Max: 50K]', type: 'Default', rate: 5.00, original_rate: 5.00, min: 50, max: 50000, averageTime: '0-4 Hours', refill: true, cancel: true },
     { id: 1003, category: 'Instagram Likes', name: 'Instagram Likes [Instant] [Max: 20K]', type: 'Default', rate: 1.50, original_rate: 1.50, min: 10, max: 20000, averageTime: '0-1 Hours', refill: false, cancel: false },
     { id: 1004, category: 'Instagram Views', name: 'Instagram Reel Views [Max: 1M]', type: 'Default', rate: 0.30, original_rate: 0.30, min: 100, max: 1000000, averageTime: '0-30 Min', refill: false, cancel: false },
@@ -30,7 +31,6 @@ export const MOCK_USER: UserProfile = {
     { id: 7001, category: 'Spotify Plays', name: 'Spotify Plays [Max: 1M]', type: 'Default', rate: 1.00, original_rate: 1.00, min: 1000, max: 1000000, averageTime: '0-24 Hours', refill: false, cancel: false },
     { id: 7002, category: 'SoundCloud Plays', name: 'SoundCloud Plays [Max: 100K]', type: 'Default', rate: 0.80, original_rate: 0.80, min: 100, max: 100000, averageTime: '0-12 Hours', refill: false, cancel: false },
     { id: 8001, category: 'Instagram Poll Votes', name: 'Instagram Poll Votes [Max: 5K]', type: 'Poll', rate: 10.00, original_rate: 10.00, min: 100, max: 5000, averageTime: '0-6 Hours', refill: false, cancel: false },
-],  { id: 8001, category: 'Instagram Poll Votes', name: 'Instagram Poll Votes [Max: 5K]', type: 'Poll', rate: 10.00, min: 100, max: 5000, averageTime: '0-6 Hours', refill: false, cancel: false },
 ];
 
 export const MOCK_RECOMMENDED: number[] = [1001, 2001, 3001, 1003];

@@ -38,6 +38,7 @@ export function SearchPanel({ onSelect, onClose }: Props) {
             name: s.name,
             type: s.type as Service['type'],
             rate: parseFloat(s.rate),
+            original_rate: parseFloat(s.rate),
             min: s.min,
             max: s.max,
             averageTime: s.average_time || s.averageTime || '',
