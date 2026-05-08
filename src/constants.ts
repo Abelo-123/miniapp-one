@@ -157,8 +157,8 @@ export function getLinkPlaceholder(service: Service | null | undefined, platform
 export function formatETB(amount: number | string): string {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
     return new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
     }).format(num || 0) + ' ETB';
 }
 
