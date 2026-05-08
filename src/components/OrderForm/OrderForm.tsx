@@ -63,7 +63,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
     // Memoized calculations
     const { charge, hasDiscount } = useMemo(() => {
         const qty = parseInt(quantity) || 0;
-        const original = (qty / 1000) * service.rate * rateMultiplier;
+        const original = (qty / 1000) * service.rate;
         const discounted = discountPercent > 0 ? original * (1 - discountPercent / 100) : original;
         return {
             charge: discounted,
@@ -318,7 +318,14 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                         footer={user && charge > user.balance ? `Insufficient Balance (Have: ${formatETB(user.balance)})` : `Total Charge: ${formatETB(charge)}`}
                     >
                         <Cell
-                            subtitle={`${service.min} - ${service.max.toLocaleString()} • Rate: ${formatETB(service.rate)} `}
+                            subtitle={
+                                <>
+                                    {service.min} - {service.max.toLocaleString()} • Rate: {formatETB(service.rate)}
+                                    <span style={{ fontSize: '10px', opacity: 0.5, marginLeft: '8px' }}>
+                                        ({service.original_rate} * {rateMultiplier})
+                                    </span>
+                                </>
+                            }
                             multiline
                         >
                             {service.category}

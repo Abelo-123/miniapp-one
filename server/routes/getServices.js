@@ -100,6 +100,7 @@ router.get('/', async (req, res) => {
                         type: svc.type,
                         category: svc.category,
                         rate: finalRate,
+                        original_rate: numericRate,
                         min: parseInt(svc.min),
                         max: parseInt(svc.max),
                         refill: svc.refill === true || svc.refill === 1 || svc.refill === '1',

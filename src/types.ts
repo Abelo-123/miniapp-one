@@ -7,6 +7,7 @@ export interface Service {
     name: string;
     type: ServiceType;
     rate: number;       // Price per 1000 in ETB (after rate_multiplier)
+    original_rate: number; // Raw rate from the upstream API
     min: number;
     max: number;
     averageTime: string;

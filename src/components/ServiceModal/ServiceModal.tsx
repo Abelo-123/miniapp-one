@@ -4,6 +4,7 @@ import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-app
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
 import { useCategoryServices } from '../../hooks/useCategoryServices';
+import { useApp } from '../../context/AppContext';
 
 interface Props {
     category: string;
@@ -16,9 +17,9 @@ const BATCH_SIZE = 50;
 
 // 1. Memoized Row Component to prevent re-renders while typing
 const ServiceRow = React.memo(({
-    svc, onSelect
+    svc, onSelect, multiplier
 }: {
-    svc: Service, onSelect: (s: Service) => void
+    svc: Service, onSelect: (s: Service) => void, multiplier: number
 }) => {
     return (
         <div className="svc-item" onClick={() => onSelect(svc)}>
@@ -26,6 +27,9 @@ const ServiceRow = React.memo(({
             <div className="svc-name">{svc.name}</div>
             <div className="svc-footer">
                 <span className="svc-price">{formatETB(svc.rate)} / 1000</span>
+                <span className="svc-debug" style={{ fontSize: '10px', opacity: 0.5, marginLeft: '8px' }}>
+                    ({svc.original_rate} * {multiplier})
+                </span>
                 <span className="svc-limits"> | Min: {svc.min} | Max: {svc.max.toLocaleString()}</span>
             </div>
         </div>
@@ -33,6 +37,7 @@ const ServiceRow = React.memo(({
 });
 
 export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Props) {
+    const { rateMultiplier } = useApp();
     const [search, setSearch] = useState('');
     const deferredSearch = useDeferredValue(search);
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
@@ -125,6 +130,7 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                                     key={svc.id}
                                     svc={svc}
                                     onSelect={onSelect}
+                                    multiplier={rateMultiplier}
                                 />
                             ))}
                             {hasMore && (
