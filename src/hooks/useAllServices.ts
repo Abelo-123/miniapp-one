@@ -13,7 +13,7 @@ export function useAllServices() {
                 name: s.name,
                 type: s.type as Service['type'],
                 rate: parseFloat(s.rate),
-                original_rate: parseFloat(s.original_rate || 0),
+                original_rate: parseFloat(s.original_rate ?? s.rate),
                 min: s.min,
                 max: s.max,
                 averageTime: s.average_time || s.averageTime || '',
