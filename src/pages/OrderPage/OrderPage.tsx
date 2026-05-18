@@ -1,7 +1,5 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { formatETB, getServiceRequirements } from '../../constants';
-import type { CustomField } from '../../types';
-
 import { useApp } from '../../context/AppContext';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
 import { PlatformGrid } from '../../components/PlatformGrid/PlatformGrid';
@@ -10,20 +8,12 @@ import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
 import { NewsTicker } from '../../components/NewsTicker/NewsTicker';
 import { hapticImpact, hapticNotification, getInitDataString } from '../../helpers/telegram';
 
-const FIELD_TYPES: CustomField['type'][] = ['text', 'link', 'comment', 'hashtag', 'note'];
-const FIELD_TYPE_LABELS: Record<CustomField['type'], string> = {
-    text: '✏️ Text',
-    link: '🔗 Link',
-    comment: '💬 Comment',
-    hashtag: '#️⃣ Hashtag',
-    note: '📝 Note',
-};
 
 export function OrderPage() {
     const appContext = useApp();
     const {
         user, refreshOrders,
-        recommendedIds, selectedPlatform, selectedCategory, selectedService,
+        selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
         showToast, discountPercent
     } = appContext;
@@ -35,7 +25,6 @@ export function OrderPage() {
     const [quantity, setQuantity] = useState('');
     const [comments, setComments] = useState('');
     const [answerNumber, setAnswerNumber] = useState('');
-    const [customFields, setCustomFields] = useState<CustomField[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFirstOrder, setIsFirstOrder] = useState(!localStorage.getItem('hasPlacedOrder'));
 
@@ -55,7 +44,6 @@ export function OrderPage() {
         setQuantity(selectedService?.type === 'Package' ? (selectedService.min?.toString() || '') : '');
         setComments('');
         setAnswerNumber('');
-        setCustomFields([]);
     }, [selectedService]);
 
     const effectiveQuantity = useMemo(() => {
@@ -75,19 +63,7 @@ export function OrderPage() {
 
 
 
-    // ── Custom Fields helpers ─────────────────────────────────
-    const addCustomField = useCallback(() => {
-        if (customFields.length >= 10) return;
-        setCustomFields(prev => [...prev, { type: 'text', value: '' }]);
-    }, [customFields.length]);
 
-    const updateCustomField = useCallback((idx: number, patch: Partial<CustomField>) => {
-        setCustomFields(prev => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
-    }, []);
-
-    const removeCustomField = useCallback((idx: number) => {
-        setCustomFields(prev => prev.filter((_, i) => i !== idx));
-    }, []);
 
     const handlePlaceOrder = async () => {
         // 1. Selection Security
@@ -160,9 +136,6 @@ export function OrderPage() {
                     initData,
                     comments: showComments && comments.trim() ? comments.trim() : undefined,
                     answer_number: showPoll && answerNumber ? parseInt(answerNumber, 10) : undefined,
-                    custom_fields: customFields.filter(f => f.value.trim()).length > 0
-                        ? customFields.filter(f => f.value.trim())
-                        : undefined,
                 })
             });
             const data = await res.json();
@@ -182,7 +155,6 @@ export function OrderPage() {
                 setQuantity('');
                 setComments('');
                 setAnswerNumber('');
-                setCustomFields([]);
                 setSelectedService(null);
                 
                 if ('refreshUser' in appContext && typeof (appContext as any).refreshUser === 'function') {
@@ -366,59 +338,6 @@ export function OrderPage() {
                         </div>
                     )}
 
-                    {customFields.length > 0 && (
-                        <div className="order-custom-fields-container" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--tg-theme-text-color)' }}>Additional Requirements / Custom Fields</div>
-                            {customFields.map((field, idx) => (
-                                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--tg-theme-bg-color, #1a1a2e)', padding: '12px', borderRadius: '12px', border: '1px solid var(--tg-theme-section-separator-color, rgba(255,255,255,0.1))' }}>
-                                    <select
-                                        value={field.type}
-                                        onChange={(e) => updateCustomField(idx, { type: e.target.value as any })}
-                                        style={{ background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '12px 10px', borderRadius: '8px', fontSize: '13px', outline: 'none', cursor: 'pointer', flexShrink: 0 }}
-                                    >
-                                        {FIELD_TYPES.map(t => (
-                                            <option key={t} value={t}>{FIELD_TYPE_LABELS[t]}</option>
-                                        ))}
-                                    </select>
-                                    
-                                    {field.type === 'comment' || field.type === 'note' ? (
-                                        <textarea
-                                            placeholder={`Enter ${field.type}...`}
-                                            value={field.value}
-                                            onChange={(e) => updateCustomField(idx, { value: e.target.value })}
-                                            style={{ flexGrow: 1, minHeight: '60px', background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '10px 12px', borderRadius: '8px', fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
-                                        />
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            placeholder={`Enter ${field.type}...`}
-                                            value={field.value}
-                                            onChange={(e) => updateCustomField(idx, { value: e.target.value })}
-                                            style={{ flexGrow: 1, background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '12px 12px', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
-                                        />
-                                    )}
-
-                                    <button
-                                        type="button"
-                                        onClick={() => removeCustomField(idx)}
-                                        style={{ background: 'transparent', border: 'none', color: 'var(--color-danger, #ff4757)', fontSize: '18px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {customFields.length < 10 && (
-                        <button
-                            type="button"
-                            onClick={addCustomField}
-                            style={{ background: 'rgba(0, 122, 255, 0.15)', color: '#007aff', border: '1px dashed rgba(0, 122, 255, 0.4)', borderRadius: '12px', padding: '12px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', marginTop: '12px', marginBottom: '16px', transition: 'all 0.2s', width: '100%' }}
-                        >
-                            + Add Custom Requirement / Comment / Link
-                        </button>
-                    )}
 
                     <div className="order-total-card">
                         <span>Total Charge</span>
