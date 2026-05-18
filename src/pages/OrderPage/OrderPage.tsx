@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { formatETB, getServiceRequirements } from '../../constants';
 import { useApp } from '../../context/AppContext';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
@@ -13,7 +13,7 @@ export function OrderPage() {
     const appContext = useApp();
     const {
         user, refreshOrders,
-        selectedPlatform, selectedCategory, selectedService,
+        recommendedIds, selectedPlatform, selectedCategory, selectedService,
         setSelectedPlatform, setSelectedCategory, setSelectedService,
         showToast, discountPercent
     } = appContext;

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeH
 import { Section, Input, Textarea, Button, Cell } from '@telegram-apps/telegram-ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../../context/AppContext';
-import { formatETB, getServiceRequirements } from '../../constants';
+import { formatETB, QUANTITY_STEP, getServiceRequirements } from '../../constants';
 import * as api from '../../api';
 import type { Order } from '../../types';
 import {
@@ -31,8 +31,8 @@ export type OrderFormProps = { onClose?: () => void };
 export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function OrderForm({ onClose }, ref) {
     const {
         selectedService, selectedPlatform,
-        discountPercent,
-        user, isTelegramApp,
+        rateMultiplier, discountPercent,
+        user, userCanOrder, isTelegramApp,
         setBalance, 
         showToast, setActiveTab,
     } = useApp();
