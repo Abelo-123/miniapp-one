@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { formatETB, getLinkPlaceholder, getServiceRequirements } from '../../constants';
+import { formatETB, getServiceRequirements } from '../../constants';
 import type { CustomField } from '../../types';
 
 import { useApp } from '../../context/AppContext';
@@ -73,7 +73,7 @@ export function OrderPage() {
         return discountPercent > 0 ? original * (1 - (discountPercent / 100)) : original;
     }, [selectedService, effectiveQuantity, discountPercent]);
 
-    const linkPlaceholder = getLinkPlaceholder(selectedService, selectedPlatform || 'other');
+
 
     // ── Custom Fields helpers ─────────────────────────────────
     const addCustomField = useCallback(() => {

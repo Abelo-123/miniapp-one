@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Section, Input, Textarea, Button, Cell } from '@telegram-apps/telegram-ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../../context/AppContext';
-import { formatETB, getLinkPlaceholder, QUANTITY_STEP, getServiceRequirements } from '../../constants';
+import { formatETB, QUANTITY_STEP, getServiceRequirements } from '../../constants';
 import * as api from '../../api';
 import type { Order, CustomField } from '../../types';
 import {
