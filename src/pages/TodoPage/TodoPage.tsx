@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type FC, memo } from 'react';
-import { useSignal, initData } from '@telegram-apps/sdk-react';
+import { useSignal, initDataState as _initDataState } from '@telegram-apps/sdk-react';
 import type { Todo, Member } from './types';
 import { fetchTodos, addTodo, updateTodo, deleteTodo } from './api';
 import {
@@ -10,6 +10,7 @@ import {
 } from '../../helpers/telegram';
 import { Button, Input } from '@telegram-apps/telegram-ui';
 import './TodoPage.css';
+
 
 // ═══════════════════════════════════════════════════════════════
 // MEMBER COLORS - Refined for distinction
@@ -142,7 +143,7 @@ const HabitRow = memo(({
 // ═══════════════════════════════════════════════════════════════
 
 export const TodoPage: FC = () => {
-    const initDataState = useSignal(initData.state);
+    const initDataState = useSignal(_initDataState);
     const userId = initDataState?.user?.id || 12345;
     const userName = initDataState?.user?.first_name || 'You';
 

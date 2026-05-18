@@ -1,16 +1,7 @@
-import Lottie from 'lottie-react';
-import stickerAnimation from '../../assets/Sleep.json';
+import React from 'react';
 
-const InitDataPage = () => {
-    // ...existing code...
-
-    return (
-        <div>
-            {/* ...existing code... */}
-            <Lottie animationData={stickerAnimation} />
-            {/* ...existing code... */}
-        </div>
-    );
+const InitDataPage: React.FC = () => {
+    return <div />;
 };
 
 export default InitDataPage;
