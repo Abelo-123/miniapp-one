@@ -153,6 +153,78 @@ export function getLinkPlaceholder(service: Service | null | undefined, platform
     return def?.placeholder || 'https://...';
 }
 
+export interface ServiceRequirements {
+    mode: 'default' | 'comments' | 'hashtags' | 'poll' | 'package' | 'profile' | 'post';
+    labelLink: string;
+    labelExtra?: string;
+    placeholderExtra?: string;
+    placeholderLink: string;
+}
+
+export function getServiceRequirements(service: Service | null | undefined, platform: SocialPlatform): ServiceRequirements {
+    const placeholderLink = getLinkPlaceholder(service, platform);
+    if (!service) return { mode: 'default', labelLink: 'Link / URL', placeholderLink };
+
+    const type = service.type?.toLowerCase() || '';
+    const name = service.name?.toLowerCase() || '';
+    const cat = service.category?.toLowerCase() || '';
+
+    if (type.includes('comment') || name.includes('comment') || cat.includes('comment') || name.includes('review')) {
+        return {
+            mode: 'comments',
+            labelLink: 'Post / Video Link',
+            labelExtra: 'Comments (One comment per line)',
+            placeholderExtra: 'Excellent post!\nGreat content!\nHighly recommended!',
+            placeholderLink,
+        };
+    }
+    if (type.includes('mention') || type.includes('hashtag') || name.includes('hashtag') || name.includes('mention') || name.includes('keyword')) {
+        return {
+            mode: 'hashtags',
+            labelLink: 'Target Link / Profile',
+            labelExtra: 'Hashtags / Usernames / Keywords (One per line)',
+            placeholderExtra: '#viral\n#trending\n@influencer',
+            placeholderLink,
+        };
+    }
+    if (type.includes('poll') || name.includes('poll') || cat.includes('poll') || name.includes('vote')) {
+        return {
+            mode: 'poll',
+            labelLink: 'Poll / Voting Link',
+            labelExtra: 'Poll Option / Answer Number',
+            placeholderExtra: 'e.g. 1 (for first option), 2 (for second option)',
+            placeholderLink,
+        };
+    }
+    if (type.includes('package') || name.includes('package') || cat.includes('package')) {
+        return {
+            mode: 'package',
+            labelLink: 'Target Link / Profile / Post',
+            placeholderLink,
+        };
+    }
+    if (name.includes('follower') || cat.includes('follower') || name.includes('subscriber') || cat.includes('subscriber') || name.includes('member')) {
+        return {
+            mode: 'profile',
+            labelLink: 'Profile / Channel Username or URL',
+            placeholderLink: placeholderLink.includes('https://') ? placeholderLink : 'e.g. @username or https://t.me/channel',
+        };
+    }
+    if (name.includes('like') || cat.includes('like') || name.includes('view') || cat.includes('view') || name.includes('reaction') || name.includes('share')) {
+        return {
+            mode: 'post',
+            labelLink: 'Specific Post / Media / Video Link',
+            placeholderLink,
+        };
+    }
+
+    return {
+        mode: 'default',
+        labelLink: 'Link / URL',
+        placeholderLink,
+    };
+}
+
 // ─── Currency Formatting ──────────────────────────────────────
 export function formatETB(amount: number | string): string {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;

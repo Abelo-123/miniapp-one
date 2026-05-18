@@ -95,13 +95,6 @@ async function migrate() {
         }
 
         try {
-            await conn.execute('ALTER TABLE orders ADD COLUMN custom_fields JSON AFTER status');
-            console.log('Added custom_fields column to orders table');
-        } catch (e) {
-            // Column might already exist
-        }
-
-        try {
             await conn.execute('CREATE INDEX idx_orders_user_id ON orders(user_id)');
             console.log('Added INDEX to orders(user_id)');
         } catch (e) {}

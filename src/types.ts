@@ -46,6 +46,12 @@ export type OrderStatus =
     | 'cancelled'
     | 'partial';
 
+export interface CustomField {
+    type: 'text' | 'link' | 'comment' | 'hashtag' | 'note';
+    label?: string;
+    value: string;
+}
+
 export interface Order {
     id: number;
     api_order_id: number;
@@ -58,6 +64,7 @@ export interface Order {
     remains: number;
     start_count: number;
     created_at: string;
+    custom_fields?: CustomField[] | null;
 }
 
 export interface Deposit {

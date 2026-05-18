@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { formatETB, getLinkPlaceholder } from '../../constants';
+import { formatETB, getLinkPlaceholder, getServiceRequirements } from '../../constants';
+import type { CustomField } from '../../types';
 
 import { useApp } from '../../context/AppContext';
 import { Section, Cell, Button } from '@telegram-apps/telegram-ui';
@@ -9,6 +10,14 @@ import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
 import { NewsTicker } from '../../components/NewsTicker/NewsTicker';
 import { hapticImpact, hapticNotification, getInitDataString } from '../../helpers/telegram';
 
+const FIELD_TYPES: CustomField['type'][] = ['text', 'link', 'comment', 'hashtag', 'note'];
+const FIELD_TYPE_LABELS: Record<CustomField['type'], string> = {
+    text: '✏️ Text',
+    link: '🔗 Link',
+    comment: '💬 Comment',
+    hashtag: '#️⃣ Hashtag',
+    note: '📝 Note',
+};
 
 export function OrderPage() {
     const appContext = useApp();
@@ -24,24 +33,61 @@ export function OrderPage() {
     
     const [link, setLink] = useState('');
     const [quantity, setQuantity] = useState('');
+    const [comments, setComments] = useState('');
+    const [answerNumber, setAnswerNumber] = useState('');
+    const [customFields, setCustomFields] = useState<CustomField[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFirstOrder, setIsFirstOrder] = useState(!localStorage.getItem('hasPlacedOrder'));
 
     const orderContainerRef = useRef<HTMLDivElement>(null);
 
+    const reqs = useMemo(() => {
+        return getServiceRequirements(selectedService, selectedPlatform || 'other');
+    }, [selectedService, selectedPlatform]);
+
+    const showComments = reqs.mode === 'comments' || reqs.mode === 'hashtags';
+    const showPoll = reqs.mode === 'poll';
+    const showPackage = reqs.mode === 'package';
+    const showQuantity = !showPackage && !showComments;
+
     useEffect(() => {
         setLink('');
-        setQuantity('');
+        setQuantity(selectedService?.type === 'Package' ? (selectedService.min?.toString() || '') : '');
+        setComments('');
+        setAnswerNumber('');
+        setCustomFields([]);
     }, [selectedService]);
 
+    const effectiveQuantity = useMemo(() => {
+        if (!selectedService) return 0;
+        if (selectedService.type === 'Package') return selectedService.min;
+        if (showComments) {
+            return comments.split('\n').filter(l => l.trim()).length;
+        }
+        return parseInt(quantity, 10) || 0;
+    }, [selectedService, quantity, comments, showComments]);
+
     const totalCharge = useMemo(() => {
-        if (!selectedService || !quantity) return 0;
-        const q = parseInt(quantity, 10) || 0;
-        const original = (q / 1000) * selectedService.rate;
+        if (!selectedService || effectiveQuantity <= 0) return 0;
+        const original = (effectiveQuantity / 1000) * selectedService.rate;
         return discountPercent > 0 ? original * (1 - (discountPercent / 100)) : original;
-    }, [selectedService, quantity, discountPercent]);
+    }, [selectedService, effectiveQuantity, discountPercent]);
 
     const linkPlaceholder = getLinkPlaceholder(selectedService, selectedPlatform || 'other');
+
+    // ── Custom Fields helpers ─────────────────────────────────
+    const addCustomField = useCallback(() => {
+        if (customFields.length >= 10) return;
+        setCustomFields(prev => [...prev, { type: 'text', value: '' }]);
+    }, [customFields.length]);
+
+    const updateCustomField = useCallback((idx: number, patch: Partial<CustomField>) => {
+        setCustomFields(prev => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
+    }, []);
+
+    const removeCustomField = useCallback((idx: number) => {
+        setCustomFields(prev => prev.filter((_, i) => i !== idx));
+    }, []);
 
     const handlePlaceOrder = async () => {
         // 1. Selection Security
@@ -59,13 +105,24 @@ export function OrderPage() {
         }
 
         // 2. Input Security
-        const q = parseInt(quantity, 10);
+        const q = effectiveQuantity;
         
         if (!link.trim()) {
             showToast('error', 'Missing Link: Please enter the link or username for this order.');
             return hapticNotification('error');
         }
-        if (!quantity || isNaN(q)) {
+
+        if (showComments && q === 0) {
+            showToast('error', 'Missing Comments: Please enter at least one comment line.');
+            return hapticNotification('error');
+        }
+
+        if (showPoll && (!answerNumber || isNaN(parseInt(answerNumber, 10)))) {
+            showToast('error', 'Missing Poll Option: Please enter the answer number.');
+            return hapticNotification('error');
+        }
+
+        if (showQuantity && (!quantity || isNaN(q))) {
             showToast('error', 'Missing Quantity: Please specify how many interactions you want to order.');
             return hapticNotification('error');
         }
@@ -77,7 +134,7 @@ export function OrderPage() {
             showToast('error', `Quantity Exceeds Limit: The maximum order limit for this service is ${selectedService.max.toLocaleString()}.`);
             return hapticNotification('error');
         }
-        if (q % 10 !== 0) {
+        if (showQuantity && q % 10 !== 0) {
             showToast('error', 'Invalid Quantity: The quantity must be a multiple of 10.');
             return hapticNotification('error');
         }
@@ -100,7 +157,12 @@ export function OrderPage() {
                     service: (selectedService as any).service || (selectedService as any).id,
                     link: link.trim(),
                     quantity: q,
-                    initData
+                    initData,
+                    comments: showComments && comments.trim() ? comments.trim() : undefined,
+                    answer_number: showPoll && answerNumber ? parseInt(answerNumber, 10) : undefined,
+                    custom_fields: customFields.filter(f => f.value.trim()).length > 0
+                        ? customFields.filter(f => f.value.trim())
+                        : undefined,
                 })
             });
             const data = await res.json();
@@ -118,6 +180,9 @@ export function OrderPage() {
                 setIsFirstOrder(false);
                 setLink('');
                 setQuantity('');
+                setComments('');
+                setAnswerNumber('');
+                setCustomFields([]);
                 setSelectedService(null);
                 
                 if ('refreshUser' in appContext && typeof (appContext as any).refreshUser === 'function') {
@@ -239,27 +304,121 @@ export function OrderPage() {
                     </div>
 
                     <div className="order-input-group">
-                        <label>Link / URL</label>
+                        <label>{reqs.labelLink}</label>
                         <input 
                             type="text" 
-                            placeholder={linkPlaceholder} 
+                            placeholder={reqs.placeholderLink} 
                             value={link} 
                             onChange={(e) => setLink(e.target.value)} 
                             className="order-custom-input"
                         />
                     </div>
 
-                    <div className="order-input-group">
-                        <label>Quantity</label>
-                        <input 
-                            type="number" 
-                            inputMode="numeric"
-                            placeholder={`${selectedService.min} - ${selectedService.max}`} 
-                            value={quantity} 
-                            onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ''))} 
-                            className="order-custom-input"
-                        />
-                    </div>
+                    {showComments && (
+                        <div className="order-input-group">
+                            <label>{reqs.labelExtra || 'Comments (One per line)'} • <span style={{ color: 'var(--color-accent)' }}>{effectiveQuantity} entered</span></label>
+                            <textarea 
+                                placeholder={reqs.placeholderExtra || "Enter comments here...\nGood post!\nAmazing!\nLove this!"}
+                                value={comments} 
+                                onChange={(e) => setComments(e.target.value)} 
+                                rows={5}
+                                style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: '1px solid var(--border-input, rgba(255,255,255,0.1))', outline: 'none', fontSize: '14px', resize: 'vertical' }}
+                            />
+                            <div style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)', marginTop: '4px' }}>
+                                Min: {selectedService.min} • Max: {selectedService.max} lines
+                            </div>
+                        </div>
+                    )}
+
+                    {showPoll && (
+                        <div className="order-input-group">
+                            <label>{reqs.labelExtra || 'Poll Option / Answer Number'}</label>
+                            <input 
+                                type="number" 
+                                placeholder={reqs.placeholderExtra || "e.g. 1 (for first option), 2 (for second option)"} 
+                                value={answerNumber} 
+                                onChange={(e) => setAnswerNumber(e.target.value.replace(/\D/g, ''))} 
+                                className="order-custom-input"
+                            />
+                        </div>
+                    )}
+
+                    {showPackage && (
+                        <div className="order-input-group">
+                            <label>Quantity</label>
+                            <div style={{ padding: '12px', background: 'rgba(0,214,143,0.1)', color: 'var(--color-success)', borderRadius: '8px', fontWeight: 600, fontSize: '14px' }}>
+                                📦 Fixed Package Quantity: {selectedService.min}
+                            </div>
+                        </div>
+                    )}
+
+                    {showQuantity && (
+                        <div className="order-input-group">
+                            <label>Quantity</label>
+                            <input 
+                                type="number" 
+                                inputMode="numeric"
+                                placeholder={`${selectedService.min} - ${selectedService.max}`} 
+                                value={quantity} 
+                                onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ''))} 
+                                className="order-custom-input"
+                            />
+                        </div>
+                    )}
+
+                    {customFields.length > 0 && (
+                        <div className="order-custom-fields-container" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--tg-theme-text-color)' }}>Additional Requirements / Custom Fields</div>
+                            {customFields.map((field, idx) => (
+                                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--tg-theme-bg-color, #1a1a2e)', padding: '12px', borderRadius: '12px', border: '1px solid var(--tg-theme-section-separator-color, rgba(255,255,255,0.1))' }}>
+                                    <select
+                                        value={field.type}
+                                        onChange={(e) => updateCustomField(idx, { type: e.target.value as any })}
+                                        style={{ background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '12px 10px', borderRadius: '8px', fontSize: '13px', outline: 'none', cursor: 'pointer', flexShrink: 0 }}
+                                    >
+                                        {FIELD_TYPES.map(t => (
+                                            <option key={t} value={t}>{FIELD_TYPE_LABELS[t]}</option>
+                                        ))}
+                                    </select>
+                                    
+                                    {field.type === 'comment' || field.type === 'note' ? (
+                                        <textarea
+                                            placeholder={`Enter ${field.type}...`}
+                                            value={field.value}
+                                            onChange={(e) => updateCustomField(idx, { value: e.target.value })}
+                                            style={{ flexGrow: 1, minHeight: '60px', background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '10px 12px', borderRadius: '8px', fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                                        />
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            placeholder={`Enter ${field.type}...`}
+                                            value={field.value}
+                                            onChange={(e) => updateCustomField(idx, { value: e.target.value })}
+                                            style={{ flexGrow: 1, background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '12px 12px', borderRadius: '8px', fontSize: '14px', outline: 'none' }}
+                                        />
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => removeCustomField(idx)}
+                                        style={{ background: 'transparent', border: 'none', color: 'var(--color-danger, #ff4757)', fontSize: '18px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {customFields.length < 10 && (
+                        <button
+                            type="button"
+                            onClick={addCustomField}
+                            style={{ background: 'rgba(0, 122, 255, 0.15)', color: '#007aff', border: '1px dashed rgba(0, 122, 255, 0.4)', borderRadius: '12px', padding: '12px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', marginTop: '12px', marginBottom: '16px', transition: 'all 0.2s', width: '100%' }}
+                        >
+                            + Add Custom Requirement / Comment / Link
+                        </button>
+                    )}
 
                     <div className="order-total-card">
                         <span>Total Charge</span>

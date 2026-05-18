@@ -1,62 +1,86 @@
 /**
  * Admin Routes — Paxyo Admin Panel Backend
  *
- * All endpoints the admin panel frontend consumes:
- *   GET  /api/admin/dashboard
- *   GET  /api/admin/users
- *   POST /api/admin/users/balance
- *   POST /api/admin/users/role
- *   POST /api/admin/alerts
- *   GET  /api/admin/orders
- *   GET  /api/admin/deposits
- *   GET  /api/admin/settings
- *   POST /api/admin/settings
- *   GET  /api/admin/services/custom
- *   POST /api/admin/services/custom
- *   DEL  /api/admin/services/custom/:serviceId
- *   GET  /api/admin/services/activity
- *   GET  /api/admin/services/disabled
- *   GET  /api/admin/chat/sessions
- *   GET  /api/admin/chat/:user_id
- *   POST /api/admin/chat/:user_id
+ * Provides JWT-like token auth and CRUD endpoints for:
+ * - Dashboard statistics
+ * - User management (list, balance, role)
+ * - Order history (all users)
+ * - Deposit history (all users)
+ * - Settings management
  */
 import { Router } from 'express';
+import crypto from 'crypto';
 import pool from '../config/database.js';
 
 const router = Router();
 
-// Test route to verify this file is active
-router.get('/test-file', (req, res) => {
-    res.json({ success: true, message: 'New adminUsers.js is active!', time: new Date().toISOString() });
+// ─── Simple Token Auth ──────────────────────────────────────────
+// In production, use a proper JWT library. This is a lightweight approach.
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'paxyo2026';
+const TOKEN_SECRET = process.env.TOKEN_SECRET || crypto.randomBytes(32).toString('hex');
+
+// Store active tokens in memory (cleared on server restart)
+const activeTokens = new Set();
+
+function generateToken() {
+    const token = crypto.randomBytes(48).toString('hex');
+    activeTokens.add(token);
+    return token;
+}
+
+function requireAdmin(req, res, next) {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const token = auth.slice(7);
+    if (!activeTokens.has(token)) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    next();
+}
+
+// ─── Login ──────────────────────────────────────────────────────
+router.post('/login', (req, res) => {
+    const { username, password } = req.body;
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        const token = generateToken();
+        return res.json({ success: true, token });
+    }
+    return res.status(401).json({ success: false, error: 'Invalid credentials' });
 });
+
+// Apply admin auth to all routes below
+router.use(requireAdmin);
 
 // ─── Dashboard ──────────────────────────────────────────────────
 router.get('/dashboard', async (req, res) => {
     try {
-        const [[{ totalUsers }]]    = await pool.execute('SELECT COUNT(*) as totalUsers FROM auth');
-        const [[{ totalOrders }]]   = await pool.execute('SELECT COUNT(*) as totalOrders FROM orders');
-        const [[{ totalDeposits }]] = await pool.execute("SELECT COUNT(*) as totalDeposits FROM deposits WHERE status IN ('completed','success')");
-        const [[{ totalRevenue }]]  = await pool.execute("SELECT COALESCE(SUM(amount),0) as totalRevenue FROM deposits WHERE status IN ('completed','success')");
+        const [[{ totalUsers }]] = await pool.execute('SELECT COUNT(*) as totalUsers FROM auth');
+        const [[{ totalOrders }]] = await pool.execute('SELECT COUNT(*) as totalOrders FROM orders');
+        const [[{ totalDeposits }]] = await pool.execute("SELECT COUNT(*) as totalDeposits FROM deposits WHERE status IN ('completed', 'success')");
+        const [[{ totalRevenue }]] = await pool.execute("SELECT COALESCE(SUM(amount), 0) as totalRevenue FROM deposits WHERE status IN ('completed', 'success')");
 
         const [recentOrders] = await pool.execute(`
-            SELECT o.*, a.username, a.first_name
-            FROM orders o
-            LEFT JOIN auth a ON o.user_id = a.tg_id
+            SELECT o.*, a.username, a.first_name 
+            FROM orders o 
+            LEFT JOIN auth a ON o.user_id = a.tg_id 
             ORDER BY o.created_at DESC LIMIT 10
         `);
 
         const [recentDeposits] = await pool.execute(`
-            SELECT d.*, a.username, a.first_name
-            FROM deposits d
-            LEFT JOIN auth a ON d.user_id = a.tg_id
+            SELECT d.*, a.username, a.first_name 
+            FROM deposits d 
+            LEFT JOIN auth a ON d.user_id = a.tg_id 
             ORDER BY d.created_at DESC LIMIT 10
         `);
 
         return res.json({
-            totalUsers:    Number(totalUsers),
-            totalOrders:   Number(totalOrders),
+            totalUsers: Number(totalUsers),
+            totalOrders: Number(totalOrders),
             totalDeposits: Number(totalDeposits),
-            totalRevenue:  Number(totalRevenue),
+            totalRevenue: Number(totalRevenue),
             recentOrders,
             recentDeposits,
         });
@@ -69,32 +93,32 @@ router.get('/dashboard', async (req, res) => {
 // ─── Users ──────────────────────────────────────────────────────
 router.get('/users', async (req, res) => {
     try {
-        const page      = parseInt(req.query.page)  || 1;
-        const limit     = parseInt(req.query.limit) || 20;
-        const search    = req.query.search    || '';
-        const sortBy    = req.query.sortBy    || 'last_login';
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const search = req.query.search || '';
+        const sortBy = req.query.sortBy || 'last_login';
         const sortOrder = req.query.sortOrder || 'desc';
-        const offset    = (page - 1) * limit;
+        const offset = (page - 1) * limit;
 
         let whereClause = '';
-        let params      = [];
+        let params = [];
 
         if (search) {
             whereClause = 'WHERE tg_id LIKE ? OR username LIKE ? OR first_name LIKE ? OR last_name LIKE ?';
             const s = `%${search}%`;
-            params  = [s, s, s, s];
+            params = [s, s, s, s];
         }
 
         const validSortColumns = {
             recent_registration: 'created_at',
-            big_balance:         'balance',
-            total_spent:         'total_spent',
-            recent_active:       'last_login',
-            last_deposit:        'last_deposit',
-            last_order:          'last_order',
+            big_balance: 'balance',
+            total_spent: 'total_spent',
+            recent_active: 'last_login',
+            last_deposit: 'last_deposit',
+            last_order: 'last_order',
         };
         const sortColumn = validSortColumns[sortBy] || 'last_login';
-        const orderDir   = sortOrder === 'asc' ? 'ASC' : 'DESC';
+        const orderDir = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
         const [[{ total }]] = await pool.execute(
             `SELECT COUNT(*) as total FROM auth ${whereClause}`, params
@@ -122,6 +146,7 @@ router.post('/users/balance', async (req, res) => {
         await pool.execute('UPDATE auth SET balance = balance + ? WHERE tg_id = ?', [amount, tg_id]);
         const [[user]] = await pool.execute('SELECT balance FROM auth WHERE tg_id = ?', [tg_id]);
 
+        // Log the transaction
         await pool.execute(
             `INSERT INTO transactions (user_id, type, amount, balance_after, reference_type, description, created_at)
              VALUES (?, 'admin_adjustment', ?, ?, 'admin', 'Admin balance adjustment', NOW())`,
@@ -141,6 +166,7 @@ router.post('/users/role', async (req, res) => {
         if (!tg_id || !role) {
             return res.status(400).json({ error: 'tg_id and role are required' });
         }
+
         await pool.execute('UPDATE auth SET role = ? WHERE tg_id = ?', [role, tg_id]);
         return res.json({ success: true });
     } catch (err) {
@@ -153,22 +179,26 @@ router.post('/users/role', async (req, res) => {
 router.post('/alerts', async (req, res) => {
     try {
         const { target, title, message, type = 'info' } = req.body;
+
         if (!title || !message || !target) {
             return res.status(400).json({ error: 'target, title, and message are required' });
         }
 
         if (target === 'all') {
+            // Broadcast to every user
             await pool.execute(
                 `INSERT INTO alerts (user_id, title, message, type)
                  SELECT tg_id, ?, ?, ? FROM auth`,
                 [title, message, type]
             );
         } else {
+            // Send to a specific user by tg_id
             await pool.execute(
                 'INSERT INTO alerts (user_id, title, message, type) VALUES (?, ?, ?, ?)',
                 [target, title, message, type]
             );
         }
+
         return res.json({ success: true });
     } catch (err) {
         console.error('[admin/alerts]', err);
@@ -179,8 +209,8 @@ router.post('/alerts', async (req, res) => {
 // ─── Orders ─────────────────────────────────────────────────────
 router.get('/orders', async (req, res) => {
     try {
-        const page   = parseInt(req.query.page)  || 1;
-        const limit  = parseInt(req.query.limit) || 20;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
         const search = req.query.search || '';
         const status = req.query.status || '';
         const offset = (page - 1) * limit;
@@ -193,6 +223,7 @@ router.get('/orders', async (req, res) => {
             const s = `%${search}%`;
             params.push(s, s, s, s);
         }
+
         if (status) {
             whereClause += ' AND o.status = ?';
             params.push(status);
@@ -203,10 +234,10 @@ router.get('/orders', async (req, res) => {
         );
 
         const [orders] = await pool.execute(
-            `SELECT o.*, a.username, a.first_name
-             FROM orders o
-             LEFT JOIN auth a ON o.user_id = a.tg_id
-             ${whereClause}
+            `SELECT o.*, a.username, a.first_name 
+             FROM orders o 
+             LEFT JOIN auth a ON o.user_id = a.tg_id 
+             ${whereClause} 
              ORDER BY o.created_at DESC LIMIT ? OFFSET ?`,
             [...params, String(limit), String(offset)]
         );
@@ -221,8 +252,8 @@ router.get('/orders', async (req, res) => {
 // ─── Deposits ───────────────────────────────────────────────────
 router.get('/deposits', async (req, res) => {
     try {
-        const page   = parseInt(req.query.page)  || 1;
-        const limit  = parseInt(req.query.limit) || 20;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
         const search = req.query.search || '';
         const status = req.query.status || '';
         const offset = (page - 1) * limit;
@@ -235,6 +266,7 @@ router.get('/deposits', async (req, res) => {
             const s = `%${search}%`;
             params.push(s, s, s, s);
         }
+
         if (status) {
             whereClause += ' AND d.status = ?';
             params.push(status);
@@ -245,10 +277,10 @@ router.get('/deposits', async (req, res) => {
         );
 
         const [deposits] = await pool.execute(
-            `SELECT d.*, a.username, a.first_name
-             FROM deposits d
-             LEFT JOIN auth a ON d.user_id = a.tg_id
-             ${whereClause}
+            `SELECT d.*, a.username, a.first_name 
+             FROM deposits d 
+             LEFT JOIN auth a ON d.user_id = a.tg_id 
+             ${whereClause} 
              ORDER BY d.created_at DESC LIMIT ? OFFSET ?`,
             [...params, String(limit), String(offset)]
         );
@@ -268,12 +300,12 @@ router.get('/settings', async (req, res) => {
         rows.forEach(r => { settings[r.setting_key] = r.setting_value; });
 
         return res.json({
-            rate_multiplier:  settings.rate_multiplier  || '55',
+            rate_multiplier: settings.rate_multiplier || '55',
             discount_percent: settings.discount_percent || '0',
-            holiday_name:     settings.holiday_name     || '',
+            holiday_name: settings.holiday_name || '',
             maintenance_mode: settings.maintenance_mode || '0',
-            user_can_order:   settings.user_can_order   || '1',
-            marquee_text:     settings.marquee_text     || '',
+            user_can_order: settings.user_can_order || '1',
+            marquee_text: settings.marquee_text || '',
             top_services_ids: settings.top_services_ids || '',
         });
     } catch (err) {
@@ -287,18 +319,20 @@ router.post('/settings', async (req, res) => {
         const { key, value } = req.body;
         if (!key) return res.status(400).json({ error: 'key is required' });
 
+        // Upsert: INSERT ... ON DUPLICATE KEY UPDATE
         await pool.execute(
             'INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
             [key, value, value]
         );
+
         return res.json({ success: true });
     } catch (err) {
-        console.error('[admin/settings POST]', err);
+        console.error('[admin/settings]', err);
         return res.status(500).json({ error: 'Failed to update setting' });
     }
 });
 
-// ─── Service Custom Pricing ─────────────────────────────────────
+// ─── Service Custom Pricing ────────────────────────────────────────
 router.get('/services/custom', async (req, res) => {
     try {
         const [rows] = await pool.execute('SELECT * FROM service_custom ORDER BY updated_at DESC');
@@ -315,18 +349,28 @@ router.post('/services/custom', async (req, res) => {
         if (!service_id) return res.status(400).json({ error: 'service_id is required' });
 
         await pool.execute(
-            `INSERT INTO service_custom (service_id, custom_rate, profit_margin, is_enabled)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-             custom_rate    = COALESCE(?, custom_rate),
-             profit_margin  = COALESCE(?, profit_margin),
-             is_enabled     = COALESCE(?, is_enabled)`,
+            `INSERT INTO service_custom (service_id, custom_rate, profit_margin, is_enabled) 
+             VALUES (?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE 
+             custom_rate = COALESCE(?, custom_rate),
+             profit_margin = COALESCE(?, profit_margin),
+             is_enabled = COALESCE(?, is_enabled)`,
+            [service_id, custom_rate, profit_margin, is_enabled, custom_rate, profit_margin, is_enabled]
+        );
+
+        await pool.execute(
+            `INSERT INTO service_custom (service_id, custom_rate, profit_margin, is_enabled) 
+             VALUES (?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE 
+             custom_rate = COALESCE(?, custom_rate),
+             profit_margin = COALESCE(?, profit_margin),
+             is_enabled = COALESCE(?, is_enabled)`,
             [service_id, custom_rate, profit_margin, is_enabled, custom_rate, profit_margin, is_enabled]
         );
 
         return res.json({ success: true });
     } catch (err) {
-        console.error('[admin/services/custom POST]', err);
+        console.error('[admin/services/custom]', err);
         return res.status(500).json({ error: 'Failed to update custom pricing' });
     }
 });
@@ -337,16 +381,18 @@ router.delete('/services/custom/:serviceId', async (req, res) => {
         await pool.execute('DELETE FROM service_custom WHERE service_id = ?', [serviceId]);
         return res.json({ success: true });
     } catch (err) {
-        console.error('[admin/services/custom DELETE]', err);
+        console.error('[admin/services/custom]', err);
         return res.status(500).json({ error: 'Failed to delete custom pricing' });
     }
 });
 
+// ─── Service Activity Log ───────────────────────────────────────────
 router.get('/services/activity', async (req, res) => {
     try {
         const [rows] = await pool.execute(
-            `SELECT sc.*
-             FROM service_custom sc
+            `SELECT sc.*, a.username, a.first_name 
+             FROM service_custom sc 
+             LEFT JOIN auth a ON sc.updated_by = a.tg_id
              ORDER BY sc.updated_at DESC LIMIT 20`
         );
         return res.json(rows);
@@ -356,6 +402,7 @@ router.get('/services/activity', async (req, res) => {
     }
 });
 
+// ─── Disabled Services ────────────────────────────────────────────────
 router.get('/services/disabled', async (req, res) => {
     try {
         const [rows] = await pool.execute(
@@ -368,10 +415,12 @@ router.get('/services/disabled', async (req, res) => {
     }
 });
 
-// ─── Support Chat ────────────────────────────────────────────────
+    // ─── Support Chat ────────────────────────────────────────────────
 router.get('/chat/sessions', async (req, res) => {
+    let conn;
     try {
-        const [sessions] = await pool.execute(`
+        conn = await pool.getConnection();
+        const [sessions] = await conn.execute(`
             SELECT c.user_id, a.username, a.first_name, MAX(c.created_at) as last_message_at
             FROM chat_messages c
             LEFT JOIN auth a ON c.user_id = a.tg_id
@@ -380,8 +429,10 @@ router.get('/chat/sessions', async (req, res) => {
         `);
         return res.json(sessions);
     } catch (err) {
-        console.error('[admin/chat/sessions]', err);
-        return res.status(500).json({ error: 'Failed to load chat sessions' });
+        console.error('[admin/chat/sessions] Error:', err.message);
+        return res.status(500).json({ error: err.message });
+    } finally {
+        if (conn) conn.release();
     }
 });
 

@@ -2,9 +2,9 @@ import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeH
 import { Section, Input, Textarea, Button, Cell } from '@telegram-apps/telegram-ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApp } from '../../context/AppContext';
-import { formatETB, getLinkPlaceholder, QUANTITY_STEP } from '../../constants';
+import { formatETB, getLinkPlaceholder, QUANTITY_STEP, getServiceRequirements } from '../../constants';
 import * as api from '../../api';
-import type { Order } from '../../types';
+import type { Order, CustomField } from '../../types';
 import {
     hapticImpact,
     hapticNotification,
@@ -24,6 +24,15 @@ function isValidUrl(str: string): boolean {
     return urlPattern.test(str.trim());
 }
 
+const FIELD_TYPES: CustomField['type'][] = ['text', 'link', 'comment', 'hashtag', 'note'];
+const FIELD_TYPE_LABELS: Record<CustomField['type'], string> = {
+    text: '✏️ Text',
+    link: '🔗 Link',
+    comment: '💬 Comment',
+    hashtag: '#️⃣ Hashtag',
+    note: '📝 Note',
+};
+
 export type OrderFormHandle = { submit: () => Promise<void> };
 export type OrderFormProps = { onClose?: () => void };
 export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function OrderForm({ onClose }, ref) {
@@ -42,6 +51,8 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
     const [quantity, setQuantity] = useState('');
     const [comments, setComments] = useState('');
     const [answerNumber, setAnswerNumber] = useState('');
+    const [customFields, setCustomFields] = useState<CustomField[]>([]);
+
     
     const [touched, setTouched] = useState<{
         link?: boolean;
@@ -60,23 +71,33 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
 
     const service = selectedService!;
 
+    const reqs = useMemo(() => {
+        return getServiceRequirements(service, selectedPlatform || 'other');
+    }, [service, selectedPlatform]);
+
+    const showComments = reqs.mode === 'comments' || reqs.mode === 'hashtags';
+    const showPackage = reqs.mode === 'package';
+    const showPoll = reqs.mode === 'poll';
+    const showQuantity = !showPackage && !showComments;
+
+    const effectiveQuantity = useMemo(() => {
+        if (!service) return 0;
+        if (service.type === 'Package') return service.min;
+        if (showComments) {
+            return comments.split('\n').filter(l => l.trim()).length;
+        }
+        return parseInt(quantity, 10) || 0;
+    }, [service, quantity, comments, showComments]);
+
     // Memoized calculations
     const { charge, hasDiscount } = useMemo(() => {
-        const qty = parseInt(quantity) || 0;
-        const original = (qty / 1000) * service.rate;
+        const original = (effectiveQuantity / 1000) * service.rate;
         const discounted = discountPercent > 0 ? original * (1 - discountPercent / 100) : original;
         return {
             charge: discounted,
             hasDiscount: discountPercent > 0,
         };
-    }, [quantity, service.rate, rateMultiplier, discountPercent, service.type]);
-
-    // Passing the entire service object to get context-aware placeholders
-    const placeholder = getLinkPlaceholder(service, selectedPlatform || 'other');
-    
-    const showComments = ['Custom Comments', 'Custom Comments Package', 'Mentions with Hashtags'].includes(service.type);
-    const showQuantity = service.type !== 'Package';
-    const showPoll = service.type === 'Poll';
+    }, [effectiveQuantity, service.rate, discountPercent]);
 
     // Validation with error messages
     const validation = useMemo(() => {
@@ -160,6 +181,21 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
         } catch { /* noop */ }
     }, [onClose]);
 
+    // ── Custom Fields helpers ─────────────────────────────────
+    const addCustomField = useCallback(() => {
+        if (customFields.length >= 10) return;
+        setCustomFields(prev => [...prev, { type: 'text', value: '' }]);
+    }, [customFields.length]);
+
+    const updateCustomField = useCallback((idx: number, patch: Partial<CustomField>) => {
+        setCustomFields(prev => prev.map((f, i) => i === idx ? { ...f, ...patch } : f));
+    }, []);
+
+    const removeCustomField = useCallback((idx: number) => {
+        setCustomFields(prev => prev.filter((_, i) => i !== idx));
+    }, []);
+
+
     // Optimistic Mutation Engine
     const { mutate: placeOrderMutation, isPending: submitting } = useMutation({
         mutationFn: api.placeOrder,
@@ -167,7 +203,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             await queryClient.cancelQueries({ queryKey: [ 'orders' ] });
             const previousOrders = queryClient.getQueryData<Order[]>([ 'orders' ]) || [];
             const previousBalance = user?.balance || 0;
-            const qty = service.type === 'Package' ? service.min : parseInt(quantity);
+            const qty = effectiveQuantity;
             const optimisticOrder: any = {
                 id: Date.now(),
                 api_order_id: 0,
@@ -203,7 +239,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                 hapticImpact('heavy');
                 hapticNotification('success');
                 localStorage.setItem('hasOrdered', 'true');
-                setLink(''); setQuantity(''); setComments(''); setAnswerNumber(''); setTouched({});
+                setLink(''); setQuantity(''); setComments(''); setAnswerNumber(''); setCustomFields([]); setTouched({});
                 if (onClose) onClose();
                 setActiveTab('history');
             } else {
@@ -223,7 +259,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             showToast('error', firstError);
             return;
         }
-        const qty = service.type === 'Package' ? service.min : parseInt(quantity);
+        const qty = effectiveQuantity;
         placeOrderMutation({
             service: service.id,
             link,
@@ -231,6 +267,9 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
             tg_id: user?.id,
             comments: comments || undefined,
             answer_number: answerNumber ? parseInt(answerNumber) : undefined,
+            custom_fields: customFields.filter(f => f.value.trim()).length > 0
+                ? customFields.filter(f => f.value.trim())
+                : undefined,
         });
     };
 
@@ -340,8 +379,8 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
 
                     <Section header="Order Details">
                         <Input
-                            header="Link"
-                            placeholder={placeholder}
+                            header={reqs.labelLink}
+                            placeholder={reqs.placeholderLink}
                             value={link}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 setLink(e.target.value);
@@ -370,11 +409,17 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                             </>
                         )}
 
+                        {showPackage && (
+                            <div style={{ padding: '12px 16px', background: 'rgba(0,214,143,0.1)', color: 'var(--color-success)', borderRadius: '8px', fontWeight: 600, fontSize: '14px', margin: '0 16px 12px' }}>
+                                📦 Fixed Package Quantity: {service.min}
+                            </div>
+                        )}
+
                         {showComments && (
                             <>
                                 <Textarea
-                                    header="Comments (One per line)"
-                                    placeholder="Enter list of comments..."
+                                    header={reqs.labelExtra || 'Comments (One per line)'}
+                                    placeholder={reqs.placeholderExtra || 'Enter items here (one per line)...'}
                                     value={comments}
                                     onChange={(e: any) => {
                                         setComments(e.target.value);
@@ -385,7 +430,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                                     <div className="order-form-error">{validation.errors.comments}</div>
                                 )}
                                 <div className="order-form-hint">
-                                    {comments.split('\n').filter((l: string) => l.trim()).length} / {service.max} comments
+                                    {comments.split('\n').filter((l: string) => l.trim()).length} / {service.max} lines
                                 </div>
                             </>
                         )}
@@ -393,7 +438,8 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                         {showPoll && (
                             <>
                                 <Input
-                                    header="Answer Number"
+                                    header={reqs.labelExtra || 'Answer Number'}
+                                    placeholder={reqs.placeholderExtra || 'e.g. 1, 2'}
                                     type="number"
                                     value={answerNumber}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -407,6 +453,62 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                             </>
                         )}
                     </Section>
+
+                    <div style={{ padding: '0 16px', marginTop: '16px' }}>
+                        {customFields.length > 0 && (
+                            <div className="order-custom-fields-container" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--tg-theme-text-color)' }}>Additional Requirements / Custom Fields</div>
+                                {customFields.map((field, idx) => (
+                                    <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--tg-theme-bg-color, #1a1a2e)', padding: '12px', borderRadius: '12px', border: '1px solid var(--tg-theme-section-separator-color, rgba(255,255,255,0.1))' }}>
+                                        <select
+                                            value={field.type}
+                                            onChange={(e) => updateCustomField(idx, { type: e.target.value as any })}
+                                            style={{ background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '12px 10px', borderRadius: '8px', fontSize: '13px', outline: 'none', cursor: 'pointer', flexShrink: 0 }}
+                                        >
+                                            {FIELD_TYPES.map(t => (
+                                                <option key={t} value={t}>{FIELD_TYPE_LABELS[t]}</option>
+                                            ))}
+                                        </select>
+                                        
+                                        {field.type === 'comment' || field.type === 'note' ? (
+                                            <textarea
+                                                placeholder={`Enter ${field.type}...`}
+                                                value={field.value}
+                                                onChange={(e) => updateCustomField(idx, { value: e.target.value })}
+                                                style={{ flexGrow: 1, minHeight: '60px', background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '10px 12px', borderRadius: '8px', fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', width: '100%' }}
+                                            />
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                placeholder={`Enter ${field.type}...`}
+                                                value={field.value}
+                                                onChange={(e) => updateCustomField(idx, { value: e.target.value })}
+                                                style={{ flexGrow: 1, background: 'var(--tg-theme-secondary-bg-color, #252542)', color: 'var(--tg-theme-text-color)', border: 'none', padding: '12px 12px', borderRadius: '8px', fontSize: '14px', outline: 'none', width: '100%' }}
+                                            />
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => removeCustomField(idx)}
+                                            style={{ background: 'transparent', border: 'none', color: 'var(--color-danger, #ff4757)', fontSize: '18px', padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {customFields.length < 10 && (
+                            <button
+                                type="button"
+                                onClick={addCustomField}
+                                style={{ background: 'rgba(0, 122, 255, 0.15)', color: '#007aff', border: '1px dashed rgba(0, 122, 255, 0.4)', borderRadius: '12px', padding: '12px', fontWeight: 600, fontSize: '14px', cursor: 'pointer', marginTop: '12px', marginBottom: '16px', transition: 'all 0.2s', width: '100%' }}
+                            >
+                                + Add Custom Requirement / Comment / Link
+                            </button>
+                        )}
+                    </div>
 
                     {/* General Error Message */}
                     {validation.errors.general && (

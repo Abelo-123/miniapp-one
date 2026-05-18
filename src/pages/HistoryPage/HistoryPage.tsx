@@ -239,6 +239,15 @@ export function HistoryPage() {
                                             >
                                                 {order.link}
                                             </a>
+                                            {order.custom_fields && Array.isArray(order.custom_fields) && order.custom_fields.length > 0 && (
+                                                <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    {order.custom_fields.map((cf, i) => (
+                                                        <div key={i} style={{ fontSize: '11px', background: 'rgba(255,255,255,0.08)', padding: '4px 8px', borderRadius: '6px', color: 'var(--tg-theme-hint-color)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                            <strong style={{ color: 'var(--tg-theme-text-color)', textTransform: 'capitalize' }}>{cf.type}:</strong> {cf.value}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="col-center">{order.quantity}</td>
                                         <td className="col-center">{order.start_count || 0}</td>

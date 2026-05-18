@@ -18,27 +18,10 @@ import ordersRouter from './routes/orders.js';
 import appRouter from './routes/app.js';
 import chatRouter from './routes/chat.js';
 import getCategoriesRouter from './routes/getCategories.js';
-import adminUsersRouter from './routes/adminUsers.js';
+import adminUsersRouter from './routes/admin.js';
 import recommendedServicesRouter from './routes/recommendedServices.js';
 
 const app = express();
-
-// Ensure database columns exist on startup
-(async () => {
-    try {
-        const conn = await pool.getConnection();
-        try {
-            await conn.execute('ALTER TABLE orders ADD COLUMN custom_fields JSON AFTER status');
-            console.log('[Startup] Checked/Added custom_fields column to orders table');
-        } catch (e) {
-            // Column already exists or error
-        } finally {
-            conn.release();
-        }
-    } catch (e) {
-        console.error('[Startup] DB check failed:', e.message);
-    }
-})();
 
 // cPanel/Passenger priority: Always use process.env.PORT if provided.
 // On cPanel, this is usually a path to a socket, not a number.

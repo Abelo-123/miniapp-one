@@ -2,6 +2,7 @@ import type {
     Service, Deposit, ChatMessage,
     AuthResponse, OrderResponse, OrdersListResponse,
     DepositResponse, AlertsResponse, StatusSyncResponse,
+    CustomField,
 } from './types';
 import { getInitDataRaw, getInitDataString } from './helpers/telegram';
 
@@ -193,6 +194,7 @@ export interface PlaceOrderPayload {
     tg_id?: number;
     comments?: string;
     answer_number?: number;
+    custom_fields?: CustomField[];
 }
 
 export async function placeOrder(payload: PlaceOrderPayload): Promise<OrderResponse> {
