@@ -20,6 +20,7 @@ export function useServices() {
                 averageTime: s.average_time || s.averageTime || '',
                 refill: s.refill,
                 cancel: s.cancel,
+                custom_description: s.custom_description,
             }));
         },
         placeholderData: (prev) => prev, // keeps old data while fetching

@@ -24,6 +24,7 @@ export function useCategoryServices(category?: string, ids?: number[]) {
                 averageTime: s.average_time || s.averageTime || '',
                 refill: s.refill,
                 cancel: s.cancel,
+                custom_description: s.custom_description,
             }));
         },
         enabled: !!category || !!(ids && ids.length > 0),

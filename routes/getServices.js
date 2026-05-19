@@ -52,12 +52,13 @@ router.get('/', async (req, res) => {
 
         let customPricingMap = {};
         try {
-            const [customRows] = await pool.execute('SELECT service_id, custom_rate, profit_margin, is_enabled FROM service_custom');
+            const [customRows] = await pool.execute('SELECT service_id, custom_rate, profit_margin, is_enabled, custom_description FROM service_custom');
             customRows.forEach(row => {
                 customPricingMap[row.service_id] = {
                     custom_rate: row.custom_rate,
                     profit_margin: row.profit_margin,
-                    is_enabled: row.is_enabled
+                    is_enabled: row.is_enabled,
+                    custom_description: row.custom_description
                 };
             });
         } catch (e) { }
@@ -111,7 +112,8 @@ router.get('/', async (req, res) => {
                         refill: svc.refill === true || svc.refill === 1 || svc.refill === '1',
                         cancel: svc.cancel === true || svc.cancel === 1 || svc.cancel === '1',
                         average_time: adjustmentsMap[svcId] || svc.average_time || 'Not specified',
-                        platform_id: determinePlatform(svc.category)
+                        platform_id: determinePlatform(svc.category),
+                        custom_description: custom ? custom.custom_description : null
                     };
                 })
                 .filter(svc => svc !== null);

@@ -311,17 +311,20 @@ router.get('/services/custom', async (req, res) => {
 
 router.post('/services/custom', async (req, res) => {
     try {
-        const { service_id, custom_rate, profit_margin, is_enabled } = req.body;
+        const { service_id, custom_rate, profit_margin, is_enabled, custom_description } = req.body;
         if (!service_id) return res.status(400).json({ error: 'service_id is required' });
 
+        const desc = custom_description !== undefined ? custom_description : null;
+
         await pool.execute(
-            `INSERT INTO service_custom (service_id, custom_rate, profit_margin, is_enabled)
-             VALUES (?, ?, ?, ?)
+            `INSERT INTO service_custom (service_id, custom_rate, profit_margin, is_enabled, custom_description)
+             VALUES (?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
-             custom_rate    = COALESCE(?, custom_rate),
-             profit_margin  = COALESCE(?, profit_margin),
-             is_enabled     = COALESCE(?, is_enabled)`,
-            [service_id, custom_rate, profit_margin, is_enabled, custom_rate, profit_margin, is_enabled]
+             custom_rate        = COALESCE(?, custom_rate),
+             profit_margin      = COALESCE(?, profit_margin),
+             is_enabled         = COALESCE(?, is_enabled),
+             custom_description = ?`,
+            [service_id, custom_rate, profit_margin, is_enabled, desc, custom_rate, profit_margin, is_enabled, desc]
         );
 
         return res.json({ success: true });

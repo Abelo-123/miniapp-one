@@ -113,6 +113,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 averageTime: s.average_time || s.averageTime || '',
                 refill: s.refill,
                 cancel: s.cancel,
+                custom_description: s.custom_description,
             }));
             setServices(transformed);
         } catch (err) {
@@ -182,6 +183,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     averageTime: s.average_time || s.averageTime || '',
                     refill: s.refill,
                     cancel: s.cancel,
+                    custom_description: s.custom_description,
                 }));
                 setServices(transformed);
             } catch (err) {
