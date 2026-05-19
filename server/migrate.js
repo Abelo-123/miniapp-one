@@ -197,6 +197,11 @@ async function migrate() {
         await conn.execute(createServiceCustom);
         console.log('service_custom table ready');
 
+        try {
+            await conn.execute('ALTER TABLE service_custom ADD COLUMN custom_description TEXT');
+            console.log('Added custom_description column to service_custom table');
+        } catch (e) {}
+
         conn.release();
         console.log('--- Migration & Optimization Complete! ---');
         process.exit(0);

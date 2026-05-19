@@ -14,6 +14,7 @@ export interface Service {
     refill: boolean;
     cancel: boolean;
     platform_id?: SocialPlatform;
+    custom_description?: string | null;
 }
 
 declare global {

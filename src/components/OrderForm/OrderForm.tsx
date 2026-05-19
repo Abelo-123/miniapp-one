@@ -358,6 +358,24 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                         )}
                     </Section>
 
+                    {service.custom_description && (
+                        <Section header="Service Description / Instructions">
+                            <div style={{
+                                padding: '12px 16px',
+                                fontSize: '13px',
+                                lineHeight: '1.5',
+                                whiteSpace: 'pre-wrap',
+                                color: 'var(--tg-theme-text-color, #ffffff)',
+                                background: 'var(--tg-theme-secondary-bg-color, rgba(255,255,255,0.05))',
+                                borderRadius: '8px',
+                                borderLeft: '4px solid var(--tg-theme-button-color, #2481cc)',
+                                margin: '0 16px 8px'
+                            }}>
+                                {service.custom_description}
+                            </div>
+                        </Section>
+                    )}
+
                     <Section header="Order Details">
                         <Input
                             header={reqs.labelLink}
