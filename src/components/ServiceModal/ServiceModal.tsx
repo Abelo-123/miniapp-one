@@ -17,9 +17,9 @@ const BATCH_SIZE = 50;
 
 // 1. Memoized Row Component to prevent re-renders while typing
 const ServiceRow = React.memo(({
-    svc, onSelect, multiplier
+    svc, onSelect
 }: {
-    svc: Service, onSelect: (s: Service) => void, multiplier: number
+    svc: Service, onSelect: (s: Service) => void
 }) => {
     return (
         <div className="svc-item" onClick={() => onSelect(svc)}>
@@ -34,7 +34,6 @@ const ServiceRow = React.memo(({
 });
 
 export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Props) {
-    const { rateMultiplier } = useApp();
     const [search, setSearch] = useState('');
     const deferredSearch = useDeferredValue(search);
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
@@ -127,7 +126,6 @@ export function ServiceModal({ category, recommendedIds, onSelect, onClose }: Pr
                                     key={svc.id}
                                     svc={svc}
                                     onSelect={onSelect}
-                                    multiplier={rateMultiplier}
                                 />
                             ))}
                             {hasMore && (
