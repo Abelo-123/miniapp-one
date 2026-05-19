@@ -4,7 +4,6 @@ import { onBackButtonClick, showBackButton, hideBackButton } from '@telegram-app
 import type { Service } from '../../types';
 import { formatETB } from '../../constants';
 import { useCategoryServices } from '../../hooks/useCategoryServices';
-import { useApp } from '../../context/AppContext';
 
 interface Props {
     category: string;
