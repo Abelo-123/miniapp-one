@@ -274,9 +274,6 @@ export function OrderPage() {
                             <span>Rate per 1000</span>
                             <span className="bold highlight">
                                 {formatETB(selectedService.rate)}
-                                <span style={{ fontSize: '10px', opacity: 0.5, marginLeft: '8px', fontWeight: 400 }}>
-                                    ({selectedService.original_rate} * {appContext.rateMultiplier})
-                                </span>
                             </span>
                         </div>
                     </div>

@@ -27,9 +27,6 @@ const ServiceRow = React.memo(({
             <div className="svc-name">{svc.name}</div>
             <div className="svc-footer">
                 <span className="svc-price">{formatETB(svc.rate)} / 1000</span>
-                <span className="svc-debug" style={{ fontSize: '10px', opacity: 0.5, marginLeft: '8px' }}>
-                    ({svc.original_rate} * {multiplier})
-                </span>
                 <span className="svc-limits"> | Min: {svc.min} | Max: {svc.max.toLocaleString()}</span>
             </div>
         </div>

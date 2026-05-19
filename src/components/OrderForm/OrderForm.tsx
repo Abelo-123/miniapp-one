@@ -344,9 +344,6 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                             subtitle={
                                 <>
                                     {service.min} - {service.max.toLocaleString()} • Rate: {formatETB(service.rate)}
-                                    <span style={{ fontSize: '10px', opacity: 0.5, marginLeft: '8px' }}>
-                                        ({service.original_rate} * {rateMultiplier})
-                                    </span>
                                 </>
                             }
                             multiline
