@@ -28,10 +28,29 @@ const app = express();
     try {
         const conn = await pool.getConnection();
         try {
-            await conn.execute('ALTER TABLE orders ADD COLUMN custom_fields JSON AFTER status');
-            console.log('[Startup] Checked/Added custom_fields column to orders table');
-        } catch (e) {
-            // Column already exists or error
+            // Ensure orders custom_fields exists
+            try {
+                await conn.execute('ALTER TABLE orders ADD COLUMN custom_fields JSON AFTER status');
+                console.log('[Startup] Checked/Added custom_fields column to orders table');
+            } catch (e) {}
+
+            // Ensure service_custom table exists
+            await conn.execute(`
+                CREATE TABLE IF NOT EXISTS service_custom (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    service_id INT NOT NULL UNIQUE,
+                    is_enabled TINYINT DEFAULT 1,
+                    custom_rate DECIMAL(10, 2),
+                    profit_margin DECIMAL(5, 2),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+
+            // Ensure custom_description column exists in service_custom
+            try {
+                await conn.execute('ALTER TABLE service_custom ADD COLUMN custom_description TEXT');
+                console.log('[Startup] Checked/Added custom_description column to service_custom table');
+            } catch (e) {}
         } finally {
             conn.release();
         }

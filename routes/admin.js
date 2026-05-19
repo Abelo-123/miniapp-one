@@ -345,6 +345,7 @@ router.get('/services/custom', async (req, res) => {
 
 router.post('/services/custom', async (req, res) => {
     try {
+        console.log('[services/custom POST] Received req.body:', JSON.stringify(req.body));
         const { service_id, custom_rate, profit_margin, is_enabled, custom_description } = req.body;
         if (!service_id) return res.status(400).json({ error: 'service_id is required' });
 
