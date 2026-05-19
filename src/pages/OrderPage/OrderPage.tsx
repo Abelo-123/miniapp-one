@@ -35,6 +35,7 @@ export function OrderPage() {
     }, [selectedService, selectedPlatform]);
 
     const showComments = reqs.mode === 'comments' || reqs.mode === 'hashtags';
+    const showCommentOwner = reqs.mode === 'comment_owner';
     const showPoll = reqs.mode === 'poll';
     const showPackage = reqs.mode === 'package';
     const showQuantity = !showPackage && !showComments;
@@ -93,6 +94,11 @@ export function OrderPage() {
             return hapticNotification('error');
         }
 
+        if (showCommentOwner && !comments.trim()) {
+            showToast('error', 'Missing Username: Please enter the username of the comment owner.');
+            return hapticNotification('error');
+        }
+
         if (showPoll && (!answerNumber || isNaN(parseInt(answerNumber, 10)))) {
             showToast('error', 'Missing Poll Option: Please enter the answer number.');
             return hapticNotification('error');
@@ -134,7 +140,7 @@ export function OrderPage() {
                     link: link.trim(),
                     quantity: q,
                     initData,
-                    comments: showComments && comments.trim() ? comments.trim() : undefined,
+                    comments: (showComments || showCommentOwner) && comments.trim() ? comments.trim() : undefined,
                     answer_number: showPoll && answerNumber ? parseInt(answerNumber, 10) : undefined,
                 })
             });
@@ -299,6 +305,19 @@ export function OrderPage() {
                             <div style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)', marginTop: '4px' }}>
                                 Min: {selectedService.min} • Max: {selectedService.max} lines
                             </div>
+                        </div>
+                    )}
+
+                    {showCommentOwner && (
+                        <div className="order-input-group">
+                            <label>{reqs.labelExtra || 'Username of the Comment Owner'}</label>
+                            <input 
+                                type="text" 
+                                placeholder={reqs.placeholderExtra || "e.g. @username or username"} 
+                                value={comments} 
+                                onChange={(e) => setComments(e.target.value)} 
+                                className="order-custom-input"
+                            />
                         </div>
                     )}
 

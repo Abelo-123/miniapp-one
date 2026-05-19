@@ -154,7 +154,7 @@ export function getLinkPlaceholder(service: Service | null | undefined, platform
 }
 
 export interface ServiceRequirements {
-    mode: 'default' | 'comments' | 'hashtags' | 'poll' | 'package' | 'profile' | 'post';
+    mode: 'default' | 'comments' | 'hashtags' | 'poll' | 'package' | 'profile' | 'post' | 'comment_owner';
     labelLink: string;
     labelExtra?: string;
     placeholderExtra?: string;
@@ -169,7 +169,28 @@ export function getServiceRequirements(service: Service | null | undefined, plat
     const name = service.name?.toLowerCase() || '';
     const cat = service.category?.toLowerCase() || '';
 
-    if (type.includes('comment') || name.includes('comment') || cat.includes('comment') || name.includes('review')) {
+    const serviceId = parseInt((service as any).service || service.id || '0', 10);
+    const hasCommentKeyword = type.includes('comment') || name.includes('comment') || cat.includes('comment') || name.includes('review');
+
+    if (hasCommentKeyword) {
+        const isCommentOwnerType = serviceId === 5854 ||
+            name.includes('like') || name.includes('reaction') || name.includes('heart') || name.includes('emoji') ||
+            name.includes('vote') || name.includes('upvote') || name.includes('downvote') || name.includes('reply') || name.includes('replies') ||
+            cat.includes('like') || cat.includes('reaction') || cat.includes('heart') || cat.includes('emoji') ||
+            cat.includes('vote') || cat.includes('upvote') || cat.includes('downvote') || cat.includes('reply') || cat.includes('replies') ||
+            type.includes('like') || type.includes('reaction') || type.includes('heart') || type.includes('emoji') ||
+            type.includes('vote') || type.includes('upvote') || type.includes('downvote') || type.includes('reply') || type.includes('replies');
+
+        if (isCommentOwnerType) {
+            return {
+                mode: 'comment_owner',
+                labelLink: 'Post / Video Link',
+                labelExtra: 'Username of the Comment Owner',
+                placeholderExtra: 'e.g. @username or username',
+                placeholderLink,
+            };
+        }
+
         return {
             mode: 'comments',
             labelLink: 'Post / Video Link',

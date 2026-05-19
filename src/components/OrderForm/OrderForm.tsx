@@ -68,6 +68,7 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
     }, [service, selectedPlatform]);
 
     const showComments = reqs.mode === 'comments' || reqs.mode === 'hashtags';
+    const showCommentOwner = reqs.mode === 'comment_owner';
     const showPackage = reqs.mode === 'package';
     const showPoll = reqs.mode === 'poll';
     const showQuantity = !showPackage && !showComments;
@@ -122,6 +123,12 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                 errs.comments = `Minimum ${service.min} comments required`;
             } else if (lines.length > service.max) {
                 errs.comments = `Maximum ${service.max} comments allowed`;
+            }
+        }
+        
+        if (showCommentOwner) {
+            if (!comments.trim()) {
+                errs.comments = 'Comment owner username is required';
             }
         }
         
@@ -409,6 +416,23 @@ export const OrderForm = forwardRef<OrderFormHandle, OrderFormProps>(function Or
                                 <div className="order-form-hint">
                                     {comments.split('\n').filter((l: string) => l.trim()).length} / {service.max} lines
                                 </div>
+                            </>
+                        )}
+
+                        {showCommentOwner && (
+                            <>
+                                <Input
+                                    header={reqs.labelExtra || 'Username of the Comment Owner'}
+                                    placeholder={reqs.placeholderExtra || 'e.g. @username or username'}
+                                    value={comments}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                        setComments(e.target.value);
+                                    }}
+                                    status={validation.errors.comments ? 'error' : 'default'}
+                                />
+                                {validation.errors.comments && (
+                                    <div className="order-form-error">{validation.errors.comments}</div>
+                                )}
                             </>
                         )}
 
