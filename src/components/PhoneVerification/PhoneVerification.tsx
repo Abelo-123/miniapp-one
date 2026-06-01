@@ -86,7 +86,7 @@ export function PhoneVerification() {
                         type="tel"
                         placeholder="e.g. 251911234567"
                         value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e: any) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
                         className="verification-input"
                     />
                     <Button 
@@ -108,7 +108,7 @@ export function PhoneVerification() {
                         type="number"
                         placeholder="Enter OTP"
                         value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e: any) => setOtp(e.target.value.replace(/\D/g, ''))}
                         className="verification-input"
                     />
                     <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
