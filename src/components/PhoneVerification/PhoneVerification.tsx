@@ -5,7 +5,8 @@ import { Button, Input } from '@telegram-apps/telegram-ui';
 import './PhoneVerification.css';
 
 export function PhoneVerification() {
-    const { user, showToast, refreshUser } = useApp();
+    const appContext = useApp();
+    const { user, showToast } = appContext;
     const [phoneNumber, setPhoneNumber] = useState(user?.phone_number || '');
     const [otp, setOtp] = useState('');
     const [step, setStep] = useState<'input' | 'verify'>(user?.phone_verified ? 'verified' : 'input');
@@ -66,7 +67,9 @@ export function PhoneVerification() {
             if (data.success) {
                 showToast('success', 'Phone verified successfully!');
                 setStep('verified');
-                if (refreshUser) refreshUser();
+                if ('refreshUser' in appContext && typeof (appContext as any).refreshUser === 'function') {
+                    (appContext as any).refreshUser();
+                }
             } else {
                 showToast('error', data.error || 'Invalid OTP');
             }
