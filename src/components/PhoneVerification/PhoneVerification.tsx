@@ -9,7 +9,7 @@ export function PhoneVerification() {
     const { user, showToast } = appContext;
     const [phoneNumber, setPhoneNumber] = useState(user?.phone_number || '');
     const [otp, setOtp] = useState('');
-    const [step, setStep] = useState<'input' | 'verify'>(user?.phone_verified ? 'verified' : 'input');
+    const [step, setStep] = useState<'input' | 'verify' | 'verified'>(user?.phone_verified ? 'verified' : 'input');
     const [isLoading, setIsLoading] = useState(false);
 
     if (user?.phone_verified || step === 'verified') {
