@@ -100,6 +100,8 @@ export interface UserProfile {
     photo_url: string;
     balance: number;
     username?: string;
+    phone_number?: string | null;
+    phone_verified?: boolean;
 }
 
 export interface Holiday {

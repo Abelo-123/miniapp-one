@@ -1,0 +1,40 @@
+.phone-verification-container {
+    background: var(--tg-theme-bg-color, #1c1c2e);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--tg-theme-section-separator-color, rgba(255, 255, 255, 0.05));
+}
+
+.verification-header {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--tg-theme-text-color, #fff);
+    margin-bottom: 12px;
+}
+
+.verification-input {
+    margin-bottom: 8px;
+}
+
+.phone-verified-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 214, 143, 0.1);
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin: 16px;
+    border: 1px solid rgba(0, 214, 143, 0.2);
+}
+
+.verified-icon {
+    font-size: 16px;
+}
+
+.verified-text {
+    color: var(--color-success, #00d68f);
+    font-weight: 600;
+    font-size: 14px;
+}

@@ -7,6 +7,7 @@ import { CategoryModal } from '../../components/CategoryModal/CategoryModal';
 import { ServiceModal } from '../../components/ServiceModal/ServiceModal';
 import { NewsTicker } from '../../components/NewsTicker/NewsTicker';
 import { hapticImpact, hapticNotification, getInitDataString } from '../../helpers/telegram';
+import { PhoneVerification } from '../../components/PhoneVerification/PhoneVerification';
 
 
 export function OrderPage() {
@@ -213,6 +214,8 @@ export function OrderPage() {
     return (
         <div className="order-page-wrapper">
             <NewsTicker />
+            
+            <PhoneVerification />
 
             <PlatformGrid
                 selectedPlatform={selectedPlatform}

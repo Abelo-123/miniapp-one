@@ -40,7 +40,7 @@ router.get('/stream', (req, res) => {
 // placeOrder: POST /api/orders/place
 router.post('/place', async (req, res) => {
     try {
-        const { service, link, quantity, initData, answer_number, comments, user_id, custom_fields } = req.body;
+        const { service, link, quantity, initData, answer_number, comments, user_id } = req.body;
         
         let tgId = getTelegramUserId(initData);
         if (!tgId) tgId = user_id || 'unauth_local_user';
@@ -124,14 +124,7 @@ router.post('/place', async (req, res) => {
                 link: link,
                 quantity: quantity.toString()
             });
-            let finalComments = comments;
-            if (!finalComments && custom_fields && Array.isArray(custom_fields)) {
-                const commentFields = custom_fields.filter(f => f.type === 'comment' && f.value).map(f => f.value);
-                if (commentFields.length > 0) {
-                    finalComments = commentFields.join('\n');
-                }
-            }
-            if (finalComments) orderParams.append('comments', finalComments);
+            if (comments) orderParams.append('comments', comments);
             if (answer_number) orderParams.append('answer_number', answer_number.toString());
 
             const orderRes = await fetch('https://godofpanel.com/api/v2', {
@@ -174,12 +167,11 @@ router.post('/place', async (req, res) => {
             }
 
             // 5. Insert Order into DB
-            const customFieldsJson = custom_fields ? JSON.stringify(custom_fields) : null;
             const [insertRes] = await conn.execute(
                 `INSERT INTO orders 
-                 (user_id, service_id, service_name, link, target_link, quantity, api_order_id, charge, status, custom_fields, created_at) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW())`,
-                [tgId, service, serviceData.name, link, link, quantity, providerOrderId, totalCostEtb, customFieldsJson]
+                 (user_id, service_id, service_name, link, target_link, quantity, api_order_id, charge, status, created_at) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
+                [tgId, service, serviceData.name, link, link, quantity, providerOrderId, totalCostEtb]
             );
             const dbId = insertRes.insertId;
 
@@ -224,7 +216,6 @@ router.post('/place', async (req, res) => {
                         status: 'pending',
                         remains: parseInt(quantity),
                         start_count: 0,
-                        custom_fields: custom_fields || null,
                         created_at: new Date().toISOString(),
                     },
                     new_balance: newBalance,
