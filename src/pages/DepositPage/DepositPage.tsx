@@ -38,6 +38,7 @@ export function DepositPage() {
     // Use refs for polling state to avoid stale closure issues
     const pollAbortRef = useRef(false);
     const activeTxRefRef = useRef<string | null>(null);
+    const hasSubmittedRef = useRef<boolean>(false);
     const recentDepositsRef = useRef<HTMLDivElement>(null);
 
     const balance = user?.balance ?? 0;
