@@ -32,6 +32,8 @@ export function DepositPage() {
     const [amount, setAmount] = useState('');
     const [step, setStep] = useState<DepositStep>('amount');
     const [errorMessage, setErrorMessage] = useState('');
+    const [timeLeft, setTimeLeft] = useState(45);
+    const timerRef = useRef<any>(null);
 
     // Use refs for polling state to avoid stale closure issues
     const pollAbortRef = useRef(false);
@@ -44,6 +46,13 @@ export function DepositPage() {
     useEffect(() => {
         refreshDeposits().catch(() => { });
     }, [refreshDeposits]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, []);
 
 
 
@@ -259,6 +268,19 @@ export function DepositPage() {
         pollAbortRef.current = false;
         setStep('verifying');
 
+        // Start countdown timer (45 seconds)
+        setTimeLeft(45);
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
         // Mobile money (M-Pesa/Telebirr) can take up to a minute for telco confirmation.
         // We poll very fast in the first 20 seconds to instantly catch a wrong PIN/Failure.
         const delays = [
@@ -273,6 +295,7 @@ export function DepositPage() {
             // Check abort flag
             if (pollAbortRef.current || activeTxRefRef.current !== txRef) {
                 console.log('[verify] Polling aborted');
+                if (timerRef.current) clearInterval(timerRef.current);
                 return;
             }
 
@@ -282,6 +305,7 @@ export function DepositPage() {
             // Recheck abort after waiting
             if (pollAbortRef.current || activeTxRefRef.current !== txRef) {
                 console.log('[verify] Polling aborted after delay');
+                if (timerRef.current) clearInterval(timerRef.current);
                 return;
             }
 
@@ -299,6 +323,7 @@ export function DepositPage() {
 
                 if (data.success && data.new_balance !== undefined) {
                     // Payment confirmed!
+                    if (timerRef.current) clearInterval(timerRef.current);
                     setBalance(data.new_balance);
                     showToast('success', `Deposit confirmed! Balance: ${formatETB(data.new_balance)}`);
                     hapticNotification('success');
@@ -323,6 +348,7 @@ export function DepositPage() {
 
                 // If already completed (from another session), also show success
                 if (data.already_completed && data.new_balance !== undefined) {
+                    if (timerRef.current) clearInterval(timerRef.current);
                     setBalance(data.new_balance);
                     showToast('success', `Deposit already confirmed!`);
                     setStep('success');
@@ -347,7 +373,8 @@ export function DepositPage() {
                 const isConfigError = statusStr === 'error';
 
                 if (isFailed || isConfigError) {
-                    setStep('amount');
+                    if (timerRef.current) clearInterval(timerRef.current);
+                    setStep('error');
                     activeTxRefRef.current = null;
                     
                     let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
@@ -379,10 +406,12 @@ export function DepositPage() {
 
         // Exhausted all retries — payment is likely confirmed on telco side but
         // Chapa hasn't updated yet. Show a "still processing" state.
+        if (timerRef.current) clearInterval(timerRef.current);
+        setTimeLeft(0);
         showToast('info', 'Your payment is being processed. Balance will update automatically.');
         // Keep the txRef alive so user can manually re-check
         setStep('success');
-    }, [setBalance, showToast, refreshDeposits]);
+    }, [setBalance, showToast, refreshDeposits, user]);
 
     // ─── Start Inline Payment ──────────────────────────────
     const startInlinePayment = useCallback(async (depositAmount: number) => {
@@ -737,31 +766,43 @@ export function DepositPage() {
                 </div>
             )}
 
-            {/* ─── Verifying State ─── */}
+            {/* ─── Verifying State (Awaiting PIN) ─── */}
             {step === 'verifying' && (
-                <div className="deposit-processing">
-                    <div className="deposit-processing__spinner-container">
-                        <div className="deposit-processing__spinner"></div>
-                    </div>
-                    <div className="deposit-processing__text">Verifying Payment</div>
-                    <div className="deposit-processing__subtext">
-                        We're checking your payment status with the bank.
-                        <br />
-                        This usually takes 10-60 seconds for Telebirr/M-Pesa.
+                <div className="deposit-processing" style={{ padding: '24px 16px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                        <div style={{ position: 'relative', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="deposit-processing__spinner"></div>
+                            <span style={{ fontSize: '20px', position: 'absolute', animation: 'pulse 1.5s infinite' }}>📱</span>
+                        </div>
                     </div>
                     
-                    <div className="deposit-status-card">
-                        <div className="deposit-status-item">
-                            <span className="status-dot status-dot--active"></span>
-                            <span>Money Deducuted from Phone</span>
-                        </div>
-                        <div className="deposit-status-item">
-                            <span className="status-dot status-dot--pulse"></span>
-                            <span>Waiting for Bank Confirmation</span>
-                        </div>
+                    <div className="deposit-processing__text" style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--tg-theme-text-color)', marginBottom: '8px' }}>
+                        Awaiting PIN Verification
+                    </div>
+                    <div className="deposit-processing__subtext" style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '20px' }}>
+                        We've sent a payment prompt to your phone. <br/>
+                        Please enter your Telebirr / M-Pesa <b>PIN</b> on your mobile screen to approve the deposit.
+                    </div>
+                    
+                    <div style={{ width: '100%', height: '8px', background: 'var(--tg-theme-secondary-bg-color)', borderRadius: '4px', overflow: 'hidden', marginBottom: '12px' }}>
+                        <div style={{ 
+                            height: '100%', 
+                            width: `${(timeLeft / 45) * 100}%`, 
+                            background: 'linear-gradient(90deg, #FFB900 0%, #FF8000 100%)', 
+                            transition: 'width 1s linear',
+                            borderRadius: '4px'
+                        }}></div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--tg-theme-hint-color)', marginBottom: '24px' }}>
+                        <span>{timeLeft > 0 ? `Waiting for completion (${timeLeft}s)...` : 'Timeout. Checking one last time...'}</span>
+                        <span style={{ color: 'var(--tg-theme-button-color)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--tg-theme-button-color)', display: 'inline-block', animation: 'pulse 1s infinite' }}></span>
+                            Live Checking
+                        </span>
                     </div>
 
-                    <div className="deposit-processing__actions">
+                    <div className="deposit-processing__actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <Button
                             mode="bezeled"
                             stretched
@@ -772,6 +813,7 @@ export function DepositPage() {
                                     verifyDeposit(activeTxRefRef.current);
                                 }
                             }}
+                            style={{ background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)' }}
                         >
                             🔄 Re-Check Balance Now
                         </Button>
@@ -779,12 +821,61 @@ export function DepositPage() {
                         <Button
                             mode="plain"
                             stretched
-                            onClick={() => setStep('amount')}
-                            style={{ marginTop: 12, opacity: 0.7 }}
+                            onClick={() => {
+                                pollAbortRef.current = true;
+                                activeTxRefRef.current = null;
+                                if (timerRef.current) clearInterval(timerRef.current);
+                                setStep('amount');
+                            }}
+                            style={{ opacity: 0.7 }}
                         >
-                            Wait in Background
+                            Cancel / Wait in Background
                         </Button>
                     </div>
+                </div>
+            )}
+
+            {/* ─── Error State (Payment Failed/Declined) ─── */}
+            {step === 'error' && (
+                <div className="deposit-error-state" style={{ padding: '24px 16px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                        <div style={{ 
+                            width: '56px', 
+                            height: '56px', 
+                            borderRadius: '50%', 
+                            background: 'rgba(255, 71, 87, 0.1)', 
+                            border: '1px solid rgba(255, 71, 87, 0.3)', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            fontSize: '24px'
+                        }}>
+                            ❌
+                        </div>
+                    </div>
+                    
+                    <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--tg-theme-text-color)', marginBottom: '8px' }}>
+                        Payment Failed/Declined
+                    </h4>
+                    <p style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '24px' }}>
+                        {errorMessage || 'The transaction was declined or failed on your mobile wallet.'}
+                        <br/><br/>
+                        <span style={{ fontSize: '12px' }}>
+                            This usually happens if you entered a <b>wrong PIN</b>, had <b>insufficient funds</b>, or cancelled the mobile prompt.
+                        </span>
+                    </p>
+                    
+                    <Button 
+                        size="l"
+                        stretched
+                        onClick={() => {
+                            setStep('amount');
+                            setErrorMessage('');
+                        }}
+                        style={{ background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)' }}
+                    >
+                        Try Again
+                    </Button>
                 </div>
             )}
 
