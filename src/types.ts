@@ -100,8 +100,13 @@ export interface UserProfile {
     photo_url: string;
     balance: number;
     username?: string;
+<<<<<<< HEAD
     referral_code?: string;
     referred_by?: string;
+=======
+    phone_number?: string | null;
+    phone_verified?: boolean;
+>>>>>>> 99c72b4711680411ccdc12e5d7f54fff9617d35a
 }
 
 export interface Holiday {

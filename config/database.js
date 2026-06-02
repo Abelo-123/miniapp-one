@@ -1,6 +1,6 @@
 /**
  * Database Configuration — MySQL2 Connection Pool
- * Using cPanel MySQL
+ * Usindg cPanel MySQL
  */
 import mysql from 'mysql2/promise';
 

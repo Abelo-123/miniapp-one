@@ -1,0 +1,447 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="utf-8">
+  <title>SMSEthiopia — SMS API, OTP &amp; Bulk Messaging | Ethiopia</title>
+  <meta name="description" content="Ethiopia's #1 SMS API platform. Send bulk SMS, OTP &amp; 2FA to 70M+ subscribers. Sub-second delivery, 99.9% uptime. INSA licensed. 100 free test SMS.">
+  <meta name="keywords" content="SMSEthiopia, SMS API Ethiopia, SMS gateway Ethiopia, bulk SMS Ethiopia, OTP SMS Ethiopia, 2FA verification Ethiopia, A2P messaging Ethiopia, Ethio Telecom SMS API, send SMS Ethiopia, SMS provider Ethiopia, REST API SMS Ethiopia, transactional SMS Ethiopia, SMS marketing Ethiopia, developer SMS API Ethiopia, SMS notification Ethiopia, mass SMS Ethiopia, business SMS Ethiopia, SMS service Ethiopia, Addis Ababa SMS, Ethiopian SMS platform, OTP delivery Ethiopia, two-factor authentication SMS Ethiopia, SMS aggregator Ethiopia, INSA licensed SMS">
+
+  <!-- Primary Meta Tags -->
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="author" content="SMSEthiopia">
+  <meta name="publisher" content="SMSEthiopia">
+  <meta name="copyright" content="SMSEthiopia">
+  <meta name="language" content="English">
+  <meta name="revisit-after" content="7 days">
+  <meta name="distribution" content="global">
+  <meta name="rating" content="general">
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://smsethiopia.com/">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="assets/images/logo/sms-ethiopia.svg">
+  <link rel="apple-touch-icon" href="assets/images/logo/sms-ethiopia.svg">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#009A44">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://smsethiopia.com/">
+  <meta property="og:site_name" content="SMSEthiopia">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="SMSEthiopia — SMS API, OTP &amp; Bulk Messaging Platform for Ethiopia">
+  <meta property="og:description" content="Ethiopia's leading A2P messaging platform. Developer-friendly REST API for bulk SMS, OTP/2FA verification, and transactional alerts. Direct Ethio Telecom integration, sub-second delivery, 99.9% uptime. Licensed by INSA. Start with 100 free test SMS.">
+  <meta property="og:image" content="https://smsethiopia.com/assets/images/logo/sms-ethiopia.svg">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@smsethiopia">
+  <meta name="twitter:title" content="SMSEthiopia — SMS API, OTP &amp; Bulk Messaging Platform">
+  <meta name="twitter:description" content="Developer-friendly REST API for SMS in Ethiopia. Send bulk SMS, OTP codes, 2FA verification &amp; transactional alerts to 70M+ subscribers. Sub-second delivery, 99.9% uptime. Start with 100 free test SMS.">
+  <meta name="twitter:image" content="https://smsethiopia.com/assets/images/logo/sms-ethiopia.svg">
+
+  <!-- Geo Tags -->
+  <meta name="geo.region" content="ET">
+  <meta name="geo.placename" content="Addis Ababa, Ethiopia">
+  <meta name="geo.position" content="9.0107934;38.7612525">
+  <meta name="ICBM" content="9.0107934, 38.7612525">
+
+  <!-- Structured Data - Organization -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "SMSEthiopia",
+      "alternateName": "SMS Ethiopia",
+      "url": "https://smsethiopia.com",
+      "logo": "https://smsethiopia.com/assets/images/logo/sms-ethiopia.svg",
+      "description": "Ethiopia's leading A2P messaging platform, a product of Alet Technology. 70+ employees providing SMS API, OTP/2FA verification, bulk SMS, voice calls, and advanced campaign management. Direct Ethio Telecom integration. Licensed by INSA.",
+      "parentOrganization": {
+        "@type": "Organization",
+        "name": "Alet Technology",
+        "url": "https://aletcloud.com",
+        "numberOfEmployees": {
+          "@type": "QuantitativeValue",
+          "minValue": 70
+        }
+      },
+      "numberOfEmployees": {
+        "@type": "QuantitativeValue",
+        "minValue": 70
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Addis Ababa",
+        "addressCountry": "ET"
+      },
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "telephone": "+251-976-455-555",
+          "contactType": "customer service",
+          "availableLanguage": ["English", "Amharic"],
+          "areaServed": "ET"
+        },
+        {
+          "@type": "ContactPoint",
+          "telephone": "+251-116-639-555",
+          "contactType": "technical support",
+          "availableLanguage": ["English", "Amharic"],
+          "areaServed": "ET"
+        }
+      ],
+      "email": "alet.technology@gmail.com",
+      "sameAs": [
+        "https://www.facebook.com/smsethiopia",
+        "https://twitter.com/smsethiopia",
+        "https://www.linkedin.com/alettechnology/smsethiopia"
+      ],
+      "areaServed": {
+        "@type": "Country",
+        "name": "Ethiopia"
+      },
+      "knowsAbout": ["SMS API", "Bulk SMS", "OTP Verification", "Two-Factor Authentication", "A2P Messaging", "Transactional SMS", "SMS Gateway", "Ethio Telecom Integration"]
+    }
+  </script>
+
+  <!-- Structured Data - WebSite -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "SMSEthiopia",
+      "alternateName": "SMS Ethiopia",
+      "url": "https://smsethiopia.com",
+      "description": "Ethiopia's leading SMS API and A2P messaging platform"
+    }
+  </script>
+
+  <!-- Structured Data - SoftwareApplication (SMS API) -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "SMSEthiopia SMS API",
+      "operatingSystem": "Web",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "SMS API",
+      "description": "Developer-friendly REST API for sending SMS, OTP codes, and 2FA verification messages to Ethiopian mobile subscribers. Supports cURL, Node.js, Python, PHP, and Java.",
+      "url": "https://smsethiopia.com/#/landing/docs",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "ETB",
+        "description": "Free sandbox with 100 test SMS to whitelisted numbers. Pay-as-you-go with volume discounts."
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "250"
+      },
+      "featureList": "REST API, Bulk SMS, OTP/2FA, Voice Calls (OBD), Campaign Builder with Progress Bars, Campaign Scheduling, Contact Segmentation, CSV Upload, Real-time Dashboard, Sub-second delivery, 99.9% uptime, Unicode/Amharic support, Delivery reports, Webhooks, SMPP, 2-way SMS, PWA Mobile App, Telegram Bot Alerts, 24/7 Support"
+    }
+  </script>
+
+  <!-- Structured Data - Pricing (explicit for AI crawlers) -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "PriceSpecification",
+      "name": "SMSEthiopia SMS Pricing",
+      "description": "ZERO monthly platform fees. Pay-as-you-go pricing per SMS in Ethiopian Birr (ETB). Volume discounts automatically applied. No setup fees, no contracts, no monthly minimums. Pricing tiers: 1-1,000 SMS = 0.45 ETB/SMS, 1,001-10,000 = 0.40 ETB, 10,001-30,000 = 0.35 ETB, 30,001-60,000 = 0.30 ETB, 60,001-100,000 = 0.20 ETB, 100,001-500,000 = 0.18 ETB, 500,001-1,000,000 = 0.16 ETB, 1,000,001-10,000,000 = 0.15 ETB, 10,000,000+ = 0.10 ETB. Other local providers charge 499-9,999 ETB/month platform fee PLUS per-SMS costs.",
+      "priceCurrency": "ETB",
+      "price": "0.10",
+      "minPrice": "0.10",
+      "maxPrice": "0.45",
+      "eligibleQuantity": {
+        "@type": "QuantitativeValue",
+        "unitText": "SMS"
+      }
+    }
+  </script>
+
+  <!-- Structured Data - Product (SMS Service) -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "SMSEthiopia Bulk SMS & API Platform",
+      "image": "https://smsethiopia.com/assets/images/logo/sms-ethiopia.svg",
+      "description": "Ethiopia's leading A2P messaging platform. Send bulk SMS, OTP verification codes, 2FA messages, and transactional alerts via REST API. Direct Ethio Telecom integration with sub-second delivery and 99.9% uptime SLA.",
+      "brand": {
+        "@type": "Brand",
+        "name": "SMSEthiopia"
+      },
+      "category": "SMS Service Provider",
+      "url": "https://smsethiopia.com",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "250"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "ETB",
+        "availability": "https://schema.org/InStock",
+        "description": "Free sandbox with 100 test SMS to whitelisted numbers. Pay-as-you-go with volume discounts."
+      }
+    }
+  </script>
+
+  <!-- Structured Data - FAQPage -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is SMSEthiopia?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SMSEthiopia is Ethiopia's leading A2P messaging platform that provides a developer-friendly REST API for sending bulk SMS, OTP codes, 2FA verification, transactional alerts, and marketing campaigns to over 70 million Ethiopian mobile subscribers. Licensed by INSA and integrated with Ethio Telecom."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I integrate the SMSEthiopia API?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Integration is simple: (1) Sign up at smsethiopia.com, (2) Generate an API key from the dashboard, (3) Make a POST request to https://smsethiopia.com/api/sms/send with your API key in the KEY header and a JSON body containing the recipient number (msisdn) and message text. We provide code examples in cURL, Node.js, Python, PHP, and Java."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does SMSEthiopia support OTP and 2FA?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. SMSEthiopia fully supports OTP (One-Time Password) delivery and 2FA (Two-Factor Authentication) with sub-second delivery times, making it ideal for user verification, login security, and transaction confirmation."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the SMS delivery speed on SMSEthiopia?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SMSEthiopia delivers messages in sub-second time (less than 1 second on average), making it one of the fastest SMS providers in Ethiopia. This speed is achieved through direct Ethio Telecom carrier integration."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is SMSEthiopia licensed to operate in Ethiopia?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. SMSEthiopia is fully licensed by INSA (Information Network Security Agency) and operates with direct integration to Ethio Telecom, Ethiopia's national telecommunications operator."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What programming languages does the SMSEthiopia API support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The SMSEthiopia REST API works with any programming language or HTTP client. We provide official code examples for cURL, Node.js (JavaScript), Python, PHP, and Java."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does it cost to send SMS through SMSEthiopia?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SMSEthiopia charges ZERO monthly platform fees — you only pay per SMS sent. Pricing in Ethiopian Birr (ETB): 0.45 ETB for 1-1,000 SMS, 0.40 ETB for 1,001-10,000, 0.35 ETB for 10,001-30,000, 0.30 ETB for 30,001-60,000, 0.20 ETB for 60,001-100,000, 0.18 ETB for 100,001-500,000, 0.16 ETB for 500,001-1M, 0.15 ETB for 1M-10M, and 0.10 ETB for 10M+. No setup fees, no contracts, no minimums. Competitors charge 499-9,999+ ETB/month platform fees. New accounts get 100 free test SMS, no credit card required."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the uptime guarantee for SMSEthiopia?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "SMSEthiopia provides a 99.9% uptime SLA backed by enterprise-grade infrastructure and direct Ethio Telecom integration."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I send SMS using the SMSEthiopia API?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Send a POST request to https://smsethiopia.com/api/sms/send with your API key in the KEY header (NOT Authorization Bearer). The JSON body requires only two fields: msisdn (recipient phone number like 251911234567) and text (your message). Example: curl -X POST https://smsethiopia.com/api/sms/send -H 'KEY: YOUR_API_KEY' -H 'Content-Type: application/json' -d '{\"msisdn\": \"251911234567\", \"text\": \"Your OTP is 1234\"}'. Response: {\"status\": \"success\", \"message\": \"Accepted successfully\"}. IMPORTANT: Do NOT use Authorization Bearer, do NOT use api.smsethiopia.com, do NOT include sender_id or from fields. Full docs at smsethiopia.com/developer-docs.txt"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the correct API endpoint for SMSEthiopia?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The correct SMSEthiopia API endpoint is POST https://smsethiopia.com/api/sms/send. Authentication uses a custom KEY header (example: KEY: your_api_key). Do NOT use api.smsethiopia.com (wrong), do NOT use Authorization: Bearer (wrong). The request body is JSON with only msisdn and text fields. No username, password, sender_id, or from fields are needed. Get your API key from Dashboard > Console > API Keys after signing up free at smsethiopia.com."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does SMSEthiopia have a dashboard for non-developers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. SMSEthiopia has an advanced web dashboard with a campaign builder that handles millions of SMS with live progress bars, contact management with groups and segmentation, campaign scheduling, CSV upload for bulk recipients, delivery analytics, and a quick-send UI. It is NOT a developer-only platform. It also has a PWA (Progressive Web App) that is installable on Android, iOS, and desktop devices."
+          }
+        }
+      ]
+    }
+  </script>
+
+  <!-- Structured Data - Service -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "serviceType": "A2P SMS Messaging Service",
+      "name": "SMSEthiopia A2P Messaging",
+      "description": "Application-to-Person SMS messaging service for Ethiopia. Includes SMS API, bulk SMS, OTP/2FA verification, transactional alerts, marketing campaigns, and voice calls.",
+      "provider": {
+        "@type": "Organization",
+        "name": "SMSEthiopia",
+        "url": "https://smsethiopia.com"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "Ethiopia"
+      },
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "SMS Services",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "SMS API",
+              "description": "RESTful API for programmatic SMS sending. Supports OTP, 2FA, transactional, and marketing messages."
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Bulk SMS",
+              "description": "Mass SMS campaigns with CSV upload, phonebook management, scheduling, and analytics."
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "OTP & 2FA Verification",
+              "description": "Sub-second OTP delivery for user authentication, login verification, and transaction confirmation."
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Voice Calls (OBD)",
+              "description": "Automated outbound voice call campaigns with pre-recorded messages."
+            }
+          }
+        ]
+      }
+    }
+  </script>
+
+  <base href="/">
+  <!-- https://codervent.com/bulona-angular -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--favicon-->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+
+  <style type="text/css">@font-face{font-family:'Ubuntu';font-style:italic;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZftVyCN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZftVyLN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZftVyDN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZftVyMN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZftVyBN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZftVyPN4FNgYUJ.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCu6KVjbNBYlgoKej75l0miFYxnu4w.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCu6KVjbNBYlgoKej7wl0miFYxnu4w.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCu6KVjbNBYlgoKej74l0miFYxnu4w.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCu6KVjbNBYlgoKej73l0miFYxnu4w.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCu6KVjbNBYlgoKej76l0miFYxnu4w.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCu6KVjbNBYlgoKej70l0miFYxn.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejYHtFyCN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejYHtFyLN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejYHtFyDN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejYHtFyMN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejYHtFyBN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejYHtFyPN4FNgYUJ.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZPslyCN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZPslyLN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZPslyDN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZPslyMN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZPslyBN4FNgYUJ31U.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Ubuntu';font-style:italic;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCp6KVjbNBYlgoKejZPslyPN4FNgYUJ.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoC1CzjvWyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoC1CzjtGyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoC1CzjvGyNPYZvg7UI.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoC1Czjs2yNPYZvg7UI.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoC1CzjvmyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:300;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoC1CzjsGyNPYZvgw.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCs6KVjbNBYlgoKcg72nU6AF7xm.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCs6KVjbNBYlgoKew72nU6AF7xm.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCs6KVjbNBYlgoKcw72nU6AF7xm.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCs6KVjbNBYlgoKfA72nU6AF7xm.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCs6KVjbNBYlgoKcQ72nU6AF7xm.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCs6KVjbNBYlgoKfw72nU6AFw.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCjC3jvWyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCjC3jtGyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCjC3jvGyNPYZvg7UI.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCjC3js2yNPYZvg7UI.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCjC3jvmyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCjC3jsGyNPYZvgw.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCxCvjvWyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCxCvjtGyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCxCvjvGyNPYZvg7UI.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCxCvjs2yNPYZvg7UI.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCxCvjvmyNPYZvg7UI.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Ubuntu';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/ubuntu/v21/4iCv6KVjbNBYlgoCxCvjsGyNPYZvgw.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}</style>
+
+  <style type="text/css">@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwkT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwAT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwgT9mI1F55MKw.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwcT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwsT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwoT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwQT9mI1F54.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvvYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvmYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvuYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvhYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvtYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvsYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcviYwYZ8UA3.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Red Hat Display';font-style:italic;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIS7wUr0m80wwYf0QCXZzYzUoTg-A6tTY_vCk5YVqU.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Red Hat Display';font-style:italic;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIS7wUr0m80wwYf0QCXZzYzUoTg-A6jTY_vCk5Y.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Red Hat Display';font-style:normal;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIQ7wUr0m80wwYf0QCXZzYzUoTg8z6hR4jNCH5Z.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Red Hat Display';font-style:normal;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIQ7wUr0m80wwYf0QCXZzYzUoTg_T6hR4jNCA.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}</style>
+  <style type="text/css">@font-face{font-family:'Red Hat Display';font-style:italic;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIS7wUr0m80wwYf0QCXZzYzUoTg-A6tTY_vCk5YVqU.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Red Hat Display';font-style:italic;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIS7wUr0m80wwYf0QCXZzYzUoTg-A6jTY_vCk5Y.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Red Hat Display';font-style:normal;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIQ7wUr0m80wwYf0QCXZzYzUoTg8z6hR4jNCH5Z.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Red Hat Display';font-style:normal;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIQ7wUr0m80wwYf0QCXZzYzUoTg_T6hR4jNCA.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}</style>
+  <style type="text/css">@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwkT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwAT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwgT9mI1F55MKw.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwcT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwsT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwoT9mI1F55MKw.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCm3FwrK3iLTcvnUwQT9mI1F54.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvvYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvmYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvuYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+1F00-1FFF;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvhYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvtYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcvsYwYZ8UA3J58.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcCo3FwrK3iLTcviYwYZ8UA3.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Lexend';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/lexend/v26/wlpwgwvFAVdoq2_v9KQU82RHaBBX.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Lexend';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/lexend/v26/wlpwgwvFAVdoq2_v9aQU82RHaBBX.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Lexend';font-style:normal;font-weight:100 900;font-display:swap;src:url(https://fonts.gstatic.com/s/lexend/v26/wlpwgwvFAVdoq2_v-6QU82RHaA.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Red Hat Display';font-style:italic;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIS7wUr0m80wwYf0QCXZzYzUoTg-A6tTY_vCk5YVqU.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Red Hat Display';font-style:italic;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIS7wUr0m80wwYf0QCXZzYzUoTg-A6jTY_vCk5Y.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Red Hat Display';font-style:normal;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIQ7wUr0m80wwYf0QCXZzYzUoTg8z6hR4jNCH5Z.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Red Hat Display';font-style:normal;font-weight:300 900;font-display:swap;src:url(https://fonts.gstatic.com/s/redhatdisplay/v21/8vIQ7wUr0m80wwYf0QCXZzYzUoTg_T6hR4jNCA.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}</style>
+
+  <style type="text/css">@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko70yygg_vbd-E.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko50yygg_vbd-E.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yygg_vbd-E.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:400;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko70yygg_vbd-E.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko50yygg_vbd-E.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yygg_vbd-E.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:500;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:600;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko70yygg_vbd-E.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:600;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko50yygg_vbd-E.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:600;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yygg_vbd-E.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:600;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko70yygg_vbd-E.woff2) format('woff2');unicode-range:U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko50yygg_vbd-E.woff2) format('woff2');unicode-range:U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yygg_vbd-E.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/plusjakartasans/v12/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}</style>
+
+  <style type="text/css">
+    .pace {
+      -webkit-pointer-events: none;
+      pointer-events: none;
+
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
+    }
+
+    .pace-inactive {
+      display: none;
+    }
+
+    .pace .pace-progress {
+      background: #16a34a;
+      position: fixed;
+      z-index: 2000;
+      top: 0;
+      right: 100%;
+      width: 100%;
+      height: 3px;
+    }
+
+    .page-loading {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+      z-index: -1;
+    }
+
+    .loading-icon {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      margin-left: -19px;
+      margin-top: -19px;
+    }
+
+    app-root:empty~.page-loading {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    .pace {
+      -webkit-pointer-events: none;
+      pointer-events: none;
+
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
+    }
+
+    .pace-inactive {
+      display: none;
+    }
+
+    .pace .pace-progress {
+      background: #16a34a;
+      position: fixed;
+      z-index: 2000;
+      top: 0;
+      right: 100%;
+      width: 100%;
+      height: 2px;
+    }
+  </style>
+<style>:root{--surface-a:#ffffff;--surface-b:#f8f9fa;--surface-c:#e9ecef;--surface-d:#dee2e6;--surface-e:#ffffff;--surface-f:#ffffff;--text-color:#495057;--text-color-secondary:#6c757d;--primary-color:#3B82F6;--primary-color-text:#ffffff;--font-family:-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;--surface-0:#ffffff;--surface-50:#FAFAFA;--surface-100:#F5F5F5;--surface-200:#EEEEEE;--surface-300:#E0E0E0;--surface-400:#BDBDBD;--surface-500:#9E9E9E;--surface-600:#757575;--surface-700:#616161;--surface-800:#424242;--surface-900:#212121;--gray-50:#FAFAFA;--gray-100:#F5F5F5;--gray-200:#EEEEEE;--gray-300:#E0E0E0;--gray-400:#BDBDBD;--gray-500:#9E9E9E;--gray-600:#757575;--gray-700:#616161;--gray-800:#424242;--gray-900:#212121;--content-padding:1.25rem;--inline-spacing:.5rem;--border-radius:6px;--surface-ground:#eff3f8;--surface-section:#ffffff;--surface-card:#ffffff;--surface-overlay:#ffffff;--surface-border:#dfe7ef;--surface-hover:#f6f9fc;--focus-ring:0 0 0 .2rem #BFDBFE;--maskbg:rgba(0, 0, 0, .4);color-scheme:light}*{box-sizing:border-box}:root{--blue-50:#f5f9ff;--blue-100:#d0e1fd;--blue-200:#abc9fb;--blue-300:#85b2f9;--blue-400:#609af8;--blue-500:#3b82f6;--blue-600:#326fd1;--blue-700:#295bac;--blue-800:#204887;--blue-900:#183462;--green-50:#f4fcf7;--green-100:#caf1d8;--green-200:#a0e6ba;--green-300:#76db9b;--green-400:#4cd07d;--green-500:#22c55e;--green-600:#1da750;--green-700:#188a42;--green-800:#136c34;--green-900:#0e4f26;--yellow-50:#fefbf3;--yellow-100:#faedc4;--yellow-200:#f6de95;--yellow-300:#f2d066;--yellow-400:#eec137;--yellow-500:#eab308;--yellow-600:#c79807;--yellow-700:#a47d06;--yellow-800:#816204;--yellow-900:#5e4803;--cyan-50:#f3fbfd;--cyan-100:#c3edf5;--cyan-200:#94e0ed;--cyan-300:#65d2e4;--cyan-400:#35c4dc;--cyan-500:#06b6d4;--cyan-600:#059bb4;--cyan-700:#047f94;--cyan-800:#036475;--cyan-900:#024955;--pink-50:#fef6fa;--pink-100:#fad3e7;--pink-200:#f7b0d3;--pink-300:#f38ec0;--pink-400:#f06bac;--pink-500:#ec4899;--pink-600:#c93d82;--pink-700:#a5326b;--pink-800:#822854;--pink-900:#5e1d3d;--indigo-50:#f7f7fe;--indigo-100:#dadafc;--indigo-200:#bcbdf9;--indigo-300:#9ea0f6;--indigo-400:#8183f4;--indigo-500:#6366f1;--indigo-600:#5457cd;--indigo-700:#4547a9;--indigo-800:#363885;--indigo-900:#282960;--teal-50:#f3fbfb;--teal-100:#c7eeea;--teal-200:#9ae0d9;--teal-300:#6dd3c8;--teal-400:#41c5b7;--teal-500:#14b8a6;--teal-600:#119c8d;--teal-700:#0e8174;--teal-800:#0b655b;--teal-900:#084a42;--orange-50:#fff8f3;--orange-100:#feddc7;--orange-200:#fcc39b;--orange-300:#fba86f;--orange-400:#fa8e42;--orange-500:#f97316;--orange-600:#d46213;--orange-700:#ae510f;--orange-800:#893f0c;--orange-900:#642e09;--bluegray-50:#f7f8f9;--bluegray-100:#dadee3;--bluegray-200:#bcc3cd;--bluegray-300:#9fa9b7;--bluegray-400:#818ea1;--bluegray-500:#64748b;--bluegray-600:#556376;--bluegray-700:#465161;--bluegray-800:#37404c;--bluegray-900:#282e38;--purple-50:#fbf7ff;--purple-100:#ead6fd;--purple-200:#dab6fc;--purple-300:#c996fa;--purple-400:#b975f9;--purple-500:#a855f7;--purple-600:#8f48d2;--purple-700:#763cad;--purple-800:#5c2f88;--purple-900:#432263;--red-50:#fff5f5;--red-100:#ffd0ce;--red-200:#ffaca7;--red-300:#ff8780;--red-400:#ff6259;--red-500:#ff3d32;--red-600:#d9342b;--red-700:#b32b23;--red-800:#8c221c;--red-900:#661814;--primary-50:#f5f9ff;--primary-100:#d0e1fd;--primary-200:#abc9fb;--primary-300:#85b2f9;--primary-400:#609af8;--primary-500:#3b82f6;--primary-600:#326fd1;--primary-700:#295bac;--primary-800:#204887;--primary-900:#183462}@charset "UTF-8";*,:before,:after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / .5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }*,:before,:after{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}:before,:after{--tw-content:""}html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:Inter,system-ui,-apple-system,sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}@charset "UTF-8";:root{--bs-blue:#008cff;--bs-indigo:#6610f2;--bs-purple:#6f42c1;--bs-pink:#d63384;--bs-red:#fd3550;--bs-orange:#fd7e14;--bs-yellow:#ffc107;--bs-green:#15ca20;--bs-teal:#20c997;--bs-cyan:#0dcaf0;--bs-white:#fff;--bs-gray:#6c757d;--bs-gray-dark:#343a40;--bs-gray-100:#f8f9fa;--bs-gray-200:#e9ecef;--bs-gray-300:#dee2e6;--bs-gray-400:#ced4da;--bs-gray-500:#adb5bd;--bs-gray-600:#6c757d;--bs-gray-700:#495057;--bs-gray-800:#343a40;--bs-gray-900:#212529;--bs-primary:#008cff;--bs-secondary:#6c757d;--bs-success:#15ca20;--bs-info:#0dcaf0;--bs-warning:#ffc107;--bs-danger:#fd3550;--bs-light:#f8f9fa;--bs-dark:#212529;--bs-primary-rgb:0, 140, 255;--bs-secondary-rgb:108, 117, 125;--bs-success-rgb:21, 202, 32;--bs-info-rgb:13, 202, 240;--bs-warning-rgb:255, 193, 7;--bs-danger-rgb:253, 53, 80;--bs-light-rgb:248, 249, 250;--bs-dark-rgb:33, 37, 41;--bs-primary-text-emphasis:#003866;--bs-secondary-text-emphasis:#2b2f32;--bs-success-text-emphasis:#08510d;--bs-info-text-emphasis:#055160;--bs-warning-text-emphasis:#664d03;--bs-danger-text-emphasis:#651520;--bs-light-text-emphasis:#495057;--bs-dark-text-emphasis:#495057;--bs-primary-bg-subtle:#cce8ff;--bs-secondary-bg-subtle:#e2e3e5;--bs-success-bg-subtle:#d0f4d2;--bs-info-bg-subtle:#cff4fc;--bs-warning-bg-subtle:#fff3cd;--bs-danger-bg-subtle:#ffd7dc;--bs-light-bg-subtle:#fcfcfd;--bs-dark-bg-subtle:#ced4da;--bs-primary-border-subtle:#99d1ff;--bs-secondary-border-subtle:#c4c8cb;--bs-success-border-subtle:#a1eaa6;--bs-info-border-subtle:#9eeaf9;--bs-warning-border-subtle:#ffe69c;--bs-danger-border-subtle:#feaeb9;--bs-light-border-subtle:#e9ecef;--bs-dark-border-subtle:#adb5bd;--bs-white-rgb:255, 255, 255;--bs-black-rgb:0, 0, 0;--bs-font-sans-serif:Roboto, sans-serif;--bs-font-monospace:SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;--bs-gradient:linear-gradient(180deg, rgba(255, 255, 255, .15), rgba(255, 255, 255, 0));--bs-body-font-family:var(--bs-font-sans-serif);--bs-body-font-size:1rem;--bs-body-font-weight:400;--bs-body-line-height:1.5;--bs-body-color:#4c5258;--bs-body-color-rgb:76, 82, 88;--bs-body-bg:#f4f4f4;--bs-body-bg-rgb:244, 244, 244;--bs-emphasis-color:#000;--bs-emphasis-color-rgb:0, 0, 0;--bs-secondary-color:rgba(76, 82, 88, .75);--bs-secondary-color-rgb:76, 82, 88;--bs-secondary-bg:#e9ecef;--bs-secondary-bg-rgb:233, 236, 239;--bs-tertiary-color:rgba(76, 82, 88, .5);--bs-tertiary-color-rgb:76, 82, 88;--bs-tertiary-bg:#f8f9fa;--bs-tertiary-bg-rgb:248, 249, 250;--bs-heading-color:inherit;--bs-link-color:#008cff;--bs-link-color-rgb:0, 140, 255;--bs-link-decoration:none;--bs-link-hover-color:#0070cc;--bs-link-hover-color-rgb:0, 112, 204;--bs-code-color:#d63384;--bs-highlight-color:#4c5258;--bs-highlight-bg:#fcf8e3;--bs-border-width:1px;--bs-border-style:solid;--bs-border-color:#dee2e6;--bs-border-color-translucent:rgba(0, 0, 0, .175);--bs-border-radius:.25rem;--bs-border-radius-sm:.2rem;--bs-border-radius-lg:.3rem;--bs-border-radius-xl:1rem;--bs-border-radius-xxl:2rem;--bs-border-radius-2xl:var(--bs-border-radius-xxl);--bs-border-radius-pill:50rem;--bs-box-shadow:0 .5rem 1rem rgba(0, 0, 0, .15);--bs-box-shadow-sm:0 .125rem .25rem rgba(0, 0, 0, .075);--bs-box-shadow-lg:0 1rem 3rem rgba(0, 0, 0, .175);--bs-box-shadow-inset:inset 0 1px 2px rgba(0, 0, 0, .075);--bs-focus-ring-width:.25rem;--bs-focus-ring-opacity:.25;--bs-focus-ring-color:rgba(0, 140, 255, .25);--bs-form-valid-color:#15ca20;--bs-form-valid-border-color:#15ca20;--bs-form-invalid-color:#fd3550;--bs-form-invalid-border-color:#fd3550}*,*:before,*:after{box-sizing:border-box}@media (prefers-reduced-motion: no-preference){:root{scroll-behavior:smooth}}body{margin:0;font-family:var(--bs-body-font-family);font-size:var(--bs-body-font-size);font-weight:var(--bs-body-font-weight);line-height:var(--bs-body-line-height);color:var(--bs-body-color);text-align:var(--bs-body-text-align);background-color:var(--bs-body-bg);-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:rgba(0,0,0,0)}:root{--bs-breakpoint-xs:0;--bs-breakpoint-sm:576px;--bs-breakpoint-md:768px;--bs-breakpoint-lg:992px;--bs-breakpoint-xl:1200px;--bs-breakpoint-xxl:1400px}:root{--bs-btn-close-filter: }:root{--bs-carousel-indicator-active-bg:#fff;--bs-carousel-caption-color:#fff;--bs-carousel-control-icon-filter: }.spinner-border{display:inline-block;flex-shrink:0;width:var(--bs-spinner-width);height:var(--bs-spinner-height);vertical-align:var(--bs-spinner-vertical-align);border-radius:50%;animation:var(--bs-spinner-animation-speed) linear infinite var(--bs-spinner-animation-name)}.spinner-border{--bs-spinner-width:2rem;--bs-spinner-height:2rem;--bs-spinner-vertical-align:-.125em;--bs-spinner-border-width:.25em;--bs-spinner-animation-speed:.75s;--bs-spinner-animation-name:spinner-border;border:var(--bs-spinner-border-width) solid currentcolor;border-right-color:transparent}@media (prefers-reduced-motion: reduce){.spinner-border{--bs-spinner-animation-speed:1.5s}}.text-primary{color:#008cff!important}:root{--color-bg-primary:#FFFFFF;--color-bg-secondary:#F8FAFC;--color-bg-tertiary:#F1F5F9;--color-bg-elevated:#FFFFFF;--color-text-primary:#0F172A;--color-text-secondary:#334155;--color-text-tertiary:#64748B;--color-text-muted:#94A3B8;--color-border:#E2E8F0;--color-border-light:#F1F5F9;--color-border-dark:#CBD5E1;--color-primary:#0263E0;--color-primary-dark:#0D4F8B;--color-primary-light:#1976D2;--color-primary-50:#E3F2FD;--color-primary-100:#BBDEFB;--color-primary-hover:#0D4F8B;--color-success:#10B981;--color-success-bg:#D1FAE5;--color-warning:#F59E0B;--color-warning-bg:#FEF3C7;--color-danger:#EF4444;--color-danger-bg:#FEE2E2;--color-info:#0EA5E9;--color-info-bg:#E0F2FE;--shadow-sm:0 1px 2px 0 rgba(0, 0, 0, .05);--shadow-md:0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -1px rgba(0, 0, 0, .06);--shadow-lg:0 10px 15px -3px rgba(0, 0, 0, .1), 0 4px 6px -2px rgba(0, 0, 0, .05);--shadow-xl:0 20px 25px -5px rgba(0, 0, 0, .1), 0 10px 10px -5px rgba(0, 0, 0, .04);--code-bg:#1E293B;--code-text:#F1F5F9;--code-keyword:#A855F7;--code-string:#34D399;--code-function:#60A5FA;--code-comment:#94A3B8;--transition-fast:.15s ease-in-out;--transition-base:.2s ease-in-out;--transition-slow:.3s ease-in-out}*{transition-property:background-color,border-color,color;transition-duration:var(--transition-base);transition-timing-function:ease-in-out}body{font-size:14px;color:#4c5258;letter-spacing:.5px;overflow-x:hidden}</style><link rel="stylesheet" href="styles.1ca9ca8612e2b92d.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="styles.1ca9ca8612e2b92d.css"></noscript></head>
+
+<body>
+  <app-root></app-root>
+
+  <div class="page-loading">
+    <div class="spinner-border text-primary loading-icon" role="status"></div>
+  </div>
+<script src="runtime.4fc489d7cafdac72.js" type="module"></script><script src="polyfills.0e9d026eda19fc83.js" type="module"></script><script src="scripts.e239c09d91800091.js" defer></script><script src="main.4a29b0a7a0d88cd1.js" type="module"></script>
+
+</body></html>

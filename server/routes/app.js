@@ -123,7 +123,9 @@ router.post('/auth', async (req, res) => {
                 last_name: user.last_name || lastName,
                 photo_url: user.photo_url || photoUrl,
                 balance: parseFloat(user.balance),
-                role: user.role || 'user'
+                role: user.role || 'user',
+                phone_number: user.phone_number || null,
+                phone_verified: Boolean(user.phone_verified)
             }
         });
     } catch (err) {
