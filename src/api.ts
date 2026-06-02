@@ -282,6 +282,26 @@ export async function applyReferralCode(referralCode: string): Promise<{ success
     });
 }
 
+export interface ReferredUser {
+    tg_id: string;
+    name: string;
+    deposit_count: number;
+    commission_earned: number;
+}
+
+export interface ReferralStatsResponse {
+    success: boolean;
+    totalEarned: number;
+    referredList: ReferredUser[];
+    error?: string;
+}
+
+export async function fetchReferralStats(): Promise<ReferralStatsResponse> {
+    return nodeApiFetch('/referral/stats', {
+        method: 'POST',
+    });
+}
+
 export interface AppSettings {
     rateMultiplier: number;
     discountPercent: number;

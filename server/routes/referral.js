@@ -92,6 +92,7 @@ router.post('/apply', async (req, res) => {
         }
 
         // Fetch updated balance to return
+        // Fetch updated balance to return
         const [updatedUsers] = await pool.execute('SELECT balance, referred_by FROM auth WHERE tg_id = ?', [tgId]);
 
         return res.json({ 
@@ -103,6 +104,63 @@ router.post('/apply', async (req, res) => {
 
     } catch (err) {
         console.error('Apply referral error:', err);
+        return res.json({ success: false, error: 'Internal server error' });
+    }
+});
+
+// GET STATS
+router.post('/stats', async (req, res) => {
+    const { initData } = req.body;
+    const tgId = getTelegramUserId(initData);
+    if (!tgId) {
+        return res.json({ success: false, error: 'Unauthorized' });
+    }
+
+    try {
+        // 1. Get total commission earned
+        const [totalEarnedRows] = await pool.execute(
+            "SELECT SUM(amount) as total FROM transactions WHERE user_id = ? AND type = 'referral_commission'",
+            [tgId]
+        );
+        const totalEarned = parseFloat(totalEarnedRows[0].total || 0);
+
+        // 2. Get all referred users (users where referred_by = current user's tgId)
+        const [referredUsers] = await pool.execute(
+            "SELECT tg_id, username, first_name, last_name, last_login FROM auth WHERE referred_by = ?",
+            [tgId]
+        );
+
+        const referredList = [];
+        for (const u of referredUsers) {
+            // Get count of deposits made by this referred user
+            const [depositCountRows] = await pool.execute(
+                "SELECT COUNT(*) as count FROM transactions WHERE user_id = ? AND type = 'deposit'",
+                [u.tg_id]
+            );
+            const depositCount = parseInt(depositCountRows[0].count || 0);
+
+            // Get total commission earned from this referred user
+            const [commissionRows] = await pool.execute(
+                "SELECT SUM(amount) as total FROM transactions WHERE user_id = ? AND type = 'referral_commission' AND reference_type = 'referral_user' AND reference_id = ?",
+                [tgId, u.tg_id]
+            );
+            const commissionFromUser = parseFloat(commissionRows[0].total || 0);
+
+            referredList.push({
+                tg_id: u.tg_id,
+                name: u.first_name || u.username || `User #${u.tg_id.slice(-4)}`,
+                deposit_count: depositCount,
+                commission_earned: commissionFromUser
+            });
+        }
+
+        return res.json({
+            success: true,
+            totalEarned,
+            referredList
+        });
+    } catch (err) {
+        console.error('Fetch referral stats error:', err);
         return res.json({ success: false, error: 'Internal server error' });
     }
 });

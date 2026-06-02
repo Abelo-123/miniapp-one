@@ -28,6 +28,39 @@ export async function processTransaction(tgId, type, amount, description, conn, 
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [tgId, type, amount, newBalance, refType, refId, description]
     );
+
+    // 4. Reward 7% commission to referrer if this is a deposit
+    if (type === 'deposit' && amount > 0) {
+        try {
+            const [userRows] = await conn.execute('SELECT referred_by FROM auth WHERE tg_id = ?', [tgId]);
+            if (userRows.length > 0 && userRows[0].referred_by) {
+                const referrerId = String(userRows[0].referred_by);
+                const commission = amount * 0.07;
+
+                // Update referrer balance
+                await conn.execute('UPDATE auth SET balance = balance + ? WHERE tg_id = ?', [commission, referrerId]);
+
+                // Get referrer's new balance
+                const [refBalRows] = await conn.execute('SELECT balance FROM auth WHERE tg_id = ?', [referrerId]);
+                const refNewBal = refBalRows.length > 0 ? parseFloat(refBalRows[0].balance) : 0;
+
+                // Log transaction ledger for referrer
+                await conn.execute(
+                    `INSERT INTO transactions (user_id, type, amount, balance_after, reference_type, reference_id, description) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [referrerId, 'referral_commission', commission, refNewBal, 'referral_user', tgId, `7% referral commission from user #${tgId} deposit`]
+                );
+
+                // Add alert for referrer
+                await conn.execute(
+                    'INSERT INTO alerts (user_id, title, message, type) VALUES (?, ?, ?, ?)',
+                    [referrerId, 'Referral Commission', `You earned ${commission.toFixed(2)} ETB (7%) from your referred friend's deposit!`, 'success']
+                );
+            }
+        } catch (err) {
+            console.error('Failed to reward referral commission:', err.message);
+        }
+    }
     
     return newBalance;
 }

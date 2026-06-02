@@ -20,6 +20,23 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     const [referralInput, setReferralInput] = useState('');
     const [isApplyingRef, setIsApplyingRef] = useState(false);
 
+    const [refStats, setRefStats] = useState<api.ReferralStatsResponse | null>(null);
+    const [isLoadingStats, setIsLoadingStats] = useState(false);
+
+    const loadReferralStats = async () => {
+        setIsLoadingStats(true);
+        try {
+            const data = await api.fetchReferralStats();
+            if (data && data.success) {
+                setRefStats(data);
+            }
+        } catch (e) {
+            console.error('Failed to load referral stats', e);
+        } finally {
+            setIsLoadingStats(false);
+        }
+    };
+
     const loadMessages = async () => {
         try {
             const data = await api.fetchChat();
@@ -40,6 +57,7 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     useEffect(() => {
         loadMessages();
         refreshAlerts();
+        loadReferralStats();
         const interval = setInterval(() => {
             loadMessages();
             refreshAlerts();
@@ -194,6 +212,84 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                         </div>
                     </div>
                 )}
+            </Section>
+
+            {/* ─── Referral Earnings Dashboard ─── */}
+            <Section 
+                header={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <span>Referral Earnings</span>
+                        <button 
+                            onClick={loadReferralStats}
+                            disabled={isLoadingStats}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--tg-theme-button-color)',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            <i className={`fa fa-refresh ${isLoadingStats ? 'fa-spin' : ''}`} />
+                            {isLoadingStats ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                    </div>
+                }
+            >
+                <div style={{ padding: '16px', background: 'var(--tg-theme-bg-color)' }}>
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        background: 'var(--tg-theme-secondary-bg-color)',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        marginBottom: '16px'
+                    }}>
+                        <span style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)' }}>Total Commission Earned:</span>
+                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--tg-theme-button-color)' }}>
+                            {(refStats?.totalEarned || 0).toFixed(2)} ETB
+                        </span>
+                    </div>
+
+                    {!refStats || refStats.referredList.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--tg-theme-hint-color)', fontSize: '13px' }}>
+                            No referred friends yet. Share your code to earn 7% of their deposits!
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-hint-color)' }}>
+                                        <th style={{ padding: '8px 4px' }}>Friend</th>
+                                        <th style={{ padding: '8px 4px', textAlign: 'center' }}>Deposits</th>
+                                        <th style={{ padding: '8px 4px', textAlign: 'right' }}>7% Commission</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {refStats.referredList.map((refUser, idx) => (
+                                        <tr key={idx} style={{ borderBottom: '1px solid var(--tg-theme-secondary-bg-color)' }}>
+                                            <td style={{ padding: '8px 4px', fontWeight: '500' }}>
+                                                {refUser.name}
+                                            </td>
+                                            <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                                                {refUser.deposit_count}
+                                            </td>
+                                            <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 'bold', color: 'var(--tg-theme-button-color)' }}>
+                                                {refUser.commission_earned.toFixed(2)} ETB
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </Section>
 
             {/* ─── Appearance ─── */}
