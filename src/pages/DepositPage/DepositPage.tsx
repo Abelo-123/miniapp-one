@@ -440,6 +440,20 @@ export function DepositPage() {
             }
 
             // 2. Initialize the Chapa Inline widget
+            hasSubmittedRef.current = false;
+            
+            // Listen for clicks on the form to know when they actually submit
+            setTimeout(() => {
+                const wrapper = document.getElementById('chapa-container-wrapper');
+                if (wrapper) {
+                    wrapper.addEventListener('click', (e) => {
+                        if ((e.target as HTMLElement).closest('button')) {
+                            hasSubmittedRef.current = true;
+                        }
+                    }, true);
+                }
+            }, 1000);
+
             const chapa = new window.ChapaCheckout({
                 publicKey: CHAPA_PUBLIC_KEY,
                 amount: Math.round(depositAmount * 100) / 100,
@@ -464,7 +478,6 @@ export function DepositPage() {
                     console.log('[chapa] onPaymentFailure:', error);
                     let rawMsg = error?.message || error?.error || String(error) || 'Payment failed';
                     
-                    // Sometimes Chapa returns a stringified JSON wrapper
                     try {
                         if (typeof rawMsg === 'string' && rawMsg.startsWith('{')) {
                             const parsed = JSON.parse(rawMsg);
@@ -474,7 +487,9 @@ export function DepositPage() {
 
                     const errStr = rawMsg.toLowerCase();
 
-                    // Treat pending messages as false positives so our system can gracefully wait and poll
+                    // Ignore basic validation errors from the widget typing
+                    if (['phone','mobile','valid','number','format','required','insert','enter'].some(k => errStr.includes(k))) return;
+
                     const isFalsePositive = (
                         errStr.includes('cors') ||
                         errStr.includes('fetch') ||
@@ -484,51 +499,37 @@ export function DepositPage() {
                         errStr.includes('pending')
                     );
 
-                    if (isFalsePositive) {
-                        console.log('[chapa] Suppressed false positive or pending error, switching to verification poll...');
-                        setTimeout(() => {
-                            verifyDeposit(txRef);
-                        }, 1000);
-                    } else {
-                        // Real failure (e.g. Invalid PIN, Insufficient Funds, etc)
+                    // If user hasn't submitted yet (or Chapa widget failed to load)
+                    if (!hasSubmittedRef.current) {
                         setStep('amount');
-                        
-                        // NEW: Update UI with the exact reason without blocking popups
-                        void (async () => {
-                            try {
-                                const initData = await getInitDataString();
-                                const userId = user?.id || 'unauth_local_user';
-                                const v = await fetch(`${NODE_API_URL}/verify-deposit?t=${Date.now()}`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ tx_ref: txRef, initData, user_id: userId }),
-                                });
-                                const data = await v.json();
-                                const exactReason = data?.bank_message || data?.message || rawMsg;
-                                setErrorMessage(exactReason);
-                            } catch (e) {
-                                setErrorMessage(rawMsg);
-                            } finally {
-                                showToast('error', 'Payment Declined');
-                                hapticNotification('error');
-                            }
-                        })();
+                        showToast('error', isFalsePositive ? 'Chapa system issue. Please try again later.' : 'Payment failed.');
+                        hapticNotification('error');
+                        return;
                     }
+
+                    // Only errors AFTER submission are treated as "processing" (waiting for PIN)
+                    console.log('[chapa] Failed after submission, treating as processing (awaiting PIN)');
+                    setTimeout(() => {
+                        verifyDeposit(txRef);
+                        setStep('verifying');
+                    }, 500);
                 },
 
                 onClose: () => {
                     console.log('[chapa] Widget closed');
-                    // Only go back to amount if we haven't moved to verifying/success
                     setTimeout(() => {
                         setStep(prev => {
                             if (prev === 'chapa') {
-                                // If we have an active tx_ref, the payment might still be processing
-                                // Start a verification attempt before going back
-                                if (activeTxRefRef.current === txRef) {
+                                if (hasSubmittedRef.current && activeTxRefRef.current === txRef) {
+                                    // They submitted then closed it. Show Awaiting PIN.
                                     verifyDeposit(txRef);
                                     return 'verifying';
+                                } else {
+                                    // Cancelled without submitting
+                                    activeTxRefRef.current = null;
+                                    showToast('info', 'Deposit cancelled');
+                                    return 'amount';
                                 }
-                                return 'amount';
                             }
                             return prev;
                         });
