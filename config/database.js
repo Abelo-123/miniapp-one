@@ -7,8 +7,8 @@ import mysql from 'mysql2/promise';
 // cPanel MySQL credentials
 const pool = mysql.createPool({
     host: 'localhost',
-    user: 'paxyocom_newRender',
-    password: '_[xgm!h,PT0MUx,y',
+    user: 'root',
+    password: '',
     database: 'paxyocom_paxyov3',
     port: 3306,
     charset: 'utf8mb4',
@@ -34,6 +34,21 @@ pool.getConnection()
                 )
             `);
             console.log('✅ chat_messages table ready');
+
+            // Add referral columns to auth table if they don't exist
+            try {
+                await conn.execute(`ALTER TABLE auth ADD COLUMN referral_code VARCHAR(50) UNIQUE DEFAULT NULL`);
+                console.log('✅ referral_code column added to auth');
+            } catch (e) {
+                // Column might already exist
+            }
+            try {
+                await conn.execute(`ALTER TABLE auth ADD COLUMN referred_by BIGINT(20) DEFAULT NULL`);
+                console.log('✅ referred_by column added to auth');
+            } catch (e) {
+                // Column might already exist
+            }
+
         } catch (e) {
             console.error('❌ Failed to create chat_messages table', e.message);
         }

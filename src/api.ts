@@ -275,6 +275,13 @@ export async function logInitData(initData: string): Promise<{ success: boolean 
     });
 }
 
+export async function applyReferralCode(referralCode: string): Promise<{ success: boolean; message?: string; error?: string; newBalance?: number; referred_by?: string }> {
+    return nodeApiFetch('/referral/apply', {
+        method: 'POST',
+        body: JSON.stringify({ referralCode }),
+    });
+}
+
 export interface AppSettings {
     rateMultiplier: number;
     discountPercent: number;

@@ -100,6 +100,8 @@ export interface UserProfile {
     photo_url: string;
     balance: number;
     username?: string;
+    referral_code?: string;
+    referred_by?: string;
 }
 
 export interface Holiday {

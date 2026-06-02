@@ -16,6 +16,9 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     const [chatInput, setChatInput] = useState('');
     const [isSending, setIsSending] = useState(false);
     const chatContainerRef = useRef<HTMLDivElement>(null);
+    
+    const [referralInput, setReferralInput] = useState('');
+    const [isApplyingRef, setIsApplyingRef] = useState(false);
 
     const loadMessages = async () => {
         try {
@@ -60,6 +63,35 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
         }
     };
 
+    const handleApplyReferral = async () => {
+        if (!referralInput.trim() || isApplyingRef) return;
+        setIsApplyingRef(true);
+        try {
+            import('../../helpers/telegram').then(m => m.hapticSelection());
+            const res = await api.applyReferralCode(referralInput.trim());
+            if (res.success) {
+                showToast('success', res.message || 'Referral applied!');
+                if (res.newBalance !== undefined && user) {
+                    const { setUser } = require('../../context/AppContext');
+                    // We can't access setUser directly here easily if it's not exported from useApp or we use user object.
+                    // Actually, setUser is in useApp. Let's get it.
+                }
+                // Refresh full user state by reloading page or fetching auth again, but simple alert is fine
+                import('sweetalert2').then(Swal => {
+                    Swal.default.fire('Success', res.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                });
+            } else {
+                showToast('error', res.error || 'Failed to apply code');
+            }
+        } catch (e: any) {
+            showToast('error', e.message || 'Error applying code');
+        } finally {
+            setIsApplyingRef(false);
+        }
+    };
+
     const handleOpenLink = (url: string) => {
         if ((window as any).Telegram?.WebApp) {
             (window as any).Telegram.WebApp.openLink(url);
@@ -96,6 +128,74 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                 >
                     Your User ID
                 </Cell>
+            </Section>
+
+            {/* ─── Invite Friends ─── */}
+            <Section header="Invite Friends">
+                {user?.referral_code && (
+                    <Cell 
+                        subtitle="Share this code with your friends!"
+                        after={
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <i 
+                                    className="fa fa-copy" 
+                                    style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', cursor: 'pointer' }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        import('../../helpers/telegram').then(m => m.hapticSelection());
+                                        navigator.clipboard.writeText(user.referral_code || '');
+                                        showToast('success', 'Referral Code copied!');
+                                    }}
+                                />
+                            </div>
+                        }
+                        onClick={() => {
+                            import('../../helpers/telegram').then(m => m.hapticSelection());
+                            navigator.clipboard.writeText(user.referral_code || '');
+                            showToast('success', 'Referral Code copied!');
+                        }}
+                    >
+                        Your Code: <span style={{ fontWeight: 'bold' }}>{user.referral_code}</span>
+                    </Cell>
+                )}
+                {!user?.referred_by && (
+                    <div style={{ padding: '16px', background: 'var(--tg-theme-bg-color)' }}>
+                        <div style={{ marginBottom: '8px', fontSize: '14px', color: 'var(--tg-theme-hint-color)' }}>
+                            Have a referral code? Enter it below to get a 20 ETB bonus!
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <input 
+                                value={referralInput}
+                                onChange={e => setReferralInput(e.target.value)}
+                                placeholder="Enter friend's code"
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--tg-theme-hint-color)',
+                                    background: 'var(--tg-theme-secondary-bg-color)',
+                                    color: 'var(--tg-theme-text-color)',
+                                    outline: 'none'
+                                }}
+                            />
+                            <button 
+                                onClick={handleApplyReferral}
+                                disabled={isApplyingRef || !referralInput.trim()}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '8px',
+                                    background: 'var(--tg-theme-button-color)',
+                                    color: 'var(--tg-theme-button-text-color)',
+                                    border: 'none',
+                                    fontWeight: 'bold',
+                                    opacity: (isApplyingRef || !referralInput.trim()) ? 0.6 : 1
+                                }}
+                            >
+                                {isApplyingRef ? '...' : 'Apply'}
+                            </button>
+                        </div>
+                    </div>
+                )}
             </Section>
 
             {/* ─── Appearance ─── */}
