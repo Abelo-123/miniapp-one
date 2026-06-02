@@ -152,6 +152,43 @@ router.post('/log-init-data', async (req, res) => {
     return res.json({ success: true });
 });
 
+// migrate-referral (for cPanel execution without terminal)
+router.get('/migrate-referral', async (req, res) => {
+    try {
+        const connection = await pool.getConnection();
+
+        // 1. Add columns
+        try { await connection.execute(`ALTER TABLE auth ADD COLUMN referral_code VARCHAR(50) UNIQUE DEFAULT NULL`); } catch (e) {}
+        try { await connection.execute(`ALTER TABLE auth ADD COLUMN referred_by BIGINT(20) DEFAULT NULL`); } catch (e) {}
+        try { await connection.execute(`ALTER TABLE auth ADD COLUMN refers JSON DEFAULT NULL`); } catch (e) {}
+
+        // 2. Generate referral codes
+        const [users] = await connection.execute('SELECT tg_id FROM auth WHERE referral_code IS NULL');
+        
+        let migratedCount = 0;
+        if (users.length > 0) {
+            for (const user of users) {
+                const randomHex = crypto.randomBytes(3).toString('hex').toUpperCase();
+                const idSuffix = user.tg_id.toString().slice(-3);
+                const refCode = `REF${randomHex}${idSuffix}`;
+                
+                await connection.execute('UPDATE auth SET referral_code = ? WHERE tg_id = ?', [refCode, user.tg_id]);
+                migratedCount++;
+            }
+        }
+
+        connection.release();
+        return res.json({ 
+            success: true, 
+            message: 'Database migrated successfully!', 
+            users_migrated: migratedCount 
+        });
+    } catch (err) {
+        console.error('Migration error:', err);
+        return res.json({ success: false, error: err.message });
+    }
+});
+
 // heartbeat
 router.get('/heartbeat', async (req, res) => {
     return res.json({ ok: 1 });

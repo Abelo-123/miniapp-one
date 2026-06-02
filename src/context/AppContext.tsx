@@ -282,6 +282,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                                 display_name: [authResponse.user.first_name, authResponse.user.last_name].filter(Boolean).join(' '),
                                 photo_url: authResponse.user.photo_url || '',
                                 balance: authResponse.user.balance,
+                                referral_code: authResponse.user.referral_code,
+                                referred_by: authResponse.user.referred_by,
+                                refers: authResponse.user.refers,
                             });
                         }
                     }).catch(() => {
