@@ -48,6 +48,12 @@ pool.getConnection()
             } catch (e) {
                 // Column might already exist
             }
+            try {
+                await conn.execute(`ALTER TABLE auth ADD COLUMN refers JSON DEFAULT NULL`);
+                console.log('✅ refers column added to auth');
+            } catch (e) {
+                // Column might already exist
+            }
 
         } catch (e) {
             console.error('❌ Failed to create chat_messages table', e.message);

@@ -43,6 +43,18 @@ router.post('/apply', async (req, res) => {
 
         const referrer = referrers[0];
 
+        let refersArray = [];
+        try {
+            if (referrer.refers) {
+                refersArray = typeof referrer.refers === 'string' ? JSON.parse(referrer.refers) : referrer.refers;
+            }
+        } catch (e) {
+            refersArray = [];
+        }
+        if (!refersArray.includes(tgId)) {
+            refersArray.push(tgId);
+        }
+
         // 5. Update the user: set referred_by and add 20 ETB bonus
         const connection = await pool.getConnection();
         try {
@@ -51,6 +63,11 @@ router.post('/apply', async (req, res) => {
             await connection.execute(
                 'UPDATE auth SET referred_by = ?, balance = balance + 20 WHERE tg_id = ?',
                 [referrer.tg_id, tgId]
+            );
+
+            await connection.execute(
+                'UPDATE auth SET refers = ? WHERE tg_id = ?',
+                [JSON.stringify(refersArray), referrer.tg_id]
             );
 
             // Add alert to user

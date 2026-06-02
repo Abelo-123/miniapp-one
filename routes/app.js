@@ -133,7 +133,8 @@ router.post('/auth', async (req, res) => {
                 balance: parseFloat(user.balance),
                 role: user.role || 'user',
                 referral_code: user.referral_code,
-                referred_by: user.referred_by
+                referred_by: user.referred_by,
+                refers: user.refers ? (typeof user.refers === 'string' ? JSON.parse(user.refers) : user.refers) : []
             }
         });
     } catch (err) {

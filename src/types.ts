@@ -102,6 +102,7 @@ export interface UserProfile {
     username?: string;
     referral_code?: string;
     referred_by?: string;
+    refers?: string[];
     phone_number?: string | null;
     phone_verified?: boolean;
 }
