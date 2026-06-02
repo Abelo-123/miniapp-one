@@ -150,43 +150,6 @@ router.post('/log-init-data', async (req, res) => {
     return res.json({ success: true });
 });
 
-// Temporary migration route for cPanel
-router.get('/migrate-referrals', async (req, res) => {
-    let conn;
-    try {
-        conn = await pool.getConnection();
-
-        // 1. Add Columns
-        try { await conn.execute(`ALTER TABLE auth ADD COLUMN referral_code VARCHAR(50) UNIQUE DEFAULT NULL`); } catch (e) {}
-        try { await conn.execute(`ALTER TABLE auth ADD COLUMN referred_by BIGINT(20) DEFAULT NULL`); } catch (e) {}
-        try { await conn.execute(`ALTER TABLE auth ADD COLUMN refers JSON DEFAULT NULL`); } catch (e) {}
-
-        // 2. Backfill referral codes
-        const [users] = await conn.execute('SELECT tg_id FROM auth WHERE referral_code IS NULL');
-        let generated = 0;
-        
-        if (users.length > 0) {
-            for (const user of users) {
-                const newRefCode = 'REF' + crypto.randomBytes(3).toString('hex').toUpperCase() + user.tg_id.toString().slice(-3);
-                await conn.execute('UPDATE auth SET referral_code = ? WHERE tg_id = ?', [newRefCode, user.tg_id]);
-                generated++;
-            }
-        }
-
-        return res.json({
-            success: true,
-            message: 'Migration complete.',
-            columnsAdded: true,
-            codesGeneratedForExistingUsers: generated
-        });
-    } catch (err) {
-        console.error('Migration failed:', err);
-        return res.json({ success: false, error: err.message });
-    } finally {
-        if (conn) conn.release();
-    }
-});
-
 // heartbeat
 router.get('/heartbeat', async (req, res) => {
     return res.json({ ok: 1 });

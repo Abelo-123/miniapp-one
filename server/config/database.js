@@ -34,6 +34,27 @@ pool.getConnection()
                 )
             `);
             console.log('✅ chat_messages table ready');
+
+            // Add referral columns to auth table if they don't exist
+            try {
+                await conn.execute(`ALTER TABLE auth ADD COLUMN referral_code VARCHAR(50) UNIQUE DEFAULT NULL`);
+                console.log('✅ referral_code column added to auth');
+            } catch (e) {
+                // Column might already exist
+            }
+            try {
+                await conn.execute(`ALTER TABLE auth ADD COLUMN referred_by BIGINT(20) DEFAULT NULL`);
+                console.log('✅ referred_by column added to auth');
+            } catch (e) {
+                // Column might already exist
+            }
+            try {
+                await conn.execute(`ALTER TABLE auth ADD COLUMN refers JSON DEFAULT NULL`);
+                console.log('✅ refers column added to auth');
+            } catch (e) {
+                // Column might already exist
+            }
+
         } catch (e) {
             console.error('❌ Failed to create chat_messages table', e.message);
         }

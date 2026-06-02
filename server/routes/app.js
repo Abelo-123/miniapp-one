@@ -2,6 +2,7 @@ import { Router } from 'express';
 import pool from '../config/database.js';
 import { getTelegramUserId, getTelegramUser } from '../lib/auth.js';
 import { notifyNewUser } from '../lib/notify.js';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -97,19 +98,26 @@ router.post('/auth', async (req, res) => {
     try {
         let [users] = await pool.execute('SELECT * FROM auth WHERE tg_id = ?', [tgId]);
         if (users.length === 0) {
+            const newRefCode = 'REF' + crypto.randomBytes(3).toString('hex').toUpperCase() + tgId.toString().slice(-3);
             await pool.execute(
-                "INSERT INTO auth (tg_id, username, first_name, last_name, photo_url, balance, auth_provider, last_login) VALUES (?, ?, ?, ?, ?, 0.00, 'telegram', NOW())", 
-                [tgId, username, firstName, lastName, photoUrl]
+                "INSERT INTO auth (tg_id, username, first_name, last_name, photo_url, balance, auth_provider, last_login, referral_code) VALUES (?, ?, ?, ?, ?, 0.00, 'telegram', NOW(), ?)", 
+                [tgId, username, firstName, lastName, photoUrl, newRefCode]
             );
             // Notify Bot Admin
             notifyNewUser({ uid: tgId, uuid: firstName }).catch(err => console.error('Notify newuser error:', err));
             
             [users] = await pool.execute('SELECT * FROM auth WHERE tg_id = ?', [tgId]);
         } else {
+            let refCode = users[0].referral_code;
+            if (!refCode) {
+                refCode = 'REF' + crypto.randomBytes(3).toString('hex').toUpperCase() + tgId.toString().slice(-3);
+                await pool.execute('UPDATE auth SET referral_code = ? WHERE tg_id = ?', [refCode, tgId]);
+            }
             await pool.execute(
                 'UPDATE auth SET username = ?, first_name = ?, last_name = ?, photo_url = ?, last_login = NOW() WHERE tg_id = ?', 
                 [username, firstName, lastName, photoUrl, tgId]
             );
+            [users] = await pool.execute('SELECT * FROM auth WHERE tg_id = ?', [tgId]);
         }
         const user = users[0];
         
@@ -125,7 +133,10 @@ router.post('/auth', async (req, res) => {
                 balance: parseFloat(user.balance),
                 role: user.role || 'user',
                 phone_number: user.phone_number || null,
-                phone_verified: Boolean(user.phone_verified)
+                phone_verified: Boolean(user.phone_verified),
+                referral_code: user.referral_code,
+                referred_by: user.referred_by,
+                refers: user.refers ? (typeof user.refers === 'string' ? JSON.parse(user.refers) : user.refers) : []
             }
         });
     } catch (err) {
