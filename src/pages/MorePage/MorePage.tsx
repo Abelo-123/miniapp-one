@@ -10,7 +10,7 @@ interface MorePageProps {
 
 export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     const {
-        user, chatMessages, setChatMessages, showToast, refreshAlerts
+        user, setUser, chatMessages, setChatMessages, showToast, refreshAlerts
     } = useApp();
 
     const [chatInput, setChatInput] = useState('');
@@ -72,9 +72,7 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
             if (res.success) {
                 showToast('success', res.message || 'Referral applied!');
                 if (res.newBalance !== undefined && user) {
-                    const { setUser } = require('../../context/AppContext');
-                    // We can't access setUser directly here easily if it's not exported from useApp or we use user object.
-                    // Actually, setUser is in useApp. Let's get it.
+                    setUser({ ...user, balance: res.newBalance, referred_by: res.referred_by });
                 }
                 // Refresh full user state by reloading page or fetching auth again, but simple alert is fine
                 import('sweetalert2').then(Swal => {
