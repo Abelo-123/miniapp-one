@@ -861,10 +861,6 @@ export function DepositPage() {
                     </h4>
                     <p style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '24px' }}>
                         {errorMessage || 'The transaction was declined or failed on your mobile wallet.'}
-                        <br/><br/>
-                        <span style={{ fontSize: '12px' }}>
-                            This usually happens if you entered a <b>wrong PIN</b>, had <b>insufficient funds</b>, or cancelled the mobile prompt.
-                        </span>
                     </p>
                     
                     <Button 
