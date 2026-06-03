@@ -10,7 +10,8 @@ import {
     hapticSelection, 
     hapticImpact, 
     hapticNotification, 
-    getInitDataString 
+    getInitDataString,
+    openLink 
 } from '../../helpers/telegram';
 import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
@@ -40,8 +41,66 @@ export function DepositPage() {
     const activeTxRefRef = useRef<string | null>(null);
     const hasSubmittedRef = useRef<boolean>(false);
     const recentDepositsRef = useRef<HTMLDivElement>(null);
+    const [sdkState, setSdkState] = useState<'loading' | 'ready' | 'failed'>('loading');
 
     const balance = user?.balance ?? 0;
+
+    // ─── Chapa SDK Script Loader ─────────────────────────────
+    useEffect(() => {
+        if (window.ChapaCheckout) {
+            setSdkState('ready');
+            return;
+        }
+
+        let isMounted = true;
+        const scriptId = 'chapa-inline-sdk-script';
+        let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+        const handleLoad = () => {
+            if (!isMounted) return;
+            if (window.ChapaCheckout) {
+                console.log('[DepositPage] Chapa SDK loaded successfully');
+                setSdkState('ready');
+            } else {
+                console.warn('[DepositPage] Chapa SDK script loaded but ChapaCheckout is undefined');
+                setSdkState('failed');
+            }
+        };
+
+        const handleError = () => {
+            if (!isMounted) return;
+            console.error('[DepositPage] Failed to load Chapa SDK script');
+            setSdkState('failed');
+        };
+
+        if (!script) {
+            script = document.createElement('script');
+            script.id = scriptId;
+            script.src = 'https://js.chapa.co/v1/inline.js';
+            script.async = true;
+            document.body.appendChild(script);
+        }
+
+        script.addEventListener('load', handleLoad);
+        script.addEventListener('error', handleError);
+
+        // Fallback safety timeout: if it takes more than 5s, mark as failed so redirect is enabled
+        const timeoutId = setTimeout(() => {
+            if (isMounted && !window.ChapaCheckout) {
+                console.warn('[DepositPage] Chapa SDK script load timeout');
+                setSdkState('failed');
+            }
+        }, 5000);
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timeoutId);
+            if (script) {
+                script.removeEventListener('load', handleLoad);
+                script.removeEventListener('error', handleError);
+            }
+        };
+    }, []);
 
     // ─── Refresh deposits on mount ───────────────────────────
     useEffect(() => {
@@ -548,6 +607,40 @@ export function DepositPage() {
         }
     }, [showToast, verifyDeposit, user]);
 
+    // ─── Start Redirect Payment ──────────────────────────────
+    const startRedirectPayment = useCallback(async (depositAmount: number) => {
+        hapticImpact('medium');
+        showToast('info', 'Opening secure checkout redirect...');
+        try {
+            const initData = await getInitDataString();
+            const userId = user?.id || 'unauth_local_user';
+
+            const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: depositAmount, initData, user_id: userId }),
+            });
+            const backendData = await backendRes.json();
+
+            if (backendData.success && backendData.checkout_url) {
+                // Open in Telegram native browser (or browser tab fallback)
+                openLink(backendData.checkout_url);
+                
+                showToast('success', 'Redirect opened! Checking status in background...');
+                
+                // Start verifying the generated tx_ref
+                if (backendData.tx_ref) {
+                    verifyDeposit(backendData.tx_ref);
+                }
+            } else {
+                showToast('error', backendData.error || 'Failed to initialize redirect payment');
+            }
+        } catch (err) {
+            console.error('[deposit] Error starting redirect payment:', err);
+            showToast('error', 'Network error. Please try again.');
+        }
+    }, [user, showToast, verifyDeposit]);
+
     // ─── Handle Deposit Button Click ─────────────────────────
     const handleDeposit = useCallback(() => {
         const val = parseFloat(amount);
@@ -570,16 +663,13 @@ export function DepositPage() {
             return hapticNotification('error');
         }
 
-        // 2. System Readiness Security
-        if (!window.ChapaCheckout) {
-            showToast('error', 'Payment system busy, please try again in a moment');
-            hapticNotification('error');
-            return;
-        }
-
         setErrorMessage('');
-        startInlinePayment(val);
-    }, [amount, startInlinePayment, showToast]);
+        if (sdkState === 'ready') {
+            startInlinePayment(val);
+        } else {
+            startRedirectPayment(val);
+        }
+    }, [amount, startInlinePayment, startRedirectPayment, sdkState, showToast]);
 
     // ─── Native Main Button Integration ──────────────────────
     useEffect(() => {
@@ -641,7 +731,13 @@ export function DepositPage() {
             {/* ─── Amount Input Section ─── */}
             {step === 'amount' && (
                 <>
-                    <div className="paxyo-section-header">AMOUNT TO ADD</div>
+                    <div className="paxyo-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>AMOUNT TO ADD</span>
+                        <span className={`sdk-badge sdk-badge--${sdkState}`}>
+                            <span className="sdk-badge__dot" />
+                            {sdkState === 'ready' ? 'inline ready' : sdkState === 'failed' ? 'redirect mode' : 'checking...'}
+                        </span>
+                    </div>
                     <div className="deposit-input-group">
                         <span className="deposit-input-group__prefix">ETB</span>
                         <input
