@@ -63,6 +63,8 @@ class Chapa {
             return { success: false, httpCode: 0, message: 'Server configuration error: Missing API Key' };
         }
 
+        console.log(`[chapa] Using Secret Key: ${CHAPA_SECRET_KEY.substring(0, 12)}...${CHAPA_SECRET_KEY.slice(-4)} (Length: ${CHAPA_SECRET_KEY.length})`);
+
         // Add cache busting timestamp for GET requests to prevent stale "pending" loops
         const separator = endpoint.includes('?') ? '&' : '?';
         const url = `${CHAPA_BASE_URL}${endpoint}${method === 'GET' ? `${separator}_t=${Date.now()}` : ''}`;
