@@ -23,6 +23,18 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     const [refStats, setRefStats] = useState<api.ReferralStatsResponse | null>(null);
     const [isLoadingStats, setIsLoadingStats] = useState(false);
 
+    // Withdrawal States
+    const [withdrawableBalance, setWithdrawableBalance] = useState(0);
+    const [withdrawalHistory, setWithdrawalHistory] = useState<api.WithdrawalItem[]>([]);
+    const [adminWithdrawals, setAdminWithdrawals] = useState<api.WithdrawalItem[]>([]);
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+    const [fullName, setFullName] = useState('');
+    const [bankName, setBankName] = useState('');
+    const [accountNumber, setAccountNumber] = useState('');
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [isRequestingWithdrawal, setIsRequestingWithdrawal] = useState(false);
+    const [isLoadingWithdrawalHistory, setIsLoadingWithdrawalHistory] = useState(false);
+
     const loadReferralStats = async () => {
         setIsLoadingStats(true);
         try {
@@ -34,6 +46,90 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
             console.error('Failed to load referral stats', e);
         } finally {
             setIsLoadingStats(false);
+        }
+    };
+
+    const loadWithdrawalHistory = async () => {
+        setIsLoadingWithdrawalHistory(true);
+        try {
+            const data = await api.fetchWithdrawalHistory();
+            if (data && data.success) {
+                setWithdrawalHistory(data.history);
+                setWithdrawableBalance(data.referral_balance);
+            }
+        } catch (e) {
+            console.error('Failed to load withdrawal history', e);
+        } finally {
+            setIsLoadingWithdrawalHistory(false);
+        }
+    };
+
+    const loadAdminWithdrawals = async () => {
+        if (user?.role !== 'admin') return;
+        try {
+            const data = await api.fetchAdminWithdrawals();
+            if (data && data.success) {
+                setAdminWithdrawals(data.list);
+            }
+        } catch (e) {
+            console.error('Failed to load admin withdrawals', e);
+        }
+    };
+
+    const handleRequestWithdrawal = async () => {
+        const amt = parseFloat(withdrawAmount);
+        if (isNaN(amt) || amt <= 0) {
+            showToast('error', 'Please enter a valid amount');
+            return;
+        }
+        if (amt > withdrawableBalance) {
+            showToast('error', 'Insufficient referral commission balance');
+            return;
+        }
+        if (!fullName.trim() || !bankName.trim() || !accountNumber.trim()) {
+            showToast('error', 'All bank details are required');
+            return;
+        }
+
+        setIsRequestingWithdrawal(true);
+        try {
+            const res = await api.requestWithdrawal({
+                amount: amt,
+                full_name: fullName.trim(),
+                bank_name: bankName.trim(),
+                account_number: accountNumber.trim()
+            });
+
+            if (res.success) {
+                showToast('success', 'Withdrawal request submitted successfully!');
+                setShowWithdrawModal(false);
+                setWithdrawAmount('');
+                loadWithdrawalHistory();
+                if (res.new_referral_balance !== undefined) {
+                    setWithdrawableBalance(res.new_referral_balance);
+                }
+            } else {
+                showToast('error', res.error || 'Failed to submit withdrawal request');
+            }
+        } catch (e: any) {
+            showToast('error', e.message || 'Error submitting request');
+        } finally {
+            setIsRequestingWithdrawal(false);
+        }
+    };
+
+    const handleApproveWithdrawal = async (id: number) => {
+        try {
+            import('../../helpers/telegram').then(m => m.hapticSelection());
+            const res = await api.approveWithdrawal(id);
+            if (res.success) {
+                showToast('success', 'Withdrawal marked as done!');
+                loadAdminWithdrawals();
+            } else {
+                showToast('error', res.error || 'Failed to approve withdrawal');
+            }
+        } catch (e: any) {
+            showToast('error', e.message || 'Error approving withdrawal');
         }
     };
 
@@ -58,12 +154,16 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
         loadMessages();
         refreshAlerts();
         loadReferralStats();
+        loadWithdrawalHistory();
+        if (user?.role === 'admin') {
+            loadAdminWithdrawals();
+        }
         const interval = setInterval(() => {
             loadMessages();
             refreshAlerts();
         }, 5000);
         return () => clearInterval(interval);
-    }, [refreshAlerts]);
+    }, [refreshAlerts, user?.role]);
 
     const handleSendChat = async () => {
         if (!chatInput.trim() || isSending) return;
@@ -288,9 +388,151 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                                 </tbody>
                             </table>
                         </div>
-                    )}
+                    {/* Withdrawable Commission & History */}
+                    <div style={{
+                        marginTop: '20px',
+                        borderTop: '1px dashed var(--tg-theme-secondary-bg-color)',
+                        paddingTop: '16px'
+                    }}>
+                        <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            background: 'var(--tg-theme-secondary-bg-color)',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            marginBottom: '12px'
+                        }}>
+                            <div>
+                                <span style={{ fontSize: '13px', color: 'var(--tg-theme-hint-color)', display: 'block' }}>Withdrawable Commission:</span>
+                                <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#00d68f' }}>
+                                    {withdrawableBalance.toFixed(2)} ETB
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    import('../../helpers/telegram').then(m => m.hapticSelection());
+                                    setShowWithdrawModal(true);
+                                }}
+                                disabled={withdrawableBalance <= 0}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: '8px',
+                                    background: withdrawableBalance <= 0 ? 'rgba(255,255,255,0.05)' : 'var(--tg-theme-button-color)',
+                                    color: withdrawableBalance <= 0 ? 'var(--tg-theme-hint-color)' : 'var(--tg-theme-button-text-color)',
+                                    border: 'none',
+                                    fontWeight: 'bold',
+                                    cursor: withdrawableBalance <= 0 ? 'not-allowed' : 'pointer'
+                                }}
+                            >
+                                Withdraw
+                            </button>
+                        </div>
+
+                        {withdrawalHistory.length > 0 && (
+                            <div style={{ marginTop: '16px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)', fontWeight: 'bold', marginBottom: '8px' }}>Withdrawal Requests</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                                    {withdrawalHistory.map((item) => (
+                                        <div key={item.id} style={{
+                                            background: 'var(--tg-theme-secondary-bg-color)',
+                                            padding: '8px 12px',
+                                            borderRadius: '8px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            fontSize: '12px'
+                                        }}>
+                                            <div>
+                                                <div style={{ fontWeight: '500' }}>{item.bank_name} ({item.account_number.substring(0, 4)}...)</div>
+                                                <div style={{ fontSize: '10px', color: 'var(--tg-theme-hint-color)' }}>{new Date(item.created_at).toLocaleDateString()}</div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontWeight: 'bold' }}>{Number(item.amount).toFixed(2)} ETB</span>
+                                                <span style={{ 
+                                                    fontSize: '9px', 
+                                                    fontWeight: 'bold',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: item.status === 'done' ? 'rgba(0,214,143,0.1)' : 'rgba(255,165,2,0.1)',
+                                                    color: item.status === 'done' ? '#00d68f' : '#ffa502'
+                                                }}>
+                                                    {item.status.toUpperCase()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </Section>
+
+            {/* ─── Admin: Withdrawal Requests ─── */}
+            {user?.role === 'admin' && (
+                <Section header="Admin: User Withdrawal Requests">
+                    <div style={{ padding: '16px', background: 'var(--tg-theme-bg-color)' }}>
+                        {adminWithdrawals.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--tg-theme-hint-color)', fontSize: '13px' }}>
+                                No withdrawal requests submitted.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {adminWithdrawals.map((item) => (
+                                    <div key={item.id} style={{
+                                        background: 'var(--tg-theme-secondary-bg-color)',
+                                        padding: '12px',
+                                        borderRadius: '12px',
+                                        fontSize: '13px',
+                                        border: '1px solid rgba(255,255,255,0.05)'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <span style={{ fontWeight: 'bold' }}>User: {item.first_name} {item.last_name} (@{item.username || item.user_id})</span>
+                                            <span style={{ fontWeight: 'bold', color: 'var(--tg-theme-button-color)' }}>{Number(item.amount).toFixed(2)} ETB</span>
+                                        </div>
+                                        <div style={{ color: 'var(--tg-theme-hint-color)', fontSize: '12px', marginBottom: '8px' }}>
+                                            <div>Bank: {item.bank_name}</div>
+                                            <div>Account Holder: {item.full_name}</div>
+                                            <div>Account Number: {item.account_number}</div>
+                                            <div>Date: {new Date(item.created_at).toLocaleString()}</div>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ 
+                                                fontSize: '11px', 
+                                                fontWeight: 'bold',
+                                                padding: '4px 8px',
+                                                borderRadius: '4px',
+                                                background: item.status === 'done' ? 'rgba(0,214,143,0.1)' : 'rgba(255,165,2,0.1)',
+                                                color: item.status === 'done' ? '#00d68f' : '#ffa502'
+                                            }}>
+                                                {item.status.toUpperCase()}
+                                            </span>
+                                            {item.status === 'pending' && (
+                                                <button 
+                                                    onClick={() => handleApproveWithdrawal(item.id)}
+                                                    style={{
+                                                        background: 'var(--tg-theme-button-color)',
+                                                        color: 'var(--tg-theme-button-text-color)',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        padding: '6px 12px',
+                                                        fontSize: '12px',
+                                                        fontWeight: 'bold',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    Mark Done
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </Section>
+            )}
 
             {/* ─── Appearance ─── */}
             <Section header="Appearance">
@@ -550,6 +792,92 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                     Terms and Conditions
                 </button>
             </div>
+
+            {showWithdrawModal && (
+                <div className="withdraw-modal" style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    padding: '16px'
+                }}>
+                    <div style={{
+                        background: 'var(--tg-theme-bg-color)',
+                        color: 'var(--tg-theme-text-color)',
+                        padding: '20px',
+                        borderRadius: '16px',
+                        width: '100%',
+                        maxWidth: '400px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                        border: '1px solid rgba(255,255,255,0.08)'
+                    }}>
+                        <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Withdraw Commission</h3>
+                        
+                        <div style={{ marginBottom: '12px', textAlign: 'left' }}>
+                            <label style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)', display: 'block', marginBottom: '4px' }}>Full Name</label>
+                            <input 
+                                value={fullName}
+                                onChange={e => setFullName(e.target.value)}
+                                placeholder="Enter bank account name"
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--tg-theme-hint-color)', background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)', outline: 'none' }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '12px', textAlign: 'left' }}>
+                            <label style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)', display: 'block', marginBottom: '4px' }}>Bank Name</label>
+                            <input 
+                                value={bankName}
+                                onChange={e => setBankName(e.target.value)}
+                                placeholder="e.g. Commercial Bank"
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--tg-theme-hint-color)', background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)', outline: 'none' }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '12px', textAlign: 'left' }}>
+                            <label style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)', display: 'block', marginBottom: '4px' }}>Account Number</label>
+                            <input 
+                                value={accountNumber}
+                                onChange={e => setAccountNumber(e.target.value)}
+                                placeholder="Enter account number"
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--tg-theme-hint-color)', background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)', outline: 'none' }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '20px', textAlign: 'left' }}>
+                            <label style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)', display: 'block', marginBottom: '4px' }}>Amount (ETB)</label>
+                            <input 
+                                type="number"
+                                value={withdrawAmount}
+                                onChange={e => setWithdrawAmount(e.target.value)}
+                                placeholder="Enter amount to withdraw"
+                                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--tg-theme-hint-color)', background: 'var(--tg-theme-secondary-bg-color)', color: 'var(--tg-theme-text-color)', outline: 'none' }}
+                            />
+                            <span style={{ fontSize: '11px', color: 'var(--tg-theme-hint-color)', display: 'block', marginTop: '4px' }}>
+                                Max: {withdrawableBalance.toFixed(2)} ETB
+                            </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                                onClick={() => setShowWithdrawModal(false)}
+                                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--tg-theme-hint-color)', background: 'transparent', color: 'var(--tg-theme-text-color)', fontWeight: 'bold' }}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleRequestWithdrawal}
+                                disabled={isRequestingWithdrawal || !fullName.trim() || !bankName.trim() || !accountNumber.trim() || !withdrawAmount}
+                                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'var(--tg-theme-button-color)', color: 'var(--tg-theme-button-text-color)', fontWeight: 'bold', opacity: (isRequestingWithdrawal || !fullName.trim() || !bankName.trim() || !accountNumber.trim() || !withdrawAmount) ? 0.6 : 1 }}
+                            >
+                                {isRequestingWithdrawal ? '...' : 'Submit'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div style={{ height: 100 }} /> {/* Spacer for bottom bar */}
         </div>

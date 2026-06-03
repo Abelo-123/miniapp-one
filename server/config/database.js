@@ -54,6 +54,29 @@ pool.getConnection()
             } catch (e) {
                 // Column might already exist
             }
+            try {
+                await conn.execute(`ALTER TABLE auth ADD COLUMN referral_balance DECIMAL(15, 2) DEFAULT 0.00`);
+                console.log('✅ referral_balance column added to auth');
+            } catch (e) {
+                // Column might already exist
+            }
+            try {
+                await conn.execute(`
+                    CREATE TABLE IF NOT EXISTS withdrawals (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id VARCHAR(50) NOT NULL,
+                        amount DECIMAL(15, 2) NOT NULL,
+                        full_name VARCHAR(100) NOT NULL,
+                        bank_name VARCHAR(100) NOT NULL,
+                        account_number VARCHAR(100) NOT NULL,
+                        status ENUM('pending', 'done') DEFAULT 'pending',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                `);
+                console.log('✅ withdrawals table ready');
+            } catch (e) {
+                console.error('❌ Failed to create withdrawals table', e.message);
+            }
 
         } catch (e) {
             console.error('❌ Failed to create chat_messages table', e.message);

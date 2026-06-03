@@ -105,6 +105,7 @@ export interface UserProfile {
     refers?: string[];
     phone_number?: string | null;
     phone_verified?: boolean;
+    role?: string;
 }
 
 export interface Holiday {

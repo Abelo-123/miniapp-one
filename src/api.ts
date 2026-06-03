@@ -343,3 +343,47 @@ export async function getSettings(useCache = true): Promise<AppSettings> {
         };
     }
 }
+
+// ─── Withdrawal APIs ────────────────────────────────────────────────────────
+export interface WithdrawalItem {
+    id: number;
+    user_id: string;
+    amount: number;
+    full_name: string;
+    bank_name: string;
+    account_number: string;
+    status: 'pending' | 'done';
+    created_at: string;
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+}
+
+export async function fetchWithdrawalHistory(): Promise<{ success: boolean; history: WithdrawalItem[]; referral_balance: number; error?: string }> {
+    return nodeApiFetch('/withdraw/history', { method: 'GET' });
+}
+
+export interface RequestWithdrawalPayload {
+    amount: number;
+    full_name: string;
+    bank_name: string;
+    account_number: string;
+}
+
+export async function requestWithdrawal(payload: RequestWithdrawalPayload): Promise<{ success: boolean; new_referral_balance?: number; error?: string }> {
+    return nodeApiFetch('/withdraw/request', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function fetchAdminWithdrawals(): Promise<{ success: boolean; list: WithdrawalItem[]; error?: string }> {
+    return nodeApiFetch('/withdraw/admin/list', { method: 'GET' });
+}
+
+export async function approveWithdrawal(id: number): Promise<{ success: boolean; error?: string }> {
+    return nodeApiFetch('/withdraw/admin/approve', {
+        method: 'POST',
+        body: JSON.stringify({ id }),
+    });
+}

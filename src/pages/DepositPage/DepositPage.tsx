@@ -559,8 +559,16 @@ export function DepositPage() {
                         errStr.includes('pending')
                     );
 
+                    // Check if they entered a valid phone number
+                    const wrapper = document.getElementById('chapa-container-wrapper');
+                    const phoneInput = wrapper?.querySelector(
+                        'input[type="tel"], input[name="mobile"], input[name="phone"], input[placeholder*="Phone"], input[placeholder*="Mobile"]'
+                    ) as HTMLInputElement | null;
+                    const hasEnteredPhone = phoneInput && phoneInput.value.replace(/\D/g, '').length >= 9;
+                    const hasSubmitted = hasSubmittedRef.current || hasEnteredPhone;
+
                     // If user hasn't submitted yet (or Chapa widget failed to load)
-                    if (!hasSubmittedRef.current) {
+                    if (!hasSubmitted) {
                         setStep('amount');
                         showToast('error', isFalsePositive ? 'Chapa system issue. Please try again later.' : 'Payment failed.');
                         hapticNotification('error');
@@ -580,7 +588,14 @@ export function DepositPage() {
                     setTimeout(() => {
                         setStep(prev => {
                             if (prev === 'chapa') {
-                                if (hasSubmittedRef.current && activeTxRefRef.current === txRef) {
+                                const wrapper = document.getElementById('chapa-container-wrapper');
+                                const phoneInput = wrapper?.querySelector(
+                                    'input[type="tel"], input[name="mobile"], input[name="phone"], input[placeholder*="Phone"], input[placeholder*="Mobile"]'
+                                ) as HTMLInputElement | null;
+                                const hasEnteredPhone = phoneInput && phoneInput.value.replace(/\D/g, '').length >= 9;
+                                const hasSubmitted = hasSubmittedRef.current || hasEnteredPhone;
+
+                                if (hasSubmitted && activeTxRefRef.current === txRef) {
                                     // They submitted then closed it. Show Awaiting PIN.
                                     verifyDeposit(txRef);
                                     return 'verifying';
