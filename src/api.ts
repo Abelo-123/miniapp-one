@@ -377,13 +377,3 @@ export async function requestWithdrawal(payload: RequestWithdrawalPayload): Prom
     });
 }
 
-export async function fetchAdminWithdrawals(): Promise<{ success: boolean; list: WithdrawalItem[]; error?: string }> {
-    return nodeApiFetch('/withdraw/admin/list', { method: 'GET' });
-}
-
-export async function approveWithdrawal(id: number): Promise<{ success: boolean; error?: string }> {
-    return nodeApiFetch('/withdraw/admin/approve', {
-        method: 'POST',
-        body: JSON.stringify({ id }),
-    });
-}

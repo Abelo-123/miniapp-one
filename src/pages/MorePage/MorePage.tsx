@@ -26,14 +26,13 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     // Withdrawal States
     const [withdrawableBalance, setWithdrawableBalance] = useState(0);
     const [withdrawalHistory, setWithdrawalHistory] = useState<api.WithdrawalItem[]>([]);
-    const [adminWithdrawals, setAdminWithdrawals] = useState<api.WithdrawalItem[]>([]);
     const [showWithdrawModal, setShowWithdrawModal] = useState(false);
     const [fullName, setFullName] = useState('');
     const [bankName, setBankName] = useState('');
     const [accountNumber, setAccountNumber] = useState('');
     const [withdrawAmount, setWithdrawAmount] = useState('');
     const [isRequestingWithdrawal, setIsRequestingWithdrawal] = useState(false);
-    const [isLoadingWithdrawalHistory, setIsLoadingWithdrawalHistory] = useState(false);
+
 
     const loadReferralStats = async () => {
         setIsLoadingStats(true);
@@ -50,7 +49,6 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
     };
 
     const loadWithdrawalHistory = async () => {
-        setIsLoadingWithdrawalHistory(true);
         try {
             const data = await api.fetchWithdrawalHistory();
             if (data && data.success) {
@@ -59,22 +57,10 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
             }
         } catch (e) {
             console.error('Failed to load withdrawal history', e);
-        } finally {
-            setIsLoadingWithdrawalHistory(false);
         }
     };
 
-    const loadAdminWithdrawals = async () => {
-        if (user?.role !== 'admin') return;
-        try {
-            const data = await api.fetchAdminWithdrawals();
-            if (data && data.success) {
-                setAdminWithdrawals(data.list);
-            }
-        } catch (e) {
-            console.error('Failed to load admin withdrawals', e);
-        }
-    };
+
 
     const handleRequestWithdrawal = async () => {
         const amt = parseFloat(withdrawAmount);
@@ -118,20 +104,7 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
         }
     };
 
-    const handleApproveWithdrawal = async (id: number) => {
-        try {
-            import('../../helpers/telegram').then(m => m.hapticSelection());
-            const res = await api.approveWithdrawal(id);
-            if (res.success) {
-                showToast('success', 'Withdrawal marked as done!');
-                loadAdminWithdrawals();
-            } else {
-                showToast('error', res.error || 'Failed to approve withdrawal');
-            }
-        } catch (e: any) {
-            showToast('error', e.message || 'Error approving withdrawal');
-        }
-    };
+
 
     const loadMessages = async () => {
         try {
@@ -155,9 +128,6 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
         refreshAlerts();
         loadReferralStats();
         loadWithdrawalHistory();
-        if (user?.role === 'admin') {
-            loadAdminWithdrawals();
-        }
         const interval = setInterval(() => {
             loadMessages();
             refreshAlerts();
@@ -469,71 +439,6 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                     </div>
                 </div>
             </Section>
-
-            {/* ─── Admin: Withdrawal Requests ─── */}
-            {user?.role === 'admin' && (
-                <Section header="Admin: User Withdrawal Requests">
-                    <div style={{ padding: '16px', background: 'var(--tg-theme-bg-color)' }}>
-                        {adminWithdrawals.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--tg-theme-hint-color)', fontSize: '13px' }}>
-                                No withdrawal requests submitted.
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {adminWithdrawals.map((item) => (
-                                    <div key={item.id} style={{
-                                        background: 'var(--tg-theme-secondary-bg-color)',
-                                        padding: '12px',
-                                        borderRadius: '12px',
-                                        fontSize: '13px',
-                                        border: '1px solid rgba(255,255,255,0.05)'
-                                    }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <span style={{ fontWeight: 'bold' }}>User: {item.first_name} {item.last_name} (@{item.username || item.user_id})</span>
-                                            <span style={{ fontWeight: 'bold', color: 'var(--tg-theme-button-color)' }}>{Number(item.amount).toFixed(2)} ETB</span>
-                                        </div>
-                                        <div style={{ color: 'var(--tg-theme-hint-color)', fontSize: '12px', marginBottom: '8px' }}>
-                                            <div>Bank: {item.bank_name}</div>
-                                            <div>Account Holder: {item.full_name}</div>
-                                            <div>Account Number: {item.account_number}</div>
-                                            <div>Date: {new Date(item.created_at).toLocaleString()}</div>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ 
-                                                fontSize: '11px', 
-                                                fontWeight: 'bold',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                background: item.status === 'done' ? 'rgba(0,214,143,0.1)' : 'rgba(255,165,2,0.1)',
-                                                color: item.status === 'done' ? '#00d68f' : '#ffa502'
-                                            }}>
-                                                {item.status.toUpperCase()}
-                                            </span>
-                                            {item.status === 'pending' && (
-                                                <button 
-                                                    onClick={() => handleApproveWithdrawal(item.id)}
-                                                    style={{
-                                                        background: 'var(--tg-theme-button-color)',
-                                                        color: 'var(--tg-theme-button-text-color)',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        padding: '6px 12px',
-                                                        fontSize: '12px',
-                                                        fontWeight: 'bold',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    Mark Done
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </Section>
-            )}
 
             {/* ─── Appearance ─── */}
             <Section header="Appearance">
