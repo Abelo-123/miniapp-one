@@ -388,6 +388,7 @@ export function MorePage({ themeOverride, setThemeOverride }: MorePageProps) {
                                 </tbody>
                             </table>
                         </div>
+                    )}
                     {/* Withdrawable Commission & History */}
                     <div style={{
                         marginTop: '20px',

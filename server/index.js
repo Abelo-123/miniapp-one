@@ -18,7 +18,7 @@ import ordersRouter from './routes/orders.js';
 import appRouter from './routes/app.js';
 import chatRouter from './routes/chat.js';
 import getCategoriesRouter from './routes/getCategories.js';
-import adminUsersRouter from './routes/admin.js';
+
 import recommendedServicesRouter from './routes/recommendedServices.js';
 import otpRouter from './routes/otp.js';
 import referralRouter from './routes/referral.js';
@@ -132,7 +132,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/app', appRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/categories', getCategoriesRouter);
-app.use('/api/admin', adminUsersRouter);
+
 app.use('/api/services', recommendedServicesRouter);
 app.use('/api/otp', otpRouter);
 app.use('/api/referral', referralRouter);
