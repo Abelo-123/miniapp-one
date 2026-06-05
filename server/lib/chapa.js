@@ -68,7 +68,7 @@ class Chapa {
         // Add cache busting timestamp for GET requests to prevent stale "pending" loops
         const separator = endpoint.includes('?') ? '&' : '?';
         const url = `${CHAPA_BASE_URL}${endpoint}${method === 'GET' ? `${separator}_t=${Date.now()}` : ''}`;
-        
+
         console.log(`[chapa] Request: ${method} ${url}`);
 
         const headers = {
