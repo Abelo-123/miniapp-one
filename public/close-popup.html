@@ -8,20 +8,33 @@
     <h2>Processing...</h2>
     <p>Closing checkout window...</p>
     <script>
-        // 1. Try to close the popup window immediately (for standard browsers/desktop popups)
-        try {
-            window.close();
-        } catch (e) {
-            console.error("Failed to auto-close window:", e);
-        }
+        // 1. Check if we have launch parameters stored (which indicates we are running inside Telegram's main WebApp window)
+        const launchParams = sessionStorage.getItem('paxyo:launch_params');
         
-        // 2. Redirect to the Telegram Bot link
-        // We try the native tg:// protocol first which tells the Telegram app to open the bot immediately.
-        // If it fails (or on standard browsers), we fallback to the normal t.me link.
-        try {
-            window.location.replace("tg://resolve?domain=paxyo_bot&startapp=open");
-        } catch (e) {
-            window.location.replace("https://t.me/paxyo_bot?startapp=open");
+        if (launchParams) {
+            // Inside Telegram WebView: Navigate the current window directly back to the Mini App
+            try {
+                const basePath = window.location.pathname.replace('close-popup.html', '');
+                const appUrl = window.location.origin + basePath + launchParams;
+                window.location.replace(appUrl);
+            } catch (e) {
+                // Ultimate fallback
+                window.location.replace("tg://resolve?domain=paxyo_bot&startapp=open");
+            }
+        } else {
+            // Outside Telegram (Popup mode): Attempt to close the popup window
+            try {
+                window.close();
+            } catch (e) {
+                console.error("Failed to close window:", e);
+            }
+            
+            // If the window is still open (meaning it failed to close), fallback to the default bot link.
+            setTimeout(function() {
+                if (!window.closed) {
+                    window.location.replace("https://t.me/paxyo_bot?startapp=open");
+                }
+            }, 1000);
         }
     </script>
 </body>

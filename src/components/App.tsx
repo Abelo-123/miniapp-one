@@ -173,6 +173,18 @@ const queryClient = new QueryClient({
 export function App() {
   const lp = useMemo(() => retrieveLaunchParams(), []);
   
+  // Cache the Telegram launch params in sessionStorage so close-popup.html can retrieve them and reload the app inside the WebView.
+  useEffect(() => {
+    try {
+      const launchParams = window.location.search + window.location.hash;
+      if (launchParams.includes('tgWebAppData')) {
+        sessionStorage.setItem('paxyo:launch_params', launchParams);
+      }
+    } catch (e) {
+      console.error('Failed to cache launch params:', e);
+    }
+  }, []);
+
   const [themeOverride, setThemeOverride] = useState<'auto' | 'light' | 'dark'>(
     (localStorage.getItem('app-theme') as any) || 'auto'
   );
