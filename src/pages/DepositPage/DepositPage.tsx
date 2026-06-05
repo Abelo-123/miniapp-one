@@ -16,49 +16,6 @@ import {
 import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
 
-// Robust helper to open external links natively in Telegram's built-in in-app browser overlay sheet
-function openTelegramLinkOverlay(url: string, isTelegramFallback: boolean, popupWindow: Window | null) {
-    // 1. Try official window.Telegram.WebApp.openLink
-    try {
-        const twa = (window as any).Telegram?.WebApp;
-        if (twa && typeof twa.openLink === 'function') {
-            twa.openLink(url);
-            return;
-        }
-    } catch (e) {
-        console.error('Error calling WebApp.openLink:', e);
-    }
-
-    // 2. Fallback to direct native WebView postMessage / Proxy events
-    try {
-        const eventType = 'web_app_open_link';
-        const eventData = { url };
-        const msg = JSON.stringify({ eventType, eventData });
-        
-        const androidProxy = (window as any).TelegramWebviewProxy;
-        const iosProxy = (window as any).webkit?.messageHandlers?.TelegramWebviewProxy;
-
-        if (androidProxy && typeof androidProxy.postEvent === 'function') {
-            androidProxy.postEvent(eventType, JSON.stringify(eventData));
-            return;
-        } else if (iosProxy && typeof iosProxy.postMessage === 'function') {
-            iosProxy.postMessage(msg);
-            return;
-        } else if (window.parent && window.parent !== window) {
-            window.parent.postMessage(msg, '*');
-            return;
-        }
-    } catch (e) {
-        console.error('Error calling native Webview proxy:', e);
-    }
-
-    // 3. Fallback for Local/Simulated Telegram or Browser Popups
-    if (isTelegramFallback) {
-        window.location.href = url;
-    } else if (popupWindow) {
-        popupWindow.location.href = url;
-    }
-}
 
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
 const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
@@ -283,8 +240,28 @@ export function DepositPage() {
             if (backendData.success && backendData.checkout_url) {
                 setCheckoutUrl(backendData.checkout_url);
 
-                // Open checkout natively inside Telegram's closeable browser overlay sheet, with robust fallbacks
-                openTelegramLinkOverlay(backendData.checkout_url, isTelegram, popupWindow);
+                if (isTelegram) {
+                    // 1. Disable closing confirmation & hide the native WebApp back button before navigating.
+                    // This prevents the Telegram client from showing the stuck confirmation prompt
+                    // and allows the native Close button to exit instantly, while Android back gesture
+                    // will navigate back in history to our React app.
+                    try {
+                        const twa = (window as any).Telegram?.WebApp;
+                        if (twa) {
+                            twa.disableClosingConfirmation?.();
+                            twa.BackButton?.hide?.();
+                        }
+                    } catch (e) {
+                        console.error('Error disabling Telegram WebApp confirmation/back-button:', e);
+                    }
+
+                    // 2. Navigate the current Mini App WebView directly.
+                    // This forces the checkout to open directly within the Telegram WebApp window itself,
+                    // without escaping to Chrome or Safari.
+                    window.location.href = backendData.checkout_url;
+                } else if (popupWindow) {
+                    popupWindow.location.href = backendData.checkout_url;
+                }
 
                 showToast('success', 'Redirect opened! Checking status...');
 
