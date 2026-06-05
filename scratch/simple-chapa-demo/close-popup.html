@@ -8,12 +8,17 @@
     <h2>Processing...</h2>
     <p>Closing checkout window...</p>
     <script>
-        // Try to close this popup window immediately
+        // 1. Try to close the popup window immediately (for browsers/desktop)
         try {
             window.close();
         } catch (e) {
             console.error("Failed to auto-close window:", e);
         }
+        
+        // 2. Redirect to the Telegram Bot link (for Telegram in-app browser webview)
+        setTimeout(() => {
+            window.location.href = "https://t.me/paxyo_bot?startapp=open";
+        }, 150);
     </script>
 </body>
 </html>
