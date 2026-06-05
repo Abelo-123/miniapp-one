@@ -199,10 +199,11 @@ export function DepositPage() {
         hapticImpact('medium');
         showToast('info', 'Opening secure checkout redirect...');
 
-        const isTelegram = !!(window as any).Telegram?.WebApp;
+        const telegramWebApp = (window as any).Telegram?.WebApp;
+        const isTelegram = !!telegramWebApp;
         let popupWindow: Window | null = null;
 
-        // Open blank popup synchronously to bypass browser popup blockers
+        // Open blank popup synchronously to bypass browser popup blockers (only outside Telegram)
         if (!isTelegram) {
             const width = 500;
             const height = 700;
@@ -219,8 +220,10 @@ export function DepositPage() {
             const initData = await getInitDataString();
             const userId = user?.id || 'unauth_local_user';
 
-            // Define return URL pointing to close-popup.html in the public directory
-            const returnUrl = window.location.origin + '/close-popup.html';
+            // Correctly resolve close-popup.html path relative to current URL (supports GitHub Pages subfolders!)
+            const returnUrl = new URL('./close-popup.html', window.location.href).href;
+
+            console.log('[deposit] return_url generated:', returnUrl);
 
             const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
                 method: 'POST',
@@ -238,7 +241,8 @@ export function DepositPage() {
                 setCheckoutUrl(backendData.checkout_url);
                 
                 if (isTelegram) {
-                    openLink(backendData.checkout_url);
+                    // Call the Telegram WebApp API directly to ensure it opens in the native overlay
+                    telegramWebApp.openLink(backendData.checkout_url);
                 } else if (popupWindow) {
                     popupWindow.location.href = backendData.checkout_url;
                 }
