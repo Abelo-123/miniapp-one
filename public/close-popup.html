@@ -19,9 +19,9 @@
         // We try the native tg:// protocol first which tells the Telegram app to open the bot immediately.
         // If it fails (or on standard browsers), we fallback to the normal t.me link.
         try {
-            window.location.replace("tg://resolve?domain=paxyo_bot&startapp=open");
+            window.location.replace("tg://resolve?domain=paxyo_bot&appname=app&startapp=open");
         } catch (e) {
-            window.location.replace("https://t.me/paxyo_bot?startapp=open");
+            window.location.replace("https://t.me/paxyo_bot/app?startapp=open");
         }
     </script>
 </body>

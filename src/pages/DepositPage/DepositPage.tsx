@@ -200,7 +200,7 @@ export function DepositPage() {
         hapticImpact('medium');
         showToast('info', 'Opening secure checkout redirect...');
 
-        const isTelegram = isTelegramEnv();
+        const isTelegram = isTelegramEnv() || !!(window as any).Telegram?.WebApp?.platform || /Telegram/i.test(navigator.userAgent);
         let popupWindow: Window | null = null;
 
         // Open blank popup synchronously to bypass browser popup blockers (only outside Telegram)
