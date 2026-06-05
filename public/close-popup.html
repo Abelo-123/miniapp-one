@@ -8,18 +8,21 @@
     <h2>Processing...</h2>
     <p>Closing checkout window...</p>
     <script>
-        // 1. Try to close the popup window immediately (for browsers/desktop)
+        // 1. Try to close the popup window immediately (for standard browsers/desktop popups)
         try {
             window.close();
         } catch (e) {
             console.error("Failed to auto-close window:", e);
         }
         
-        // 2. Redirect to the Telegram Bot link (for Telegram in-app browser webview)
-        // Telegram intercepts this deep link, closes the overlay browser, and redirects to your bot.
-        setTimeout(() => {
-            window.location.href = "https://t.me/paxyo_bot?startapp=open";
-        }, 150);
+        // 2. Redirect to the Telegram Bot link
+        // We try the native tg:// protocol first which tells the Telegram app to open the bot immediately.
+        // If it fails (or on standard browsers), we fallback to the normal t.me link.
+        try {
+            window.location.replace("tg://resolve?domain=paxyo_bot&startapp=open");
+        } catch (e) {
+            window.location.replace("https://t.me/paxyo_bot?startapp=open");
+        }
     </script>
 </body>
 </html>
