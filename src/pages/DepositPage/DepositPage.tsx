@@ -2,14 +2,14 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
 import { useApp } from '../../context/AppContext';
 import { formatETB } from '../../constants';
-import { 
-    showMainButton, 
-    hideMainButton, 
-    onMainButtonClick, 
+import {
+    showMainButton,
+    hideMainButton,
+    onMainButtonClick,
     configureMainButton,
-    hapticSelection, 
-    hapticImpact, 
-    hapticNotification, 
+    hapticSelection,
+    hapticImpact,
+    hapticNotification,
     getInitDataString,
     isTelegramEnv,
     openLink
@@ -126,7 +126,7 @@ export function DepositPage() {
                     if (isFirstDeposit) {
                         localStorage.setItem('hasDeposited', 'true');
                     }
-                    
+
                     // Automatically scroll to deposit history after deposit success
                     setTimeout(() => {
                         if (recentDepositsRef.current) {
@@ -144,12 +144,12 @@ export function DepositPage() {
                     setStep('success');
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
-                    
+
                     const isFirstDeposit = !localStorage.getItem('hasDeposited');
                     if (isFirstDeposit) {
                         localStorage.setItem('hasDeposited', 'true');
                     }
-                    
+
                     setTimeout(() => {
                         if (recentDepositsRef.current) {
                             recentDepositsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -166,16 +166,16 @@ export function DepositPage() {
                     if (timerRef.current) clearInterval(timerRef.current);
                     setStep('error');
                     activeTxRefRef.current = null;
-                    
+
                     let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
                     if (declinedReason.toLowerCase().includes('fetched successfully') || declinedReason.toLowerCase().includes('not completed')) {
                         declinedReason = isConfigError ? 'Server configuration error.' : 'Payment was failed or cancelled.';
                     }
-                    
+
                     setErrorMessage(declinedReason);
                     showToast('error', isConfigError ? 'Configuration Error' : 'Payment Declined');
                     hapticNotification('error');
-                    refreshDeposits().catch(() => {});
+                    refreshDeposits().catch(() => { });
                     return; // Stop polling
                 }
 
@@ -228,9 +228,9 @@ export function DepositPage() {
             const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    amount: depositAmount, 
-                    initData, 
+                body: JSON.stringify({
+                    amount: depositAmount,
+                    initData,
                     user_id: userId,
                     return_url: returnUrl
                 }),
@@ -239,7 +239,7 @@ export function DepositPage() {
 
             if (backendData.success && backendData.checkout_url) {
                 setCheckoutUrl(backendData.checkout_url);
-                
+
                 const telegramWebApp = (window as any).Telegram?.WebApp;
                 if (telegramWebApp && typeof telegramWebApp.openLink === 'function') {
                     telegramWebApp.openLink(backendData.checkout_url);
@@ -248,9 +248,9 @@ export function DepositPage() {
                 } else if (popupWindow) {
                     popupWindow.location.href = backendData.checkout_url;
                 }
-                
+
                 showToast('success', 'Redirect opened! Checking status...');
-                
+
                 // Start verifying the generated tx_ref
                 if (backendData.tx_ref) {
                     verifyDeposit(backendData.tx_ref);
@@ -269,7 +269,7 @@ export function DepositPage() {
     // ─── Handle Deposit Button Click ─────────────────────────
     const handleDeposit = useCallback(() => {
         const val = parseFloat(amount);
-        
+
         // Basic validation
         if (!amount || amount.trim() === '') {
             showToast('error', 'Action Required: Please enter an amount');
@@ -301,7 +301,7 @@ export function DepositPage() {
 
             configureMainButton({
                 text: isValid ? `DEPOSIT ${val} ETB` : 'ENTER AMOUNT (MIN 10)',
-                color: isValid ? '#007AFF' : '#2d2d2d', 
+                color: isValid ? '#007AFF' : '#2d2d2d',
                 textColor: '#ffffff',
                 isEnabled: isValid,
                 isLoaderVisible: false
@@ -312,7 +312,7 @@ export function DepositPage() {
             // Handle the native click
             const off = onMainButtonClick(() => {
                 if (isValid) {
-                    handleDeposit(); 
+                    handleDeposit();
                 }
             });
 
@@ -359,8 +359,8 @@ export function DepositPage() {
                         <span className="deposit-input-group__prefix">ETB</span>
                         <input
                             className="deposit-input-group__input"
-                            inputMode="numeric" 
-                            type="text" 
+                            inputMode="numeric"
+                            type="text"
                             placeholder="0"
                             value={amount}
                             onChange={(e) => {
@@ -373,13 +373,13 @@ export function DepositPage() {
                                 if (num > 100000) return; // Max limit
                                 setAmount(num.toString());
                             }}
-                            style={{ 
-                                background: 'transparent', 
-                                border: 'none', 
-                                color: 'var(--tg-theme-text-color)', 
-                                fontSize: '24px', 
-                                fontWeight: 'bold', 
-                                width: '100%', 
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--tg-theme-text-color)',
+                                fontSize: '24px',
+                                fontWeight: 'bold',
+                                width: '100%',
                                 outline: 'none',
                                 paddingLeft: '8px'
                             }}
@@ -417,8 +417,8 @@ export function DepositPage() {
                             stretched
                             onClick={handleDeposit}
                             disabled={!amount || parseFloat(amount) < 10}
-                            style={{ 
-                                background: 'var(--tg-theme-button-color)', 
+                            style={{
+                                background: 'var(--tg-theme-button-color)',
                                 color: 'var(--tg-theme-button-text-color)',
                                 fontWeight: 600,
                                 fontSize: '16px',
@@ -445,25 +445,25 @@ export function DepositPage() {
                             <span style={{ fontSize: '20px', position: 'absolute', animation: 'pulse 1.5s infinite' }}>📱</span>
                         </div>
                     </div>
-                    
+
                     <div className="deposit-processing__text" style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--tg-theme-text-color)', marginBottom: '8px' }}>
                         Awaiting Payment Verification
                     </div>
                     <div className="deposit-processing__subtext" style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '20px' }}>
-                        Please complete your payment in the checkout window. <br/>
+                        Please complete your payment in the checkout window. <br />
                         If you paid using M-Pesa or Telebirr, enter your <b>PIN</b> when prompted.
                     </div>
-                    
+
                     <div style={{ width: '100%', height: '8px', background: 'var(--tg-theme-secondary-bg-color)', borderRadius: '4px', overflow: 'hidden', marginBottom: '12px' }}>
-                        <div style={{ 
-                            height: '100%', 
-                            width: `${(timeLeft / 45) * 100}%`, 
-                            background: 'linear-gradient(90deg, #FFB900 0%, #FF8000 100%)', 
+                        <div style={{
+                            height: '100%',
+                            width: `${(timeLeft / 45) * 100}%`,
+                            background: 'linear-gradient(90deg, #FFB900 0%, #FF8000 100%)',
                             transition: 'width 1s linear',
                             borderRadius: '4px'
                         }}></div>
                     </div>
-                    
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--tg-theme-hint-color)', marginBottom: '24px' }}>
                         <span>{timeLeft > 0 ? `Checking status (${timeLeft}s)...` : 'Polling for confirmation...'}</span>
                         <span style={{ color: 'var(--tg-theme-button-color)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -472,9 +472,9 @@ export function DepositPage() {
                         </span>
                     </div>
 
-                    <a 
-                        href={checkoutUrl} 
-                        target="_blank" 
+                    <a
+                        href={checkoutUrl}
+                        target="_blank"
                         rel="noreferrer"
                         className="deposit-processing__subtext"
                         style={{ display: 'block', fontSize: '12px', color: 'var(--tg-theme-button-color)', textDecoration: 'underline', marginBottom: '20px' }}
@@ -496,7 +496,7 @@ export function DepositPage() {
                         >
                             🔄 Re-Check Balance Now
                         </Button>
-                        
+
                         <Button
                             mode="plain"
                             stretched
@@ -518,29 +518,29 @@ export function DepositPage() {
             {step === 'error' && (
                 <div className="deposit-error-state" style={{ padding: '24px 16px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-                        <div style={{ 
-                            width: '56px', 
-                            height: '56px', 
-                            borderRadius: '50%', 
-                            background: 'rgba(255, 71, 87, 0.1)', 
-                            border: '1px solid rgba(255, 71, 87, 0.3)', 
-                            display: 'flex', 
-                            alignItems: 'center', 
+                        <div style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 71, 87, 0.1)',
+                            border: '1px solid rgba(255, 71, 87, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '24px'
                         }}>
                             ❌
                         </div>
                     </div>
-                    
+
                     <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--tg-theme-text-color)', marginBottom: '8px' }}>
                         Payment Failed/Declined
                     </h4>
                     <p style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '24px' }}>
                         {errorMessage || 'The transaction was declined or failed on your mobile wallet.'}
                     </p>
-                    
-                    <Button 
+
+                    <Button
                         size="l"
                         stretched
                         onClick={() => {
@@ -576,7 +576,7 @@ export function DepositPage() {
                         </Button>
                     )}
 
-                    <Button 
+                    <Button
                         size="l"
                         stretched
                         style={{ marginTop: 24 }}
