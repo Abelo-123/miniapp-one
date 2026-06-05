@@ -11,8 +11,7 @@ import {
     hapticImpact,
     hapticNotification,
     getInitDataString,
-    isTelegramEnv,
-    openLink
+    isTelegramEnv
 } from '../../helpers/telegram';
 import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
@@ -240,11 +239,11 @@ export function DepositPage() {
             if (backendData.success && backendData.checkout_url) {
                 setCheckoutUrl(backendData.checkout_url);
 
-                const telegramWebApp = (window as any).Telegram?.WebApp;
-                if (telegramWebApp && typeof telegramWebApp.openLink === 'function') {
-                    telegramWebApp.openLink(backendData.checkout_url);
-                } else if (isTelegram) {
-                    openLink(backendData.checkout_url);
+                if (isTelegram) {
+                    // Navigate the current Mini App WebView directly.
+                    // This forces the checkout to open inside the Telegram built-in window (webview)
+                    // instead of redirecting to Safari/Chrome or opening a separate browser.
+                    window.location.href = backendData.checkout_url;
                 } else if (popupWindow) {
                     popupWindow.location.href = backendData.checkout_url;
                 }
