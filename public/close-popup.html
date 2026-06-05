@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Completed</title>
+</head>
+<body style="font-family: sans-serif; text-align: center; background: #0a0a0f; color: white; padding-top: 50px;">
+    <h2>Processing...</h2>
+    <p>Closing checkout window...</p>
+    <script>
+        // Try to close this popup window immediately
+        try {
+            window.close();
+        } catch (e) {
+            console.error("Failed to auto-close window:", e);
+        }
+    </script>
+</body>
+</html>

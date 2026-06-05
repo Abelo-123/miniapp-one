@@ -29,7 +29,7 @@ const MAX_DEPOSIT = parseInt(process.env.MAX_DEPOSIT) || 100000;
 
 router.post('/', async (req, res) => {
     try {
-        const { amount: rawAmount, initData, tx_ref: txRef, user_id } = req.body;
+        const { amount: rawAmount, initData, tx_ref: txRef, user_id, return_url } = req.body;
         const amount = parseFloat(rawAmount) || 0;
 
         // ─── Validate amount ─────────────────────────────────
@@ -107,6 +107,7 @@ router.post('/', async (req, res) => {
             first_name: user.first_name || 'User',
             last_name: user.last_name || '',
             tx_ref: generatedTxRef,
+            return_url: return_url,
         });
 
         if (result.success && result.data?.checkout_url) {

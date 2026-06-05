@@ -18,15 +18,8 @@ import './DepositPage.css';
 
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
 const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
-const CHAPA_PUBLIC_KEY = import.meta.env.VITE_CHAPA_PUBLIC_KEY || 'CHAPUBK-3fWBzd7CeuNFXJOotgRqcDkXeWz1OFrT';
 
-type DepositStep = 'amount' | 'chapa' | 'verifying' | 'success' | 'error';
-
-declare global {
-    interface Window {
-        ChapaCheckout: any;
-    }
-}
+type DepositStep = 'amount' | 'verifying' | 'success' | 'error';
 
 export function DepositPage() {
     const { user, deposits, setBalance, refreshDeposits, showToast } = useApp();
@@ -39,68 +32,10 @@ export function DepositPage() {
     // Use refs for polling state to avoid stale closure issues
     const pollAbortRef = useRef(false);
     const activeTxRefRef = useRef<string | null>(null);
-    const hasSubmittedRef = useRef<boolean>(false);
     const recentDepositsRef = useRef<HTMLDivElement>(null);
-    const [sdkState, setSdkState] = useState<'loading' | 'ready' | 'failed'>('loading');
+    const [checkoutUrl, setCheckoutUrl] = useState('');
 
     const balance = user?.balance ?? 0;
-
-    // ─── Chapa SDK Script Loader ─────────────────────────────
-    useEffect(() => {
-        if (window.ChapaCheckout) {
-            setSdkState('ready');
-            return;
-        }
-
-        let isMounted = true;
-        const scriptId = 'chapa-inline-sdk-script';
-        let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-
-        const handleLoad = () => {
-            if (!isMounted) return;
-            if (window.ChapaCheckout) {
-                console.log('[DepositPage] Chapa SDK loaded successfully');
-                setSdkState('ready');
-            } else {
-                console.warn('[DepositPage] Chapa SDK script loaded but ChapaCheckout is undefined');
-                setSdkState('failed');
-            }
-        };
-
-        const handleError = () => {
-            if (!isMounted) return;
-            console.error('[DepositPage] Failed to load Chapa SDK script');
-            setSdkState('failed');
-        };
-
-        if (!script) {
-            script = document.createElement('script');
-            script.id = scriptId;
-            script.src = 'https://js.chapa.co/v1/inline.js';
-            script.async = true;
-            document.body.appendChild(script);
-        }
-
-        script.addEventListener('load', handleLoad);
-        script.addEventListener('error', handleError);
-
-        // Fallback safety timeout: if it takes more than 5s, mark as failed so redirect is enabled
-        const timeoutId = setTimeout(() => {
-            if (isMounted && !window.ChapaCheckout) {
-                console.warn('[DepositPage] Chapa SDK script load timeout');
-                setSdkState('failed');
-            }
-        }, 5000);
-
-        return () => {
-            isMounted = false;
-            clearTimeout(timeoutId);
-            if (script) {
-                script.removeEventListener('load', handleLoad);
-                script.removeEventListener('error', handleError);
-            }
-        };
-    }, []);
 
     // ─── Refresh deposits on mount ───────────────────────────
     useEffect(() => {
@@ -113,211 +48,6 @@ export function DepositPage() {
             if (timerRef.current) clearInterval(timerRef.current);
         };
     }, []);
-
-
-
-    // ─── Chapa Phone Validation ──────────────────────────────
-    useEffect(() => {
-        if (step !== 'chapa') return;
-
-        let attached = false;
-
-        const setupValidation = () => {
-            const wrapper = document.getElementById('chapa-container-wrapper');
-            if (!wrapper || attached) return;
-
-            // Find the phone input — Chapa renders it with various selectors
-            const phoneInput = wrapper.querySelector(
-                'input[type="tel"], input[name="mobile"], input[name="phone"], ' +
-                'input[placeholder*="09"], input[placeholder*="07"], input[placeholder*="phone"], ' +
-                'input[placeholder*="Phone"], input[placeholder*="Mobile"]'
-            ) as HTMLInputElement | null;
-
-            if (!phoneInput) return; // Chapa hasn't rendered the input yet
-
-            // Find ALL buttons — might be submit button or pay button
-            const findPayButton = (): HTMLButtonElement | null => {
-                const btns = wrapper.querySelectorAll('button');
-                for (const btn of btns) {
-                    const txt = (btn.textContent || '').toLowerCase();
-                    if (txt.includes('pay') || txt.includes('submit') || txt.includes('proceed') || btn.type === 'submit') {
-                        return btn;
-                    }
-                }
-                // Fallback: last button in the form
-                return btns.length > 0 ? btns[btns.length - 1] : null;
-            };
-
-            attached = true;
-
-            // Create our custom validation message element
-            const msgDiv = document.createElement('div');
-            msgDiv.id = 'phone-validation-msg';
-            msgDiv.style.cssText = 'font-size:12px;margin-top:6px;padding:6px 10px;border-radius:6px;display:none;font-weight:600;';
-
-            // Insert the message after the phone input (or its parent wrapper)
-            const inputParent = phoneInput.closest('.chapa-phone-input-wrapper') || phoneInput.parentElement;
-            if (inputParent?.parentElement) {
-                inputParent.parentElement.insertBefore(msgDiv, inputParent.nextSibling);
-            } else {
-                phoneInput.after(msgDiv);
-            }
-
-            // Detect which payment method tab is currently active
-            const getSelectedPaymentMethod = (): 'telebirr' | 'mpesa' | 'bypass' => {
-                // Scan all elements that might indicate the active tab
-                const allElements = wrapper.querySelectorAll(
-                    '.active, [aria-selected="true"], [data-active="true"], ' +
-                    '.selected, .tab-active, [class*="active"], [class*="selected"]'
-                );
-
-                for (const el of allElements) {
-                    const text = (el.textContent || '').toLowerCase();
-                    const className = (el.className || '').toLowerCase();
-                    const imgAlt = el.querySelector('img')?.alt?.toLowerCase() || '';
-                    const allText = text + ' ' + className + ' ' + imgAlt;
-
-                    if (allText.includes('telebirr') || allText.includes('ethio telecom') || allText.includes('ethiotelecom')) {
-                        return 'telebirr';
-                    }
-                    if (allText.includes('mpesa') || allText.includes('m-pesa') || allText.includes('safaricom')) {
-                        return 'mpesa';
-                    }
-                    // CBE, Awash, E-Pay, E-Birr, bank — no prefix restriction
-                    if (allText.includes('cbe') || allText.includes('bank') || allText.includes('e-pay') || allText.includes('ebirr')) {
-                        return 'bypass';
-                    }
-                }
-
-                // If we can't detect, default to bypass (no prefix restriction)
-                return 'bypass';
-            };
-
-            // Update button state
-            const updateButtonState = (enabled: boolean) => {
-                const payBtn = findPayButton();
-                if (!payBtn) return;
-                payBtn.disabled = !enabled;
-                payBtn.style.opacity = enabled ? '1' : '0.5';
-                payBtn.style.cursor = enabled ? 'pointer' : 'not-allowed';
-            };
-
-            // Core validation function
-            const validatePhone = (showMessages = true) => {
-                let raw = phoneInput.value.replace(/\D/g, '');
-
-                // Strip international prefix 251
-                if (raw.startsWith('251')) raw = raw.substring(3);
-
-                // Detect and strip leading 0
-                const hasLeadingZero = raw.startsWith('0');
-                const base = hasLeadingZero ? raw.substring(1) : raw;
-
-                const method = getSelectedPaymentMethod();
-
-                // Empty — no error, but disable button
-                if (base.length === 0) {
-                    msgDiv.style.display = 'none';
-                    updateButtonState(false);
-                    return;
-                }
-
-                // ── Step 1: PREFIX CHECK (skip for bypass methods) ──
-                if (method !== 'bypass') {
-                    const firstDigit = base.charAt(0);
-
-                    if (method === 'telebirr' && firstDigit === '7') {
-                        if (showMessages) {
-                            msgDiv.textContent = '⚠️ This looks like an M-Pesa number. Telebirr numbers start with 9';
-                            msgDiv.style.color = '#ff4757';
-                            msgDiv.style.background = 'rgba(255,71,87,0.1)';
-                            msgDiv.style.display = 'block';
-                        }
-                        updateButtonState(false);
-                        return;
-                    }
-
-                    if (method === 'mpesa' && firstDigit === '9') {
-                        if (showMessages) {
-                            msgDiv.textContent = '⚠️ This looks like a Telebirr number. M-Pesa numbers start with 7';
-                            msgDiv.style.color = '#ff4757';
-                            msgDiv.style.background = 'rgba(255,71,87,0.1)';
-                            msgDiv.style.display = 'block';
-                        }
-                        updateButtonState(false);
-                        return;
-                    }
-
-                    if (firstDigit !== '9' && firstDigit !== '7') {
-                        if (showMessages) {
-                            msgDiv.textContent = '⚠️ Phone number must start with 09 or 07';
-                            msgDiv.style.color = '#ff4757';
-                            msgDiv.style.background = 'rgba(255,71,87,0.1)';
-                            msgDiv.style.display = 'block';
-                        }
-                        updateButtonState(false);
-                        return;
-                    }
-                }
-
-                // ── Step 2: LENGTH CHECK ──
-                if (base.length < 9) {
-                    // Still typing — hide message, keep button disabled
-                    msgDiv.style.display = 'none';
-                    updateButtonState(false);
-                    return;
-                }
-
-                if (base.length === 9) {
-                    // Perfect length — valid!
-                    msgDiv.style.display = 'none';
-                    updateButtonState(true);
-                    return;
-                }
-
-                if (base.length === 10 && hasLeadingZero) {
-                    // 10 digits starting with 0 — valid (e.g. 09XXXXXXXX)
-                    msgDiv.style.display = 'none';
-                    updateButtonState(true);
-                    return;
-                }
-
-                // Too long
-                if (showMessages) {
-                    msgDiv.textContent = '⚠️ Number too long. Enter 9-10 digits';
-                    msgDiv.style.color = '#ff4757';
-                    msgDiv.style.background = 'rgba(255,71,87,0.1)';
-                    msgDiv.style.display = 'block';
-                }
-                updateButtonState(false);
-            };
-
-            // Attach event listeners
-            phoneInput.addEventListener('input', () => validatePhone(true));
-            phoneInput.addEventListener('blur', () => validatePhone(true));
-            phoneInput.addEventListener('focus', () => validatePhone(false));
-
-            // Re-validate on ANY click in the Chapa form
-            // (catches payment method tab switches with staggered timeouts
-            //  because Chapa's DOM updates are slow)
-            wrapper.addEventListener('click', () => {
-                setTimeout(() => validatePhone(true), 10);
-                setTimeout(() => validatePhone(true), 100);
-                setTimeout(() => validatePhone(true), 300);
-                setTimeout(() => validatePhone(true), 600);
-            });
-
-            console.log('[phone-validation] Attached to Chapa form');
-        };
-
-        // Poll every 500ms until we can attach to the Chapa-rendered phone input
-        const interval = setInterval(setupValidation, 500);
-        // Also try immediately after a delay (Chapa takes ~1s to render)
-        setTimeout(setupValidation, 1000);
-        setTimeout(setupValidation, 2000);
-
-        return () => clearInterval(interval);
-    }, [step]);
 
     // ─── Verify deposit with retry (uses refs to avoid stale closures) ───
     const verifyDeposit = useCallback(async (txRef: string) => {
@@ -341,8 +71,7 @@ export function DepositPage() {
             });
         }, 1000);
 
-        // Mobile money (M-Pesa/Telebirr) can take up to a minute for telco confirmation.
-        // We poll very fast in the first 20 seconds to instantly catch a wrong PIN/Failure.
+        // Mobile money can take a minute. Poll in intervals.
         const delays = [
             2000, 2000, 2000, 3000, 3000, // First 12s
             4000, 4000, 5000, 5000, 5000, // Next 23s
@@ -449,208 +178,83 @@ export function DepositPage() {
                     return; // Stop polling
                 }
 
-                // If still pending, update UI with live message from the bank (if provided)
-                if (data.bank_message && data.bank_message !== 'Payment details fetched successfully') {
-                    console.log(`[verify] Bank says: ${data.bank_message}`);
-                }
-
-                // Otherwise continue polling — show progress to user
+                // Otherwise continue polling
                 const elapsed = delays.slice(0, attempt + 1).reduce((a, b) => a + b, 0);
                 const elapsedSec = Math.round(elapsed / 1000);
                 console.log(`[verify] Still pending after ~${elapsedSec}s (attempt ${attempt + 1}/${delays.length})`);
             } catch (err) {
                 console.error(`[verify] Network error on attempt ${attempt + 1}:`, err);
-                // Continue polling on network error
             }
         }
 
-        // Exhausted all retries — payment is likely confirmed on telco side but
-        // Chapa hasn't updated yet. Show a "still processing" state.
+        // Exhausted all retries
         if (timerRef.current) clearInterval(timerRef.current);
         setTimeLeft(0);
         showToast('info', 'Your payment is being processed. Balance will update automatically.');
-        // Keep the txRef alive so user can manually re-check
         setStep('success');
     }, [setBalance, showToast, refreshDeposits, user]);
-
-    // ─── Start Inline Payment ──────────────────────────────
-    const startInlinePayment = useCallback(async (depositAmount: number) => {
-        setStep('chapa');
-        hapticImpact('medium');
-
-        try {
-            const initData = await getInitDataString();
-            const userId = user?.id || 'unauth_local_user';
-
-            // 1. Generate tx_ref and register with backend
-            const txRef = `DEP-${userId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-            activeTxRefRef.current = txRef;
-
-            const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: depositAmount, initData, tx_ref: txRef, user_id: userId }),
-            });
-            const backendData = await backendRes.json();
-
-            if (!backendData.success) {
-                setStep('amount');
-                showToast('error', backendData.error || 'Failed to start deposit');
-                return;
-            }
-
-            // 2. Initialize the Chapa Inline widget
-            hasSubmittedRef.current = false;
-            
-            // Listen for clicks on the form to know when they actually submit
-            setTimeout(() => {
-                const wrapper = document.getElementById('chapa-container-wrapper');
-                if (wrapper) {
-                    wrapper.addEventListener('click', (e) => {
-                        if ((e.target as HTMLElement).closest('button')) {
-                            hasSubmittedRef.current = true;
-                        }
-                    }, true);
-                }
-            }, 1000);
-
-            const chapa = new window.ChapaCheckout({
-                publicKey: CHAPA_PUBLIC_KEY,
-                amount: Math.round(depositAmount * 100) / 100,
-                currency: 'ETB',
-                tx_ref: txRef,
-                title: 'Add Funds',
-                description: 'Deposit to Paxyo',
-                email: `user-${user?.id || '0'}@paxyo.com`,
-                first_name: user?.first_name || 'Paxyo',
-                last_name: user?.last_name || 'User',
-                showFlag: true,
-                showPaymentMethodsNames: true,
-
-                onSuccessfulPayment: (result: any) => {
-                    console.log('[chapa] onSuccessfulPayment:', result);
-                    hapticNotification('success');
-                    // Start verification polling
-                    verifyDeposit(result?.tx_ref || txRef);
-                },
-
-                onPaymentFailure: (error: any) => {
-                    console.log('[chapa] onPaymentFailure:', error);
-                    let rawMsg = error?.message || error?.error || String(error) || 'Payment failed';
-                    
-                    try {
-                        if (typeof rawMsg === 'string' && rawMsg.startsWith('{')) {
-                            const parsed = JSON.parse(rawMsg);
-                            rawMsg = parsed.message || parsed.error || rawMsg;
-                        }
-                    } catch (e) { }
-
-                    const errStr = rawMsg.toLowerCase();
-
-                    // Ignore basic validation errors from the widget typing
-                    if (['phone','mobile','valid','number','format','required','insert','enter'].some(k => errStr.includes(k))) return;
-
-                    const isFalsePositive = (
-                        errStr.includes('cors') ||
-                        errStr.includes('fetch') ||
-                        errStr.includes('502') ||
-                        errStr.includes('bad gateway') ||
-                        errStr.includes('not completed') ||
-                        errStr.includes('pending')
-                    );
-
-                    // Check if they entered a valid phone number
-                    const wrapper = document.getElementById('chapa-container-wrapper');
-                    const phoneInput = wrapper?.querySelector(
-                        'input[type="tel"], input[name="mobile"], input[name="phone"], input[placeholder*="Phone"], input[placeholder*="Mobile"]'
-                    ) as HTMLInputElement | null;
-                    const hasEnteredPhone = phoneInput && phoneInput.value.replace(/\D/g, '').length >= 9;
-                    const hasSubmitted = hasSubmittedRef.current || hasEnteredPhone;
-
-                    // If user hasn't submitted yet (or Chapa widget failed to load)
-                    if (!hasSubmitted) {
-                        setStep('amount');
-                        showToast('error', isFalsePositive ? 'Chapa system issue. Please try again later.' : 'Payment failed.');
-                        hapticNotification('error');
-                        return;
-                    }
-
-                    // Only errors AFTER submission are treated as "processing" (waiting for PIN)
-                    console.log('[chapa] Failed after submission, treating as processing (awaiting PIN)');
-                    setTimeout(() => {
-                        verifyDeposit(txRef);
-                        setStep('verifying');
-                    }, 500);
-                },
-
-                onClose: () => {
-                    console.log('[chapa] Widget closed');
-                    setTimeout(() => {
-                        setStep(prev => {
-                            if (prev === 'chapa') {
-                                const wrapper = document.getElementById('chapa-container-wrapper');
-                                const phoneInput = wrapper?.querySelector(
-                                    'input[type="tel"], input[name="mobile"], input[name="phone"], input[placeholder*="Phone"], input[placeholder*="Mobile"]'
-                                ) as HTMLInputElement | null;
-                                const hasEnteredPhone = phoneInput && phoneInput.value.replace(/\D/g, '').length >= 9;
-                                const hasSubmitted = hasSubmittedRef.current || hasEnteredPhone;
-
-                                if (hasSubmitted && activeTxRefRef.current === txRef) {
-                                    // They submitted then closed it. Show Awaiting PIN.
-                                    verifyDeposit(txRef);
-                                    return 'verifying';
-                                } else {
-                                    // Cancelled without submitting
-                                    activeTxRefRef.current = null;
-                                    showToast('info', 'Deposit cancelled');
-                                    return 'amount';
-                                }
-                            }
-                            return prev;
-                        });
-                    }, 500);
-                }
-            });
-
-            chapa.initialize();
-
-        } catch (err) {
-            console.error('[deposit] Error starting inline payment:', err);
-            setStep('amount');
-            showToast('error', 'Network error. Please try again.');
-            hapticNotification('error');
-        }
-    }, [showToast, verifyDeposit, user]);
 
     // ─── Start Redirect Payment ──────────────────────────────
     const startRedirectPayment = useCallback(async (depositAmount: number) => {
         hapticImpact('medium');
         showToast('info', 'Opening secure checkout redirect...');
+
+        const isTelegram = !!(window as any).Telegram?.WebApp;
+        let popupWindow: Window | null = null;
+
+        // Open blank popup synchronously to bypass browser popup blockers
+        if (!isTelegram) {
+            const width = 500;
+            const height = 700;
+            const left = (window.screen.width / 2) - (width / 2);
+            const top = (window.screen.height / 2) - (height / 2);
+            popupWindow = window.open(
+                'about:blank',
+                'ChapaCheckoutPopup',
+                `width=${width},height=${height},top=${top},left=${left},status=no,toolbar=no,menubar=no,location=no`
+            );
+        }
+
         try {
             const initData = await getInitDataString();
             const userId = user?.id || 'unauth_local_user';
 
+            // Define return URL pointing to close-popup.html in the public directory
+            const returnUrl = window.location.origin + '/close-popup.html';
+
             const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: depositAmount, initData, user_id: userId }),
+                body: JSON.stringify({ 
+                    amount: depositAmount, 
+                    initData, 
+                    user_id: userId,
+                    return_url: returnUrl
+                }),
             });
             const backendData = await backendRes.json();
 
             if (backendData.success && backendData.checkout_url) {
-                // Open in Telegram native browser (or browser tab fallback)
-                openLink(backendData.checkout_url);
+                setCheckoutUrl(backendData.checkout_url);
                 
-                showToast('success', 'Redirect opened! Checking status in background...');
+                if (isTelegram) {
+                    openLink(backendData.checkout_url);
+                } else if (popupWindow) {
+                    popupWindow.location.href = backendData.checkout_url;
+                }
+                
+                showToast('success', 'Redirect opened! Checking status...');
                 
                 // Start verifying the generated tx_ref
                 if (backendData.tx_ref) {
                     verifyDeposit(backendData.tx_ref);
                 }
             } else {
+                if (popupWindow) popupWindow.close();
                 showToast('error', backendData.error || 'Failed to initialize redirect payment');
             }
         } catch (err) {
+            if (popupWindow) popupWindow.close();
             console.error('[deposit] Error starting redirect payment:', err);
             showToast('error', 'Network error. Please try again.');
         }
@@ -660,7 +264,7 @@ export function DepositPage() {
     const handleDeposit = useCallback(() => {
         const val = parseFloat(amount);
         
-        // 1. Basic validation
+        // Basic validation
         if (!amount || amount.trim() === '') {
             showToast('error', 'Action Required: Please enter an amount');
             return hapticNotification('error');
@@ -679,12 +283,8 @@ export function DepositPage() {
         }
 
         setErrorMessage('');
-        if (sdkState === 'ready') {
-            startInlinePayment(val);
-        } else {
-            startRedirectPayment(val);
-        }
-    }, [amount, startInlinePayment, startRedirectPayment, sdkState, showToast]);
+        startRedirectPayment(val);
+    }, [amount, startRedirectPayment, showToast]);
 
     // ─── Native Main Button Integration ──────────────────────
     useEffect(() => {
@@ -695,7 +295,7 @@ export function DepositPage() {
 
             configureMainButton({
                 text: isValid ? `DEPOSIT ${val} ETB` : 'ENTER AMOUNT (MIN 10)',
-                color: isValid ? '#007AFF' : '#2d2d2d', // Native button color
+                color: isValid ? '#007AFF' : '#2d2d2d', 
                 textColor: '#ffffff',
                 isEnabled: isValid,
                 isLoaderVisible: false
@@ -717,7 +317,7 @@ export function DepositPage() {
         } else {
             hideMainButton();
         }
-    }, [step, amount, handleDeposit]); // Dependency list ensures refresh if amount or step changes
+    }, [step, amount, handleDeposit]);
 
     const recentDeposits = useMemo(() => deposits.slice(0, 5), [deposits]);
 
@@ -746,34 +346,25 @@ export function DepositPage() {
             {/* ─── Amount Input Section ─── */}
             {step === 'amount' && (
                 <>
-                    <div className="paxyo-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="paxyo-section-header">
                         <span>AMOUNT TO ADD</span>
-                        <span className={`sdk-badge sdk-badge--${sdkState}`}>
-                            <span className="sdk-badge__dot" />
-                            {sdkState === 'ready' ? 'inline ready' : sdkState === 'failed' ? 'redirect mode' : 'checking...'}
-                        </span>
                     </div>
                     <div className="deposit-input-group">
                         <span className="deposit-input-group__prefix">ETB</span>
                         <input
                             className="deposit-input-group__input"
-                            // Force strict numeric keypad on mobile
                             inputMode="numeric" 
                             type="text" 
                             placeholder="0"
                             value={amount}
                             onChange={(e) => {
-                                // 1. Strip all non-numbers
                                 const rawValue = e.target.value.replace(/[^0-9]/g, '');
                                 if (!rawValue) {
                                     setAmount('');
                                     return;
                                 }
-                                
-                                // 2. Convert to number and format
                                 const num = parseInt(rawValue, 10);
-                                if (num > 100000) return; // Max limit to prevent typos
-                                
+                                if (num > 100000) return; // Max limit
                                 setAmount(num.toString());
                             }}
                             style={{ 
@@ -813,7 +404,7 @@ export function DepositPage() {
                         </div>
                     )}
 
-                    {/* RESTORED DEPOSIT BUTTON */}
+                    {/* DEPOSIT BUTTON */}
                     <div style={{ padding: '16px', marginTop: '8px' }}>
                         <Button
                             size="l"
@@ -839,46 +430,6 @@ export function DepositPage() {
                 </>
             )}
 
-            {/* ─── Inline Form Container ─── */}
-            {step === 'chapa' && (
-                <div className="chapa-section">
-                    <div className="chapa-section__header">
-                        <Button
-                            mode="plain"
-                            className="chapa-section__back"
-                            onClick={() => {
-                                pollAbortRef.current = true;
-                                activeTxRefRef.current = null;
-                                setStep('amount');
-                            }}
-                            style={{ padding: 0 }}
-                        >
-                            ← Cancel
-                        </Button>
-                        <div className="chapa-section__title">Secure Payment</div>
-                        <div className="sdk-badge sdk-badge--ready">
-                            <span className="sdk-badge__dot" />
-                            Ready
-                        </div>
-                    </div>
-
-                    <div className="chapa-inline-container guide-highlight" id="chapa-container-wrapper">
-                        <div id="chapa-inline-form" className="payment-container" style={{ height: 'auto', width: '100%' }}></div>
-                        <div id="chapa-error-container" className="chapa-error-box"></div>
-                    </div>
-
-                    {/* Secured by Chapa footer */}
-                    <div className="deposit-secured" style={{ opacity: 0.3 }}>
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                        </svg>
-                        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            Secured by Chapa
-                        </span>
-                    </div>
-                </div>
-            )}
-
             {/* ─── Verifying State (Awaiting PIN) ─── */}
             {step === 'verifying' && (
                 <div className="deposit-processing" style={{ padding: '24px 16px', textAlign: 'center' }}>
@@ -890,11 +441,11 @@ export function DepositPage() {
                     </div>
                     
                     <div className="deposit-processing__text" style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--tg-theme-text-color)', marginBottom: '8px' }}>
-                        Awaiting PIN Verification
+                        Awaiting Payment Verification
                     </div>
                     <div className="deposit-processing__subtext" style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '20px' }}>
-                        We've sent a payment prompt to your phone. <br/>
-                        Please enter your Telebirr / M-Pesa <b>PIN</b> on your mobile screen to approve the deposit.
+                        Please complete your payment in the checkout window. <br/>
+                        If you paid using M-Pesa or Telebirr, enter your <b>PIN</b> when prompted.
                     </div>
                     
                     <div style={{ width: '100%', height: '8px', background: 'var(--tg-theme-secondary-bg-color)', borderRadius: '4px', overflow: 'hidden', marginBottom: '12px' }}>
@@ -908,19 +459,28 @@ export function DepositPage() {
                     </div>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--tg-theme-hint-color)', marginBottom: '24px' }}>
-                        <span>{timeLeft > 0 ? `Waiting for completion (${timeLeft}s)...` : 'Timeout. Checking one last time...'}</span>
+                        <span>{timeLeft > 0 ? `Checking status (${timeLeft}s)...` : 'Polling for confirmation...'}</span>
                         <span style={{ color: 'var(--tg-theme-button-color)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--tg-theme-button-color)', display: 'inline-block', animation: 'pulse 1s infinite' }}></span>
                             Live Checking
                         </span>
                     </div>
 
+                    <a 
+                        href={checkoutUrl} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="deposit-processing__subtext"
+                        style={{ display: 'block', fontSize: '12px', color: 'var(--tg-theme-button-color)', textDecoration: 'underline', marginBottom: '20px' }}
+                    >
+                        Didn't open? Click here to pay
+                    </a>
+
                     <div className="deposit-processing__actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <Button
                             mode="bezeled"
                             stretched
                             size="l"
-                            className="deposit-retry-btn"
                             onClick={() => {
                                 if (activeTxRefRef.current) {
                                     verifyDeposit(activeTxRefRef.current);
@@ -995,7 +555,6 @@ export function DepositPage() {
                     <div className="deposit-success__text">Deposit Successful!</div>
                     <div className="deposit-success__subtext">Your balance has been updated.</div>
 
-                    {/* If txRef still active, offer manual re-check */}
                     {activeTxRefRef.current && (
                         <Button
                             mode="outline"
@@ -1025,8 +584,6 @@ export function DepositPage() {
                     </Button>
                 </div>
             )}
-
-
 
             {/* ─── Recent Deposits ─── */}
             <div ref={recentDepositsRef} className="paxyo-section-header" style={{ marginTop: 24 }}>Recent Deposits</div>

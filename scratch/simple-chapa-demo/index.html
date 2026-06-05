@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapa Payment Panel Demo</title>
+    <!-- React & Babel CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Google Fonts & Tailwind CSS for quick premium layout -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at top, #1e1b4b, #0f172a);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.45);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .text-glow {
+            text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+        /* Spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #6366f1;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <div id="root" class="w-full max-w-md"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function App() {
+            const [balance, setBalance] = useState(0);
+            const [amount, setAmount] = useState('');
+            const [status, setStatus] = useState('idle'); // idle | loading | redirecting | verifying | success | error
+            const [errorMsg, setErrorMsg] = useState('');
+            const [activeTxRef, setActiveTxRef] = useState('');
+            const [checkoutUrl, setCheckoutUrl] = useState('');
+            
+            const pollingIntervalRef = useRef(null);
+
+            const BACKEND_URL = 'http://localhost:3005';
+            const TG_USER_ID = '123456789';
+
+            // Fetch User Balance on mount
+            const fetchBalance = async () => {
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/user-balance`);
+                    const data = await res.json();
+                    if (data.success) {
+                        setBalance(data.balance);
+                    }
+                } catch (err) {
+                    console.error('Error fetching balance:', err);
+                }
+            };
+
+            useEffect(() => {
+                fetchBalance();
+                return () => {
+                    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+                };
+            }, []);
+
+            // 1. Initialize Payment (Redirect Mode)
+            const handleInitiatePayment = async () => {
+                const depAmount = parseFloat(amount);
+                if (isNaN(depAmount) || depAmount < 10) {
+                    setErrorMsg('Minimum deposit amount is 10 ETB');
+                    setStatus('error');
+                    return;
+                }
+
+                setStatus('loading');
+                setErrorMsg('');
+
+                try {
+                    // Call backend to create tx_ref & get checkout URL from Chapa securely
+                    const response = await fetch(`${BACKEND_URL}/api/initialize-payment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount: depAmount })
+                    });
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to initialize payment');
+                    }
+
+                    setActiveTxRef(data.tx_ref);
+                    setCheckoutUrl(data.checkout_url);
+                    setStatus('redirecting');
+
+                    // Open checkout URL in a popup window
+                    const width = 500;
+                    const height = 700;
+                    const left = (window.screen.width / 2) - (width / 2);
+                    const top = (window.screen.height / 2) - (height / 2);
+                    window.open(
+                        data.checkout_url, 
+                        'ChapaCheckoutPopup', 
+                        `width=${width},height=${height},top=${top},left=${left},status=no,toolbar=no,menubar=no,location=no`
+                    );
+
+                    // Start background polling to see when payment completes
+                    startVerificationPolling(data.tx_ref);
+
+                } catch (err) {
+                    setErrorMsg(err.message || 'Server error occurred');
+                    setStatus('error');
+                }
+            };
+
+            // 2. Poll Backend to check status automatically
+            const startVerificationPolling = (txRef) => {
+                if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+
+                // Check status every 4 seconds
+                pollingIntervalRef.current = setInterval(() => {
+                    checkPaymentStatus(txRef, true);
+                }, 4000);
+            };
+
+            // 3. Check Payment Status
+            const checkPaymentStatus = async (txRef, isSilent = false) => {
+                if (!isSilent) setStatus('verifying');
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/verify-payment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tx_ref: txRef })
+                    });
+                    const data = await response.json();
+
+                    if (data.success && data.message === 'Payment verified and wallet credited!') {
+                        if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+                        setStatus('success');
+                        fetchBalance(); // Refresh the balance
+                        setAmount('');
+                    } else if (!isSilent) {
+                        // If user clicked manually and it is not success
+                        setErrorMsg(data.error || data.message || 'Payment is still pending verification.');
+                        setStatus('error');
+                    }
+                } catch (err) {
+                    if (!isSilent) {
+                        setErrorMsg('Network error while verifying payment.');
+                        setStatus('error');
+                    }
+                }
+            };
+
+            const cancelVerification = () => {
+                if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+                setStatus('idle');
+            };
+
+            return (
+                <div className="glass-card rounded-3xl p-8 shadow-2xl flex flex-col gap-6">
+                    
+                    {/* Header */}
+                    <div className="text-center">
+                        <h1 className="text-2xl font-bold text-glow text-indigo-400">Chapa Checkout Demo</h1>
+                        <p className="text-xs text-slate-400 mt-1">Redirect Flow Panel for tg_id: <span class="text-indigo-300 font-semibold">{TG_USER_ID}</span></p>
+                    </div>
+
+                    {/* Balance Display */}
+                    <div className="bg-slate-900/60 rounded-2xl p-6 border border-slate-800 text-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-indigo-500/5 blur-xl"></div>
+                        <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1">Your Wallet Balance</p>
+                        <h2 className="text-4xl font-extrabold text-white">
+                            {balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-indigo-400 text-lg">ETB</span>
+                        </h2>
+                    </div>
+
+                    {/* Amount Input Form */}
+                    {status === 'idle' && (
+                        <div className="flex flex-col gap-4">
+                            <div>
+                                <label className="block text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Deposit Amount</label>
+                                <div className="relative rounded-2xl bg-slate-950/80 border border-slate-800 focus-within:border-indigo-500 transition-colors">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-lg">ETB</span>
+                                    <input 
+                                        type="number"
+                                        placeholder="Min 10"
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        className="w-full bg-transparent pl-14 pr-4 py-4 text-white text-lg font-bold rounded-2xl outline-none" 
+                                    />
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleInitiatePayment}
+                                className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg transition-transform active:scale-[0.98] flex items-center justify-center gap-3"
+                            >
+                                <span>Deposit Funds</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Loading State */}
+                    {status === 'loading' && (
+                        <div className="flex flex-col items-center justify-center gap-4 py-8 bg-slate-900/30 rounded-2xl border border-slate-800">
+                            <div className="spinner"></div>
+                            <span className="text-sm text-slate-300">Contacting Chapa API securely...</span>
+                        </div>
+                    )}
+
+                    {/* Redirecting / Verifying State */}
+                    {(status === 'redirecting' || status === 'verifying') && (
+                        <div className="flex flex-col items-center justify-center gap-4 py-6 bg-slate-900/30 rounded-2xl border border-slate-800 px-6 text-center">
+                            <div className="relative flex items-center justify-center w-12 h-12">
+                                <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin"></div>
+                                <span className="text-xl">💳</span>
+                            </div>
+                            <h3 className="font-bold text-white text-lg">Payment window opened!</h3>
+                            <p className="text-xs text-slate-400">
+                                Complete your payment in the new browser tab. We are checking status automatically in the background...
+                            </p>
+                            
+                            <a 
+                                href={checkoutUrl} 
+                                target="_blank" 
+                                className="text-xs text-indigo-400 underline hover:text-indigo-300 mt-2 font-medium"
+                            >
+                                Didn't open? Click here to open checkout page
+                            </a>
+
+                            <div className="flex flex-col w-full gap-2 mt-4">
+                                <button 
+                                    onClick={() => checkPaymentStatus(activeTxRef, false)}
+                                    className="w-full bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold py-3 px-4 rounded-xl transition text-xs"
+                                >
+                                    🔄 Verify Payment Manually Now
+                                </button>
+                                
+                                <button 
+                                    onClick={cancelVerification}
+                                    className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 font-semibold py-2 px-4 rounded-xl transition text-xs"
+                                >
+                                    Cancel & Return
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {status === 'success' && (
+                        <div className="flex flex-col items-center justify-center gap-2 p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-2xl">
+                            <span className="text-3xl">✅</span>
+                            <h3 className="font-bold text-emerald-400">Payment Successful!</h3>
+                            <p className="text-xs text-slate-400 text-center">Your database balance has been updated successfully.</p>
+                            <button 
+                                onClick={() => setStatus('idle')}
+                                className="mt-2 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-semibold py-2 px-4 rounded-xl transition"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    )}
+
+                    {status === 'error' && (
+                        <div className="flex flex-col items-center justify-center gap-2 p-4 bg-rose-950/20 border border-rose-500/30 rounded-2xl">
+                            <span className="text-3xl">❌</span>
+                            <h3 className="font-bold text-rose-400">Payment Failed / Pending</h3>
+                            <p className="text-xs text-slate-400 text-center">{errorMsg || 'Something went wrong.'}</p>
+                            <div className="flex gap-2 w-full mt-2">
+                                <button 
+                                    onClick={() => setStatus('redirecting')}
+                                    className="flex-1 text-xs bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-semibold py-2 px-4 rounded-xl transition"
+                                >
+                                    Back to checking
+                                </button>
+                                <button 
+                                    onClick={() => setStatus('idle')}
+                                    className="flex-1 text-xs bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold py-2 px-4 rounded-xl transition"
+                                >
+                                    Try Again
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="text-center text-[10px] text-slate-500 tracking-wider flex items-center justify-center gap-1">
+                        <span>🔒</span> SECURED BY CHAPA
+                    </div>
+                </div>
+            );
+        }
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>

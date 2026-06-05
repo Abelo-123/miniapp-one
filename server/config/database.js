@@ -6,14 +6,14 @@ import mysql from 'mysql2/promise';
 
 // cPanel MySQL credentials
 const pool = mysql.createPool({
-    host: 'localhost',
-    user: 'paxyocom_newRender',
-    password: '_[xgm!h,PT0MUx,y',
-    database: 'paxyocom_paxyov3',
     // host: 'localhost',
-    // user: 'root',
-    // password: '',
-    // database: 'paxyobot',
+    // user: 'paxyocom_newRender',
+    // password: '_[xgm!h,PT0MUx,y',
+    // database: 'paxyocom_paxyov3',
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'paxyobot',
     port: 3306,
     charset: 'utf8mb4',
     waitForConnections: true,
