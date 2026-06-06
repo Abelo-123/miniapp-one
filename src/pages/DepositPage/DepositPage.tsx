@@ -49,7 +49,7 @@ export function DepositPage() {
         };
     }, []);
 
-    // ─── Verify deposit with retry (uses refs to avoid stale closures) ───
+    // ─── Verify oodeposit with retry (uses refs to avoid stale closures) ───
     const verifyDeposit = useCallback(async (txRef: string) => {
         if (!txRef) return;
 
@@ -203,7 +203,7 @@ export function DepositPage() {
             try {
                 const txRef = activeTxRefRef.current;
                 if (!txRef) return;
-                
+
                 node.innerHTML = ''; // Clean previous contents
 
                 const chapa = new (window as any).ChapaCheckout({
@@ -641,12 +641,12 @@ export function DepositPage() {
                 header={
                     <Modal.Header
                         after={
-                            <span 
-                                onClick={() => setShowDrawer(false)} 
-                                style={{ 
-                                    cursor: 'pointer', 
-                                    padding: '8px 16px', 
-                                    color: 'var(--tg-theme-link-color)', 
+                            <span
+                                onClick={() => setShowDrawer(false)}
+                                style={{
+                                    cursor: 'pointer',
+                                    padding: '8px 16px',
+                                    color: 'var(--tg-theme-link-color)',
                                     fontWeight: 'bold',
                                     fontSize: '15px'
                                 }}
