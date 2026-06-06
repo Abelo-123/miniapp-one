@@ -10,8 +10,7 @@ import {
     hapticSelection,
     hapticImpact,
     hapticNotification,
-    getInitDataString,
-    isTelegramEnv
+    getInitDataString
 } from '../../helpers/telegram';
 import { Button, Modal } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
