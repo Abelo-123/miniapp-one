@@ -11,6 +11,7 @@ import depositRouter from './routes/deposit.js';
 import completeDepositRouter from './routes/completeDeposit.js';
 import verifyDepositRouter from './routes/verifyDeposit.js';
 import chapaCallbackRouter from './routes/chapaCallback.js';
+import telegramWebhookRouter from './routes/telegramWebhook.js';
 import getDepositsRouter from './routes/getDeposits.js';
 import getBalanceRouter from './routes/getBalance.js';
 import getServicesRouter from './routes/getServices.js';
@@ -121,6 +122,7 @@ app.use('/api/deposit', depositRouter);
 app.use('/api/complete-deposit', completeDepositRouter);
 app.use('/api/verify-deposit', verifyDepositRouter);
 app.use('/api/chapa-callback', chapaCallbackRouter);
+app.use('/api/telegram-webhook', telegramWebhookRouter);
 
 // User Data Routes
 app.use('/api/deposits', getDepositsRouter);

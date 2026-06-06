@@ -90,7 +90,7 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // ═══ FLOW B: REDIRECT MODE (server generates tx_ref + calls Chapa) ═══
+        // ═══ FLOW B: REDIRECT MODE (server generates tx_ref + calls Chapa/Telegram) ═══
         const generatedTxRef = `DEP-${tgId}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 
         // Insert pending deposit
@@ -99,20 +99,68 @@ router.post('/', async (req, res) => {
             [tgId, amount, generatedTxRef]
         );
 
-        // Call Chapa API to initialize payment
-        const chapa = new Chapa();
-        const result = await chapa.initialize({
-            amount,
-            email: user.email || 'customer@paxyo.com',
-            first_name: user.first_name || 'User',
-            last_name: user.last_name || '',
-            tx_ref: generatedTxRef,
-            return_url: return_url,
-        });
+        let checkoutUrl = '';
+        let success = false;
+        let errorMsg = '';
 
-        if (result.success && result.data?.checkout_url) {
-            const checkoutUrl = result.data.checkout_url;
+        const providerToken = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
+        const botToken = process.env.BOT_TOKEN;
 
+        if (providerToken && botToken) {
+            console.log(`[deposit] Generating native Telegram invoice link using provider token...`);
+            try {
+                const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/createInvoiceLink`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: 'Balance Deposit',
+                        description: `Add ${amount} ETB to your Paxyo balance`,
+                        payload: generatedTxRef,
+                        provider_token: providerToken,
+                        currency: 'ETB',
+                        prices: [
+                            { label: 'Deposit Amount', amount: Math.round(amount * 100) }
+                        ]
+                    })
+                });
+                const tgData = await tgRes.json();
+                if (tgData.ok && tgData.result) {
+                    checkoutUrl = tgData.result;
+                    success = true;
+                } else {
+                    console.error('[deposit] Telegram createInvoiceLink error:', tgData);
+                    errorMsg = tgData.description || 'Failed to generate Telegram invoice link';
+                }
+            } catch (err) {
+                console.error('[deposit] Telegram API error:', err.message);
+                errorMsg = `Telegram connection error: ${err.message}`;
+            }
+        }
+
+        // If not processed via Telegram or failed, fall back to standard Chapa hosted redirect flow
+        if (!success) {
+            if (providerToken && botToken) {
+                console.warn(`[deposit] Telegram invoice generation failed. Falling back to Chapa hosted URL... Error: ${errorMsg}`);
+            }
+            const chapa = new Chapa();
+            const result = await chapa.initialize({
+                amount,
+                email: user.email || 'customer@paxyo.com',
+                first_name: user.first_name || 'User',
+                last_name: user.last_name || '',
+                tx_ref: generatedTxRef,
+                return_url: return_url,
+            });
+
+            if (result.success && result.data?.checkout_url) {
+                checkoutUrl = result.data.checkout_url;
+                success = true;
+            } else {
+                errorMsg = result.message || 'Failed to initialize Chapa payment';
+            }
+        }
+
+        if (success && checkoutUrl) {
             // Save checkout_url in DB
             await pool.execute('UPDATE deposits SET checkout_url = ? WHERE tx_ref = ?', [
                 checkoutUrl,
@@ -127,7 +175,7 @@ router.post('/', async (req, res) => {
         } else {
             return res.json({
                 success: false,
-                error: result.message || 'Failed to initialize Chapa payment',
+                error: errorMsg || 'Payment initialization failed',
             });
         }
     } catch (err) {

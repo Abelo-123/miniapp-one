@@ -240,34 +240,67 @@ export function DepositPage() {
             if (backendData.success && backendData.checkout_url) {
                 setCheckoutUrl(backendData.checkout_url);
 
-                if (isTelegram) {
-                    // 1. Disable closing confirmation & hide the native WebApp back button before navigating.
-                    // This prevents the Telegram client from showing the stuck confirmation prompt
-                    // and allows the native Close button to exit instantly, while Android back gesture
-                    // will navigate back in history to our React app.
-                    try {
-                        const twa = (window as any).Telegram?.WebApp;
-                        if (twa) {
-                            twa.disableClosingConfirmation?.();
-                            twa.BackButton?.hide?.();
+                const isTelegramInvoice = backendData.checkout_url.includes('t.me/$') || backendData.checkout_url.includes('t.me/invoice');
+
+                if (isTelegramInvoice) {
+                    if (popupWindow) popupWindow.close();
+
+                    const twa = (window as any).Telegram?.WebApp;
+                    if (twa && twa.openInvoice) {
+                        // Start polling/verifying in background first
+                        if (backendData.tx_ref) {
+                            verifyDeposit(backendData.tx_ref);
                         }
-                    } catch (e) {
-                        console.error('Error disabling Telegram WebApp confirmation/back-button:', e);
+
+                        twa.openInvoice(backendData.checkout_url, (status: string) => {
+                            console.log('[deposit] Telegram native payment callback status:', status);
+                            if (status === 'paid') {
+                                showToast('success', 'Checking payment status...');
+                                // verifyDeposit is already polling, but we can call it again to speed up validation
+                                if (backendData.tx_ref) {
+                                    verifyDeposit(backendData.tx_ref);
+                                }
+                            } else if (status === 'failed') {
+                                setStep('error');
+                                setErrorMessage('The payment failed or was declined.');
+                                hapticNotification('error');
+                            } else {
+                                setStep('amount');
+                                showToast('info', 'Payment cancelled');
+                            }
+                        });
+                    } else {
+                        // Fallback: Open Telegram link
+                        window.location.href = backendData.checkout_url;
+                        if (backendData.tx_ref) {
+                            verifyDeposit(backendData.tx_ref);
+                        }
+                    }
+                } else {
+                    if (isTelegram) {
+                        // 1. Disable closing confirmation & hide the native WebApp back button before navigating.
+                        try {
+                            const twa = (window as any).Telegram?.WebApp;
+                            if (twa) {
+                                twa.disableClosingConfirmation?.();
+                                twa.BackButton?.hide?.();
+                            }
+                        } catch (e) {
+                            console.error('Error disabling Telegram WebApp confirmation/back-button:', e);
+                        }
+
+                        // 2. Navigate the current Mini App WebView directly.
+                        window.location.href = backendData.checkout_url;
+                    } else if (popupWindow) {
+                        popupWindow.location.href = backendData.checkout_url;
                     }
 
-                    // 2. Navigate the current Mini App WebView directly.
-                    // This forces the checkout to open directly within the Telegram WebApp window itself,
-                    // without escaping to Chrome or Safari.
-                    window.location.href = backendData.checkout_url;
-                } else if (popupWindow) {
-                    popupWindow.location.href = backendData.checkout_url;
-                }
+                    showToast('success', 'Redirect opened! Checking status...');
 
-                showToast('success', 'Redirect opened! Checking status...');
-
-                // Start verifying the generated tx_ref
-                if (backendData.tx_ref) {
-                    verifyDeposit(backendData.tx_ref);
+                    // Start verifying the generated tx_ref
+                    if (backendData.tx_ref) {
+                        verifyDeposit(backendData.tx_ref);
+                    }
                 }
             } else {
                 if (popupWindow) popupWindow.close();
