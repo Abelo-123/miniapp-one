@@ -11,7 +11,6 @@ import depositRouter from './routes/deposit.js';
 import completeDepositRouter from './routes/completeDeposit.js';
 import verifyDepositRouter from './routes/verifyDeposit.js';
 import chapaCallbackRouter from './routes/chapaCallback.js';
-import telegramWebhookRouter from './routes/telegramWebhook.js';
 import getDepositsRouter from './routes/getDeposits.js';
 import getBalanceRouter from './routes/getBalance.js';
 import getServicesRouter from './routes/getServices.js';
@@ -122,7 +121,16 @@ app.use('/api/deposit', depositRouter);
 app.use('/api/complete-deposit', completeDepositRouter);
 app.use('/api/verify-deposit', verifyDepositRouter);
 app.use('/api/chapa-callback', chapaCallbackRouter);
-app.use('/api/telegram-webhook', telegramWebhookRouter);
+
+// Dynamically load Telegram Webhook to prevent server crashes if file isn't uploaded
+import('./routes/telegramWebhook.js')
+    .then(module => {
+        app.use('/api/telegram-webhook', module.default);
+        console.log('[Startup] Telegram Webhook Router loaded successfully.');
+    })
+    .catch(err => {
+        console.warn('[Startup] Skipping Telegram Webhook (file missing or error):', err.message);
+    });
 
 // User Data Routes
 app.use('/api/deposits', getDepositsRouter);
