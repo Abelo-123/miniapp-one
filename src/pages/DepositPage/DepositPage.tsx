@@ -639,7 +639,7 @@ export function DepositPage() {
             <Modal
                 open={showDrawer}
                 onOpenChange={(open) => setShowDrawer(open)}
-                snapPoints={[0.92]}
+                snapPoints={[0.85]}
                 header={
                     <Modal.Header
                         after={
@@ -661,11 +661,11 @@ export function DepositPage() {
                     </Modal.Header>
                 }
             >
-                <div style={{ width: '100%', height: 'calc(92vh - 56px)', display: 'flex', flexDirection: 'column', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ width: '100%', height: 'calc(85vh - 56px)', display: 'flex', flexDirection: 'column', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                     {checkoutUrl ? (
                         <iframe
                             src={checkoutUrl}
-                            style={{ flex: 1, border: 'none', width: '100%', height: '100%', background: 'var(--tg-theme-bg-color)' }}
+                            style={{ width: '100%', height: '700px', border: 'none', background: 'var(--tg-theme-bg-color)' }}
                             title="Chapa Secure Payment"
                         />
                     ) : (
