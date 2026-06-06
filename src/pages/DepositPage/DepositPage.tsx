@@ -195,7 +195,8 @@ export function DepositPage() {
         if (timerRef.current) clearInterval(timerRef.current);
         setTimeLeft(0);
         showToast('info', 'Your payment is being processed. Balance will update automatically.');
-        setStep('success');
+        setStep('amount');
+        activeTxRefRef.current = null;
     }, [setBalance, showToast, refreshDeposits, user]);
 
     // ─── Start Redirect Payment ──────────────────────────────
@@ -638,10 +639,29 @@ export function DepositPage() {
             <Modal
                 open={showDrawer}
                 onOpenChange={(open) => setShowDrawer(open)}
-                snapPoints={[0.85]}
-                header={<Modal.Header>Secure Checkout</Modal.Header>}
+                snapPoints={[0.92]}
+                header={
+                    <Modal.Header
+                        after={
+                            <span 
+                                onClick={() => setShowDrawer(false)} 
+                                style={{ 
+                                    cursor: 'pointer', 
+                                    padding: '8px 16px', 
+                                    color: 'var(--tg-theme-link-color)', 
+                                    fontWeight: 'bold',
+                                    fontSize: '15px'
+                                }}
+                            >
+                                Close
+                            </span>
+                        }
+                    >
+                        Secure Checkout
+                    </Modal.Header>
+                }
             >
-                <div style={{ width: '100%', height: 'calc(85vh - 56px)', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ width: '100%', height: 'calc(92vh - 56px)', display: 'flex', flexDirection: 'column', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                     {checkoutUrl ? (
                         <iframe
                             src={checkoutUrl}
