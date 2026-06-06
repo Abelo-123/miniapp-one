@@ -199,6 +199,46 @@ export function DepositPage() {
         activeTxRefRef.current = null;
     }, [setBalance, showToast, refreshDeposits, user]);
 
+    const chapaFormRef = useCallback((node: HTMLDivElement | null) => {
+        if (node !== null) {
+            try {
+                const txRef = activeTxRefRef.current;
+                if (!txRef) return;
+                
+                node.innerHTML = ''; // Clean previous contents
+
+                const chapa = new (window as any).ChapaCheckout({
+                    publicKey: import.meta.env.VITE_CHAPA_PUBLIC_KEY || 'CHAPUBK-3fWBzd7CeuNFXJOotgRqcDkXeWz1OFrT',
+                    amount: parseFloat(amount),
+                    currency: 'ETB',
+                    tx_ref: txRef,
+                    title: 'Balance Deposit',
+                    description: `Add ${amount} ETB to Paxyo SMM balance`,
+                    email: user?.email || `customer-${user?.id || 'unauth'}@paxyo.com`,
+                    first_name: user?.first_name || 'User',
+                    last_name: user?.last_name || '',
+                    showFlag: true,
+                    showPaymentMethodsNames: true,
+                    onSuccessfulPayment: (result: any, refId: any) => {
+                        console.log('[Chapa Inline] Payment successful:', result, refId);
+                        setShowDrawer(false);
+                        verifyDeposit(txRef);
+                    },
+                    onPaymentFailure: (error: any) => {
+                        console.error('[Chapa Inline] Payment failed:', error);
+                    },
+                    onClose: () => {
+                        console.log('[Chapa Inline] Closed');
+                        setShowDrawer(false);
+                    }
+                });
+                chapa.initialize('chapa-inline-form');
+            } catch (err) {
+                console.error('[chapa] Initialization error:', err);
+            }
+        }
+    }, [amount, user, verifyDeposit]);
+
     // ─── Start Redirect Payment ──────────────────────────────
     const startRedirectPayment = useCallback(async (depositAmount: number) => {
         hapticImpact('medium');
@@ -208,10 +248,9 @@ export function DepositPage() {
             const initData = await getInitDataString();
             const userId = user?.id || 'unauth_local_user';
 
-            // Correctly resolve close-popup.html path relative to current URL (supports GitHub Pages subfolders!)
-            const returnUrl = new URL('./close-popup.html', window.location.href).href;
-
-            console.log('[deposit] return_url generated:', returnUrl);
+            // Generate unique transaction reference on frontend for Inline SDK
+            const generatedTxRef = `DEP-${userId}-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+            activeTxRefRef.current = generatedTxRef;
 
             const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
                 method: 'POST',
@@ -220,58 +259,18 @@ export function DepositPage() {
                     amount: depositAmount,
                     initData,
                     user_id: userId,
-                    return_url: returnUrl
+                    tx_ref: generatedTxRef // FLOW A: Inline SDK mode
                 }),
             });
             const backendData = await backendRes.json();
 
-            if (backendData.success && backendData.checkout_url) {
-                setCheckoutUrl(backendData.checkout_url);
+            if (backendData.success) {
+                // Open Chapa Inline SDK Modal
+                setShowDrawer(true);
+                showToast('success', 'Secure checkout loaded!');
 
-                const isTelegramInvoice = backendData.checkout_url.includes('t.me/$') || backendData.checkout_url.includes('t.me/invoice');
-
-                if (isTelegramInvoice) {
-                    const twa = (window as any).Telegram?.WebApp;
-                    if (twa && twa.openInvoice) {
-                        // Start polling/verifying in background first
-                        if (backendData.tx_ref) {
-                            verifyDeposit(backendData.tx_ref);
-                        }
-
-                        twa.openInvoice(backendData.checkout_url, (status: string) => {
-                            console.log('[deposit] Telegram native payment callback status:', status);
-                            if (status === 'paid') {
-                                showToast('success', 'Checking payment status...');
-                                // verifyDeposit is already polling, but we can call it again to speed up validation
-                                if (backendData.tx_ref) {
-                                    verifyDeposit(backendData.tx_ref);
-                                }
-                            } else if (status === 'failed') {
-                                setStep('error');
-                                setErrorMessage('The payment failed or was declined.');
-                                hapticNotification('error');
-                            } else {
-                                setStep('amount');
-                                showToast('info', 'Payment cancelled');
-                            }
-                        });
-                    } else {
-                        // Fallback: Open Telegram link
-                        window.location.href = backendData.checkout_url;
-                        if (backendData.tx_ref) {
-                            verifyDeposit(backendData.tx_ref);
-                        }
-                    }
-                } else {
-                    // Open in bottom sheet drawer modal
-                    setShowDrawer(true);
-                    showToast('success', 'Payment form loaded! Checking status...');
-
-                    // Start verifying the generated tx_ref
-                    if (backendData.tx_ref) {
-                        verifyDeposit(backendData.tx_ref);
-                    }
-                }
+                // Start verifying the generated tx_ref
+                verifyDeposit(generatedTxRef);
             } else {
                 showToast('error', backendData.error || 'Failed to initialize payment');
             }
@@ -661,18 +660,8 @@ export function DepositPage() {
                     </Modal.Header>
                 }
             >
-                <div style={{ width: '100%', height: 'calc(85vh - 56px)', display: 'flex', flexDirection: 'column', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                    {checkoutUrl ? (
-                        <iframe
-                            src={checkoutUrl}
-                            style={{ width: '100%', height: '700px', border: 'none', background: 'var(--tg-theme-bg-color)' }}
-                            title="Chapa Secure Payment"
-                        />
-                    ) : (
-                        <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--tg-theme-hint-color)' }}>
-                            Loading payment form...
-                        </div>
-                    )}
+                <div style={{ width: '100%', height: 'calc(85vh - 56px)', display: 'flex', flexDirection: 'column', overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px 16px 150px' }}>
+                    <div ref={chapaFormRef} id="chapa-inline-form" style={{ width: '100%', background: 'transparent' }} />
                 </div>
             </Modal>
         </div>
