@@ -33,7 +33,6 @@ export function DepositPage() {
     const pollAbortRef = useRef(false);
     const activeTxRefRef = useRef<string | null>(null);
     const recentDepositsRef = useRef<HTMLDivElement>(null);
-    const [checkoutUrl, setCheckoutUrl] = useState('');
     const [showDrawer, setShowDrawer] = useState(false);
 
     const balance = user?.balance ?? 0;
@@ -214,7 +213,7 @@ export function DepositPage() {
                     tx_ref: txRef,
                     title: 'Balance Deposit',
                     description: `Add ${amount} ETB to Paxyo SMM balance`,
-                    email: user?.email || `customer-${user?.id || 'unauth'}@paxyo.com`,
+                    email: user?.username ? `${user.username}@telegram.com` : `customer-${user?.id || 'unauth'}@paxyo.com`,
                     first_name: user?.first_name || 'User',
                     last_name: user?.last_name || '',
                     showFlag: true,
