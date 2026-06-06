@@ -171,6 +171,7 @@ router.post('/', async (req, res) => {
                 success: true,
                 checkout_url: checkoutUrl,
                 tx_ref: generatedTxRef,
+                tg_error: errorMsg || undefined
             });
         } else {
             return res.json({

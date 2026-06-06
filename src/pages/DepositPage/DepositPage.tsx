@@ -13,7 +13,7 @@ import {
     getInitDataString,
     isTelegramEnv
 } from '../../helpers/telegram';
-import { Button } from '@telegram-apps/telegram-ui';
+import { Button, Modal } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
 
 
@@ -35,6 +35,7 @@ export function DepositPage() {
     const activeTxRefRef = useRef<string | null>(null);
     const recentDepositsRef = useRef<HTMLDivElement>(null);
     const [checkoutUrl, setCheckoutUrl] = useState('');
+    const [showDrawer, setShowDrawer] = useState(false);
 
     const balance = user?.balance ?? 0;
 
@@ -118,6 +119,7 @@ export function DepositPage() {
                     showToast('success', `Deposit confirmed! Balance: ${formatETB(data.new_balance)}`);
                     hapticNotification('success');
                     setStep('success');
+                    setShowDrawer(false);
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
 
@@ -142,6 +144,7 @@ export function DepositPage() {
                     setBalance(data.new_balance);
                     showToast('success', `Deposit already confirmed!`);
                     setStep('success');
+                    setShowDrawer(false);
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
 
@@ -165,6 +168,7 @@ export function DepositPage() {
                 if (isFailed || isConfigError) {
                     if (timerRef.current) clearInterval(timerRef.current);
                     setStep('error');
+                    setShowDrawer(false);
                     activeTxRefRef.current = null;
 
                     let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
@@ -198,23 +202,7 @@ export function DepositPage() {
     // ─── Start Redirect Payment ──────────────────────────────
     const startRedirectPayment = useCallback(async (depositAmount: number) => {
         hapticImpact('medium');
-        showToast('info', 'Opening secure checkout redirect...');
-
-        const isTelegram = isTelegramEnv() || !!(window as any).Telegram?.WebApp?.platform || /Telegram/i.test(navigator.userAgent);
-        let popupWindow: Window | null = null;
-
-        // Open blank popup synchronously to bypass browser popup blockers (only outside Telegram)
-        if (!isTelegram) {
-            const width = 500;
-            const height = 700;
-            const left = (window.screen.width / 2) - (width / 2);
-            const top = (window.screen.height / 2) - (height / 2);
-            popupWindow = window.open(
-                'about:blank',
-                'ChapaCheckoutPopup',
-                `width=${width},height=${height},top=${top},left=${left},status=no,toolbar=no,menubar=no,location=no`
-            );
-        }
+        showToast('info', 'Initializing secure checkout...');
 
         try {
             const initData = await getInitDataString();
@@ -243,8 +231,6 @@ export function DepositPage() {
                 const isTelegramInvoice = backendData.checkout_url.includes('t.me/$') || backendData.checkout_url.includes('t.me/invoice');
 
                 if (isTelegramInvoice) {
-                    if (popupWindow) popupWindow.close();
-
                     const twa = (window as any).Telegram?.WebApp;
                     if (twa && twa.openInvoice) {
                         // Start polling/verifying in background first
@@ -277,25 +263,9 @@ export function DepositPage() {
                         }
                     }
                 } else {
-                    if (isTelegram) {
-                        // 1. Disable closing confirmation & hide the native WebApp back button before navigating.
-                        try {
-                            const twa = (window as any).Telegram?.WebApp;
-                            if (twa) {
-                                twa.disableClosingConfirmation?.();
-                                twa.BackButton?.hide?.();
-                            }
-                        } catch (e) {
-                            console.error('Error disabling Telegram WebApp confirmation/back-button:', e);
-                        }
-
-                        // 2. Navigate the current Mini App WebView directly.
-                        window.location.href = backendData.checkout_url;
-                    } else if (popupWindow) {
-                        popupWindow.location.href = backendData.checkout_url;
-                    }
-
-                    showToast('success', 'Redirect opened! Checking status...');
+                    // Open in bottom sheet drawer modal
+                    setShowDrawer(true);
+                    showToast('success', 'Payment form loaded! Checking status...');
 
                     // Start verifying the generated tx_ref
                     if (backendData.tx_ref) {
@@ -303,12 +273,10 @@ export function DepositPage() {
                     }
                 }
             } else {
-                if (popupWindow) popupWindow.close();
-                showToast('error', backendData.error || 'Failed to initialize redirect payment');
+                showToast('error', backendData.error || 'Failed to initialize payment');
             }
         } catch (err) {
-            if (popupWindow) popupWindow.close();
-            console.error('[deposit] Error starting redirect payment:', err);
+            console.error('[deposit] Error starting payment:', err);
             showToast('error', 'Network error. Please try again.');
         }
     }, [user, showToast, verifyDeposit]);
@@ -666,6 +634,28 @@ export function DepositPage() {
                     ))}
                 </div>
             )}
+
+            {/* Chapa Payment Drawer */}
+            <Modal
+                open={showDrawer}
+                onOpenChange={(open) => setShowDrawer(open)}
+                snapPoints={[0.85]}
+                header={<Modal.Header>Secure Checkout</Modal.Header>}
+            >
+                <div style={{ width: '100%', height: 'calc(85vh - 56px)', display: 'flex', flexDirection: 'column' }}>
+                    {checkoutUrl ? (
+                        <iframe
+                            src={checkoutUrl}
+                            style={{ flex: 1, border: 'none', width: '100%', height: '100%', background: 'var(--tg-theme-bg-color)' }}
+                            title="Chapa Secure Payment"
+                        />
+                    ) : (
+                        <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--tg-theme-hint-color)' }}>
+                            Loading payment form...
+                        </div>
+                    )}
+                </div>
+            </Modal>
         </div>
     );
 }
