@@ -53,7 +53,7 @@ export function DepositPage() {
     const verifyDeposit = useCallback(async (txRef: string) => {
         if (!txRef) return;
 
-        // Save ref and switch UI
+        // Save ref affnd switch UI
         activeTxRefRef.current = txRef;
         pollAbortRef.current = false;
         setStep('verifying');
