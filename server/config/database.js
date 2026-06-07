@@ -6,14 +6,10 @@ import mysql from 'mysql2/promise';
 
 // cPanel MySQL credentials
 const pool = mysql.createPool({
-    // host: 'localhost',
-    // user: 'paxyocom_newRender',
-    // password: '_[xgm!h,PT0MUx,y',
-    // database: 'paxyocom_paxyov3',
     host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'paxyobot',
+    user: 'paxyocom_newRender',
+    password: '_[xgm!h,PT0MUx,y',
+    database: 'paxyocom_paxyov3',
     port: 3306,
     charset: 'utf8mb4',
     waitForConnections: true,
@@ -57,29 +53,6 @@ pool.getConnection()
                 console.log('✅ refers column added to auth');
             } catch (e) {
                 // Column might already exist
-            }
-            try {
-                await conn.execute(`ALTER TABLE auth ADD COLUMN referral_balance DECIMAL(15, 2) DEFAULT 0.00`);
-                console.log('✅ referral_balance column added to auth');
-            } catch (e) {
-                // Column might already exist
-            }
-            try {
-                await conn.execute(`
-                    CREATE TABLE IF NOT EXISTS withdrawals (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        user_id VARCHAR(50) NOT NULL,
-                        amount DECIMAL(15, 2) NOT NULL,
-                        full_name VARCHAR(100) NOT NULL,
-                        bank_name VARCHAR(100) NOT NULL,
-                        account_number VARCHAR(100) NOT NULL,
-                        status ENUM('pending', 'done') DEFAULT 'pending',
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                `);
-                console.log('✅ withdrawals table ready');
-            } catch (e) {
-                console.error('❌ Failed to create withdrawals table', e.message);
             }
 
         } catch (e) {

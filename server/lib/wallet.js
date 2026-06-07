@@ -37,12 +37,12 @@ export async function processTransaction(tgId, type, amount, description, conn, 
                 const referrerId = String(userRows[0].referred_by);
                 const commission = amount * 0.07;
 
-                // Update referrer referral_balance
-                await conn.execute('UPDATE auth SET referral_balance = referral_balance + ? WHERE tg_id = ?', [commission, referrerId]);
+                // Update referrer balance
+                await conn.execute('UPDATE auth SET balance = balance + ? WHERE tg_id = ?', [commission, referrerId]);
 
-                // Get referrer's new referral_balance
-                const [refBalRows] = await conn.execute('SELECT referral_balance FROM auth WHERE tg_id = ?', [referrerId]);
-                const refNewBal = refBalRows.length > 0 ? parseFloat(refBalRows[0].referral_balance) : 0;
+                // Get referrer's new balance
+                const [refBalRows] = await conn.execute('SELECT balance FROM auth WHERE tg_id = ?', [referrerId]);
+                const refNewBal = refBalRows.length > 0 ? parseFloat(refBalRows[0].balance) : 0;
 
                 // Log transaction ledger for referrer
                 await conn.execute(

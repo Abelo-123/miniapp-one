@@ -247,6 +247,12 @@ export function getInitDataUser() {
 
 export function getInitDataRaw(): string | undefined {
     try {
+        // 1. Try native WebApp initData first (direct window query, always works in Telegram)
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg && typeof tg.initData === 'string' && tg.initData) {
+            return tg.initData;
+        }
+        // 2. Fallback to SDK launch parameters
         const raw = retrieveLaunchParams().initDataRaw;
         return typeof raw === 'string' ? raw : undefined;
     } catch {
@@ -259,6 +265,13 @@ let _cachedInitDataString: string | null = null;
 export async function getInitDataString(): Promise<string> {
     if (_cachedInitDataString !== null) return _cachedInitDataString;
     try {
+        // 1. Try native WebApp initData first
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg && typeof tg.initData === 'string' && tg.initData) {
+            _cachedInitDataString = tg.initData;
+            return _cachedInitDataString;
+        }
+        // 2. Fallback to SDK launch parameters
         const lp = retrieveLaunchParams();
         const raw = lp.initDataRaw;
         if (typeof raw === 'string') {
@@ -267,7 +280,7 @@ export async function getInitDataString(): Promise<string> {
         }
     } catch { /* noop */ }
     
-    // Fallback if launch params is not available
+    // 3. Fallback to parsing SDK state manually
     try {
         const state = initData.state();
         if (state) {

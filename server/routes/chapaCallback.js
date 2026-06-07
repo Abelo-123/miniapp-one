@@ -1,5 +1,5 @@
 /**
- * Chapa Cafllback — Server-to-server notification
+ * Chapa Callback — Server-to-server notification
  *
  * GET/POST /api/chapa-callback
  *
@@ -21,7 +21,7 @@ async function handleCallback(req, res) {
     if (req.method === 'POST') {
         const signature = req.headers['chapa-signature'];
         const secret = process.env.CHAPA_SECRET_KEY;
-
+        
         if (signature && secret) {
             const hash = crypto.createHmac('sha256', secret).update(JSON.stringify(req.body)).digest('hex');
             if (signature !== hash) {
@@ -46,11 +46,11 @@ async function handleCallback(req, res) {
     try {
         // 1. Check status without locking to avoid pool exhaustion
         const [initialCheck] = await pool.execute('SELECT status FROM deposits WHERE tx_ref = ?', [txRef]);
-
+        
         if (!initialCheck[0]) {
             return res.json({ success: false, message: 'Deposit not found' });
         }
-
+        
         if (initialCheck[0].status === 'success') {
             return res.json({ success: true, message: 'Already processed' });
         }
@@ -100,7 +100,7 @@ async function handleCallback(req, res) {
                 );
 
                 await conn.commit();
-
+                
                 // Notify Bot Admin
                 const [userRows] = await pool.execute('SELECT first_name FROM auth WHERE tg_id = ?', [String(deposit.user_id)]);
                 const firstName = userRows[0]?.first_name || 'User';
@@ -113,7 +113,7 @@ async function handleCallback(req, res) {
                 if (realStatus === 'failed') {
                     await conn.execute("UPDATE deposits SET status = 'failed' WHERE id = ?", [deposit.id]);
                 }
-
+                
                 await conn.commit();
                 conn.release();
                 return res.json({ success: false, message: 'Payment verification failed or pending' });
