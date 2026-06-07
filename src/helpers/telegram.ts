@@ -263,13 +263,13 @@ export function getInitDataRaw(): string | undefined {
 let _cachedInitDataString: string | null = null;
 
 export async function getInitDataString(): Promise<string> {
-    if (_cachedInitDataString !== null) return _cachedInitDataString;
+    if (_cachedInitDataString !== null) return _cachedInitDataString as string;
     try {
         // 1. Try native WebApp initData first
         const tg = (window as any).Telegram?.WebApp;
         if (tg && typeof tg.initData === 'string' && tg.initData) {
             _cachedInitDataString = tg.initData;
-            return _cachedInitDataString;
+            return tg.initData;
         }
         // 2. Fallback to SDK launch parameters
         const lp = retrieveLaunchParams();
