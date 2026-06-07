@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
 
         // 3. Check local database first (idempotency & speed)
         const [initialCheck] = await pool.execute(
-            'SELECT status, amount FROM deposits WHERE tx_ref = ?',
+            'SELECT status, amount, checkout_url FROM deposits WHERE tx_ref = ?',
             [txRef]
         );
         const depositCheck = initialCheck[0];
@@ -50,6 +50,22 @@ router.post('/', async (req, res) => {
                 new_balance: parseFloat(balRows[0]?.balance) || 0,
                 already_completed: true,
                 message: 'Payment already verified and credited.'
+            });
+        }
+
+        // Check if the deposit was generated as a native Telegram payment
+        const isTelegramPayment = depositCheck.checkout_url && 
+            (depositCheck.checkout_url.includes('t.me') || depositCheck.checkout_url.includes('telegram'));
+
+        if (isTelegramPayment) {
+            // Telegram payments are verified via the webhook callback.
+            // If the status in our database is still pending, it means the user hasn't finished the payment
+            // or the webhook callback hasn't fired yet. We return pending status.
+            return res.json({
+                success: false,
+                chapa_status: 'pending',
+                message: 'Waiting for Telegram payment confirmation...',
+                bank_message: 'Please complete the payment in the Telegram window.'
             });
         }
 

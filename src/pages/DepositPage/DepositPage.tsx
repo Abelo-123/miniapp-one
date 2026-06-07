@@ -240,7 +240,53 @@ export function DepositPage() {
             if (backendData.success && backendData.checkout_url) {
                 setCheckoutUrl(backendData.checkout_url);
 
+                const isTelegramInvoice = backendData.checkout_url.includes('t.me') || backendData.checkout_url.includes('invoice');
+
                 if (isTelegram) {
+                    if (isTelegramInvoice) {
+                        try {
+                            const tg = (window as any).Telegram?.WebApp;
+                            if (tg && tg.openInvoice) {
+                                showToast('info', 'Opening Telegram payment sheet...');
+                                
+                                // Start verifying in background to catch webhook updates
+                                if (backendData.tx_ref) {
+                                    verifyDeposit(backendData.tx_ref);
+                                }
+
+                                tg.openInvoice(backendData.checkout_url, (status: string) => {
+                                    console.log('[deposit] Telegram invoice callback status:', status);
+                                    if (status === 'paid') {
+                                        showToast('success', 'Payment successful! Updating balance...');
+                                        hapticNotification('success');
+                                        setStep('success');
+                                        refreshDeposits().catch(() => {});
+                                        if (backendData.tx_ref) {
+                                            verifyDeposit(backendData.tx_ref);
+                                        }
+                                    } else if (status === 'cancelled') {
+                                        showToast('info', 'Payment cancelled');
+                                        setStep('amount');
+                                        pollAbortRef.current = true;
+                                        activeTxRefRef.current = null;
+                                        if (timerRef.current) clearInterval(timerRef.current);
+                                    } else {
+                                        showToast('error', `Payment status: ${status}`);
+                                        setStep('error');
+                                        setErrorMessage(`Payment failed or ended with status: ${status}`);
+                                        hapticNotification('error');
+                                        pollAbortRef.current = true;
+                                        activeTxRefRef.current = null;
+                                        if (timerRef.current) clearInterval(timerRef.current);
+                                    }
+                                });
+                                return;
+                            }
+                        } catch (e) {
+                            console.error('Error opening Telegram native invoice:', e);
+                        }
+                    }
+
                     // 1. Disable closing confirmation & hide the native WebApp back button before navigating.
                     // This prevents the Telegram client from showing the stuck confirmation prompt
                     // and allows the native Close button to exit instantly, while Android back gesture
