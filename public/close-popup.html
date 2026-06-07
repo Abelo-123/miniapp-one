@@ -92,7 +92,8 @@
     </div>
 
     <script>
-        const isTelegram = /Telegram/i.test(navigator.userAgent) || !!(window.parent && window.parent !== window);
+        const urlParams = new URLSearchParams(window.location.search);
+        const isTelegram = urlParams.get('tg') === '1' || /Telegram/i.test(navigator.userAgent) || !!(window.parent && window.parent !== window);
         const launchParams = sessionStorage.getItem('paxyo:launch_params');
         const statusMsg = document.getElementById('status-message');
         const closeBtn = document.getElementById('close-btn');

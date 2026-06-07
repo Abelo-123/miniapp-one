@@ -221,7 +221,7 @@ export function DepositPage() {
             const userId = user?.id || 'unauth_local_user';
 
             // Correctly resolve close-popup.html path relative to current URL (supports GitHub Pages subfolders!)
-            const returnUrl = new URL('./close-popup.html', window.location.href).href;
+            const returnUrl = new URL('./close-popup.html?tg=1', window.location.href).href;
 
             console.log('[deposit] return_url generated:', returnUrl);
 
