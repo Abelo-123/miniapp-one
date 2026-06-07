@@ -29,7 +29,7 @@ const MAX_DEPOSIT = parseInt(process.env.MAX_DEPOSIT) || 100000;
 
 router.post('/', async (req, res) => {
     try {
-        const { amount: rawAmount, initData, tx_ref: txRef, user_id, return_url } = req.body;
+        const { amount: rawAmount, initData, tx_ref: txRef, user_id, return_url, phone_number, provider } = req.body;
         const amount = parseFloat(rawAmount) || 0;
 
         // ─── Validate amount ─────────────────────────────────
@@ -102,6 +102,7 @@ router.post('/', async (req, res) => {
         let checkoutUrl = '';
         let success = false;
         let errorMsg = '';
+        let isUssdPush = false;
 
         const providerToken = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
         const botToken = process.env.BOT_TOKEN;
@@ -140,7 +141,44 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // If not processed via Telegram or failed, fall back to standard Chapa hosted redirect flow
+        // ═══ FLOW C: DIRECT CHARGE / USSD PUSH MODE ═══
+        if (!success && phone_number && provider) {
+            console.log(`[deposit] Initiating direct charge for ${provider} to ${phone_number}...`);
+            try {
+                const chapaRes = await fetch(`https://api.chapa.co/v1/charges?type=${provider}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${process.env.CHAPA_SECRET_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount: amount,
+                        currency: 'ETB',
+                        email: user.email || 'customer@paxyo.com',
+                        first_name: user.first_name || 'User',
+                        last_name: user.last_name || '',
+                        phone_number: phone_number,
+                        tx_ref: generatedTxRef
+                    })
+                });
+                
+                const chapaData = await chapaRes.json();
+                console.log(`[deposit] Chapa direct charge response:`, chapaData);
+                
+                if (chapaRes.status === 200 && (chapaData.status === 'success' || chapaData.status === 'pending')) {
+                    checkoutUrl = 'ussd_push';
+                    success = true;
+                    isUssdPush = true;
+                } else {
+                    errorMsg = chapaData.message || 'Chapa direct charge initiation failed';
+                }
+            } catch (err) {
+                console.error('[deposit] Chapa direct charge API error:', err.message);
+                errorMsg = `Chapa connection error: ${err.message}`;
+            }
+        }
+
+        // If not processed via Telegram or Direct Charge, fall back to standard Chapa hosted redirect flow
         if (!success) {
             if (providerToken && botToken) {
                 console.warn(`[deposit] Telegram invoice generation failed. Falling back to Chapa hosted URL... Error: ${errorMsg}`);
@@ -174,6 +212,7 @@ router.post('/', async (req, res) => {
                 success: true,
                 checkout_url: checkoutUrl,
                 tx_ref: generatedTxRef,
+                is_ussd_push: isUssdPush,
                 tg_error: errorMsg || undefined
             });
         } else {

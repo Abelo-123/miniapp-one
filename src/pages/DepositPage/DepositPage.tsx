@@ -28,6 +28,8 @@ export function DepositPage() {
     const [amount, setAmount] = useState('');
     const [step, setStep] = useState<DepositStep>('amount');
     const [errorMessage, setErrorMessage] = useState('');
+    const [provider, setProvider] = useState('telebirr');
+    const [phoneNumber, setPhoneNumber] = useState('');
     const [timeLeft, setTimeLeft] = useState(45);
     const timerRef = useRef<any>(null);
 
@@ -221,16 +223,22 @@ export function DepositPage() {
     // ─── Start Redirect Payment ──────────────────────────────
     const startRedirectPayment = useCallback(async (depositAmount: number) => {
         hapticImpact('medium');
-        showToast('info', 'Opening secure checkout redirect...');
-
+        
         const isTelegram = isTelegramEnv() || !!(window as any).Telegram?.WebApp?.platform || /Telegram/i.test(navigator.userAgent);
         const platform = getTelegramPlatform();
         const isTelegramDesktop = platform === 'tdesktop' || platform === 'weba' || platform === 'web';
+        const isUssdPush = provider !== 'card';
+        
+        if (isUssdPush) {
+            showToast('info', 'Sending USSD prompt to phone...');
+        } else {
+            showToast('info', 'Opening secure checkout redirect...');
+        }
         
         let popupWindow: Window | null = null;
 
         // Open blank popup synchronously to bypass browser popup blockers (outside Telegram OR on Telegram Desktop)
-        if (!isTelegram || isTelegramDesktop) {
+        if (!isTelegram || (isTelegramDesktop && !isUssdPush)) {
             const width = 500;
             const height = 700;
             const left = (window.screen.width / 2) - (width / 2);
@@ -259,12 +267,23 @@ export function DepositPage() {
                     amount: depositAmount,
                     initData,
                     user_id: userId,
-                    return_url: returnUrl
+                    return_url: returnUrl,
+                    phone_number: isUssdPush ? phoneNumber : undefined,
+                    provider: isUssdPush ? provider : undefined
                 }),
             });
             const backendData = await backendRes.json();
 
-            if (backendData.success && backendData.checkout_url) {
+            if (backendData.success) {
+                if (backendData.is_ussd_push) {
+                    setCheckoutUrl('ussd_push');
+                    showToast('success', 'USSD PIN prompt sent! Check your phone.');
+                    if (backendData.tx_ref) {
+                        verifyDeposit(backendData.tx_ref);
+                    }
+                    return;
+                }
+
                 setCheckoutUrl(backendData.checkout_url);
 
                 const isTelegramInvoice = backendData.checkout_url.includes('t.me') || backendData.checkout_url.includes('invoice');
@@ -378,9 +397,10 @@ export function DepositPage() {
                 popupWindowRef.current = null;
             }
             console.error('[deposit] Error starting redirect payment:', err);
-            showToast('error', 'Network error. Please try again.');
+                showToast('error', 'Network error. Please try again.');
+            }
         }
-    }, [user, showToast, verifyDeposit]);
+    }, [user, showToast, verifyDeposit, phoneNumber, provider]);
 
     // ─── Handle Deposit Button Click ─────────────────────────
     const handleDeposit = useCallback(() => {
@@ -404,9 +424,22 @@ export function DepositPage() {
             return hapticNotification('error');
         }
 
+        // Validate phone number for USSD Push flow
+        if (provider !== 'card') {
+            if (!phoneNumber || phoneNumber.trim() === '') {
+                showToast('error', 'Action Required: Please enter your mobile wallet phone number');
+                return hapticNotification('error');
+            }
+            const cleanedPhone = phoneNumber.replace(/[^0-9]/g, '');
+            if (cleanedPhone.length < 9 || cleanedPhone.length > 15) {
+                showToast('error', 'Action Required: Please enter a valid phone number');
+                return hapticNotification('error');
+            }
+        }
+
         setErrorMessage('');
         startRedirectPayment(val);
-    }, [amount, startRedirectPayment, showToast]);
+    }, [amount, phoneNumber, provider, startRedirectPayment, showToast]);
 
     // ─── Native Main Button Integration ──────────────────────
     useEffect(() => {
@@ -520,6 +553,79 @@ export function DepositPage() {
                         ))}
                     </div>
 
+                    <div className="paxyo-section-header" style={{ marginTop: '16px' }}>
+                        <span>PAYMENT METHOD</span>
+                    </div>
+                    <div className="provider-selector-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', padding: '0 16px' }}>
+                        {[
+                            { id: 'telebirr', name: 'Telebirr', icon: '📱' },
+                            { id: 'cbebirr', name: 'CBE Birr', icon: '🏦' },
+                            { id: 'mpesa', name: 'M-Pesa', icon: '💸' },
+                            { id: 'card', name: 'Card/Other', icon: '💳' }
+                        ].map(p => (
+                            <button
+                                key={p.id}
+                                className={`provider-btn ${provider === p.id ? 'provider-btn--active' : ''}`}
+                                onClick={() => {
+                                    hapticSelection();
+                                    setProvider(p.id);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '10px 4px',
+                                    background: provider === p.id ? 'rgba(0, 122, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                                    border: provider === p.id ? '1px solid #007AFF' : '1px solid rgba(255, 255, 255, 0.08)',
+                                    borderRadius: '12px',
+                                    color: provider === p.id ? '#007AFF' : 'var(--tg-theme-text-color)',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    fontSize: '11px',
+                                    transition: 'all 0.2s',
+                                    outline: 'none'
+                                }}
+                            >
+                                <span style={{ fontSize: '18px' }}>{p.icon}</span>
+                                <span style={{ whiteSpace: 'nowrap' }}>{p.name}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {provider !== 'card' && (
+                        <>
+                            <div className="paxyo-section-header" style={{ marginTop: '16px' }}>
+                                <span>MOBILE WALLET NUMBER</span>
+                            </div>
+                            <div className="deposit-input-group" style={{ margin: '0 16px 8px 16px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', display: 'flex', alignItems: 'center', padding: '12px 16px' }}>
+                                <span style={{ color: 'var(--tg-theme-hint-color)', fontSize: '16px', fontWeight: 'bold', marginRight: '8px' }}>📞</span>
+                                <input
+                                    className="deposit-input-group__input"
+                                    inputMode="tel"
+                                    type="text"
+                                    placeholder={provider === 'mpesa' ? 'e.g. 254712345678' : 'e.g. 0912345678'}
+                                    value={phoneNumber}
+                                    onChange={(e) => {
+                                        const raw = e.target.value.replace(/[^0-9+]/g, '');
+                                        setPhoneNumber(raw);
+                                    }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--tg-theme-text-color)',
+                                        fontSize: '16px',
+                                        width: '100%',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div style={{ padding: '0 20px', fontSize: '11px', color: 'var(--tg-theme-hint-color)', marginBottom: '8px', lineHeight: '1.4' }}>
+                                A USSD payment prompt will be sent directly to this number to authorize the transaction.
+                            </div>
+                        </>
+                    )}
+
                     {errorMessage && (
                         <div className="deposit-error">
                             <span>⚠️</span> {errorMessage}
@@ -566,8 +672,17 @@ export function DepositPage() {
                         Awaiting Payment Verification
                     </div>
                     <div className="deposit-processing__subtext" style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '20px' }}>
-                        Please complete your payment in the checkout window. <br />
-                        If you paid using M-Pesa or Telebirr, enter your <b>PIN</b> when prompted.
+                        {checkoutUrl === 'ussd_push' ? (
+                            <>
+                                A USSD payment prompt has been sent to <b>{phoneNumber}</b>.<br />
+                                Please enter your mobile wallet <b>PIN</b> on your phone to complete the deposit.
+                            </>
+                        ) : (
+                            <>
+                                Please complete your payment in the checkout window. <br />
+                                If you paid using M-Pesa or Telebirr, enter your <b>PIN</b> when prompted.
+                            </>
+                        )}
                     </div>
 
                     <div style={{ width: '100%', height: '8px', background: 'var(--tg-theme-secondary-bg-color)', borderRadius: '4px', overflow: 'hidden', marginBottom: '12px' }}>
@@ -588,15 +703,17 @@ export function DepositPage() {
                         </span>
                     </div>
 
-                    <a
-                        href={checkoutUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="deposit-processing__subtext"
-                        style={{ display: 'block', fontSize: '12px', color: 'var(--tg-theme-button-color)', textDecoration: 'underline', marginBottom: '20px' }}
-                    >
-                        Didn't open? Click here to pay
-                    </a>
+                    {checkoutUrl !== 'ussd_push' && (
+                        <a
+                            href={checkoutUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="deposit-processing__subtext"
+                            style={{ display: 'block', fontSize: '12px', color: 'var(--tg-theme-button-color)', textDecoration: 'underline', marginBottom: '20px' }}
+                        >
+                            Didn't open? Click here to pay
+                        </a>
+                    )}
 
                     <div className="deposit-processing__actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <Button
