@@ -11,7 +11,8 @@ import {
     hapticImpact,
     hapticNotification,
     getInitDataString,
-    isTelegramEnv
+    isTelegramEnv,
+    getTelegramPlatform
 } from '../../helpers/telegram';
 import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
@@ -34,6 +35,7 @@ export function DepositPage() {
     const pollAbortRef = useRef(false);
     const activeTxRefRef = useRef<string | null>(null);
     const recentDepositsRef = useRef<HTMLDivElement>(null);
+    const popupWindowRef = useRef<Window | null>(null);
     const [checkoutUrl, setCheckoutUrl] = useState('');
 
     const balance = user?.balance ?? 0;
@@ -121,6 +123,13 @@ export function DepositPage() {
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
 
+                    if (popupWindowRef.current) {
+                        try {
+                            popupWindowRef.current.close();
+                        } catch (e) {}
+                        popupWindowRef.current = null;
+                    }
+
                     // First-time deposit guidance
                     const isFirstDeposit = !localStorage.getItem('hasDeposited');
                     if (isFirstDeposit) {
@@ -145,6 +154,13 @@ export function DepositPage() {
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
 
+                    if (popupWindowRef.current) {
+                        try {
+                            popupWindowRef.current.close();
+                        } catch (e) {}
+                        popupWindowRef.current = null;
+                    }
+
                     const isFirstDeposit = !localStorage.getItem('hasDeposited');
                     if (isFirstDeposit) {
                         localStorage.setItem('hasDeposited', 'true');
@@ -166,6 +182,13 @@ export function DepositPage() {
                     if (timerRef.current) clearInterval(timerRef.current);
                     setStep('error');
                     activeTxRefRef.current = null;
+
+                    if (popupWindowRef.current) {
+                        try {
+                            popupWindowRef.current.close();
+                        } catch (e) {}
+                        popupWindowRef.current = null;
+                    }
 
                     let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
                     if (declinedReason.toLowerCase().includes('fetched successfully') || declinedReason.toLowerCase().includes('not completed')) {
@@ -201,10 +224,13 @@ export function DepositPage() {
         showToast('info', 'Opening secure checkout redirect...');
 
         const isTelegram = isTelegramEnv() || !!(window as any).Telegram?.WebApp?.platform || /Telegram/i.test(navigator.userAgent);
+        const platform = getTelegramPlatform();
+        const isTelegramDesktop = platform === 'tdesktop' || platform === 'weba' || platform === 'web';
+        
         let popupWindow: Window | null = null;
 
-        // Open blank popup synchronously to bypass browser popup blockers (only outside Telegram)
-        if (!isTelegram) {
+        // Open blank popup synchronously to bypass browser popup blockers (outside Telegram OR on Telegram Desktop)
+        if (!isTelegram || isTelegramDesktop) {
             const width = 500;
             const height = 700;
             const left = (window.screen.width / 2) - (width / 2);
@@ -214,6 +240,7 @@ export function DepositPage() {
                 'ChapaCheckoutPopup',
                 `width=${width},height=${height},top=${top},left=${left},status=no,toolbar=no,menubar=no,location=no`
             );
+            popupWindowRef.current = popupWindow;
         }
 
         try {
@@ -287,7 +314,18 @@ export function DepositPage() {
                         }
                     }
 
-                    // For standard Chapa hosted redirect (non-invoice URL):
+                    // For standard Chapa hosted redirect (non-invoice URL) on Telegram Desktop:
+                    if (isTelegramDesktop && popupWindow) {
+                        console.log('[deposit] Desktop client detected: opening checkout in browser popup window');
+                        popupWindow.location.href = backendData.checkout_url;
+                        showToast('success', 'Redirect opened! Checking status...');
+                        if (backendData.tx_ref) {
+                            verifyDeposit(backendData.tx_ref);
+                        }
+                        return;
+                    }
+
+                    // For standard Chapa hosted redirect (non-invoice URL) on mobile:
                     // Open in Telegram's native in-app browser overlay so they can close/exit it easily at any time!
                     try {
                         const tg = (window as any).Telegram?.WebApp;
@@ -328,11 +366,17 @@ export function DepositPage() {
                     verifyDeposit(backendData.tx_ref);
                 }
             } else {
-                if (popupWindow) popupWindow.close();
+                if (popupWindow) {
+                    popupWindow.close();
+                    popupWindowRef.current = null;
+                }
                 showToast('error', backendData.error || 'Failed to initialize redirect payment');
             }
         } catch (err) {
-            if (popupWindow) popupWindow.close();
+            if (popupWindow) {
+                popupWindow.close();
+                popupWindowRef.current = null;
+            }
             console.error('[deposit] Error starting redirect payment:', err);
             showToast('error', 'Network error. Please try again.');
         }
@@ -576,6 +620,12 @@ export function DepositPage() {
                                 pollAbortRef.current = true;
                                 activeTxRefRef.current = null;
                                 if (timerRef.current) clearInterval(timerRef.current);
+                                if (popupWindowRef.current) {
+                                    try {
+                                        popupWindowRef.current.close();
+                                    } catch (e) {}
+                                    popupWindowRef.current = null;
+                                }
                                 setStep('amount');
                             }}
                             style={{ opacity: 0.7 }}
