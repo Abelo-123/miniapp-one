@@ -105,8 +105,9 @@ router.post('/', async (req, res) => {
 
         const providerToken = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
         const botToken = process.env.BOT_TOKEN;
+        const useTelegramNative = process.env.USE_TELEGRAM_NATIVE_PAYMENTS === 'true';
 
-        if (providerToken && botToken) {
+        if (useTelegramNative && providerToken && botToken) {
             console.log(`[deposit] Generating native Telegram invoice link using provider token...`);
             try {
                 const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/createInvoiceLink`, {
@@ -120,7 +121,9 @@ router.post('/', async (req, res) => {
                         currency: 'ETB',
                         prices: [
                             { label: 'Deposit Amount', amount: Math.round(amount * 100) }
-                        ]
+                        ],
+                        need_phone_number: false,
+                        send_phone_number_to_provider: false
                     })
                 });
                 const tgData = await tgRes.json();

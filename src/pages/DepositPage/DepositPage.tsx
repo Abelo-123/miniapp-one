@@ -287,10 +287,25 @@ export function DepositPage() {
                         }
                     }
 
-                    // 1. Disable closing confirmation & hide the native WebApp back button before navigating.
-                    // This prevents the Telegram client from showing the stuck confirmation prompt
-                    // and allows the native Close button to exit instantly, while Android back gesture
-                    // will navigate back in history to our React app.
+                    // For standard Chapa hosted redirect (non-invoice URL):
+                    // Open in Telegram's native in-app browser overlay so they can close/exit it easily at any time!
+                    try {
+                        const tg = (window as any).Telegram?.WebApp;
+                        if (tg && tg.openLink) {
+                            console.log('[deposit] Opening Chapa hosted redirect via WebApp.openLink');
+                            tg.openLink(backendData.checkout_url);
+                            
+                            showToast('success', 'Redirect opened! Checking status...');
+                            if (backendData.tx_ref) {
+                                verifyDeposit(backendData.tx_ref);
+                            }
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('[deposit] Failed to open checkout via WebApp.openLink, falling back to location.href:', e);
+                    }
+
+                    // Fallback: Disable closing confirmation & hide back button before navigating.
                     try {
                         const twa = (window as any).Telegram?.WebApp;
                         if (twa) {
@@ -301,9 +316,6 @@ export function DepositPage() {
                         console.error('Error disabling Telegram WebApp confirmation/back-button:', e);
                     }
 
-                    // 2. Navigate the current Mini App WebView directly.
-                    // This forces the checkout to open directly within the Telegram WebApp window itself,
-                    // without escaping to Chrome or Safari.
                     window.location.href = backendData.checkout_url;
                 } else if (popupWindow) {
                     popupWindow.location.href = backendData.checkout_url;

@@ -3,8 +3,65 @@ import pool from '../config/database.js';
 import { getTelegramUserId, getTelegramUser } from '../lib/auth.js';
 import { notifyNewUser } from '../lib/notify.js';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
+
+router.get('/diagnose', async (req, res) => {
+    try {
+        const envKeys = {};
+        for (const key of ['BOT_TOKEN', 'TELEGRAM_PAYMENT_PROVIDER_TOKEN', 'CHAPA_SECRET_KEY', 'CHAPA_PUBLIC_KEY', 'DB_HOST', 'DB_NAME', 'DB_USER']) {
+            const val = process.env[key];
+            if (val) {
+                envKeys[key] = {
+                    exists: true,
+                    length: val.length,
+                    prefix: val.slice(0, 6),
+                    suffix: val.slice(-4)
+                };
+            } else {
+                envKeys[key] = { exists: false };
+            }
+        }
+
+        // List files in the routes directory
+        const routesDir = path.resolve('routes');
+        let routesFiles = [];
+        if (fs.existsSync(routesDir)) {
+            routesFiles = fs.readdirSync(routesDir).map(file => {
+                const stat = fs.statSync(path.join(routesDir, file));
+                return {
+                    name: file,
+                    size: stat.size,
+                    mtime: stat.mtime
+                };
+            });
+        }
+
+        // List files in the root directory
+        const rootFiles = fs.readdirSync(path.resolve('.')).map(file => {
+            const stat = fs.statSync(path.resolve(file));
+            return {
+                name: file,
+                isDirectory: stat.isDirectory(),
+                size: stat.isDirectory() ? null : stat.size,
+                mtime: stat.mtime
+            };
+        });
+
+        res.json({
+            success: true,
+            cwd: process.cwd(),
+            env: envKeys,
+            routesDirExists: fs.existsSync(routesDir),
+            routesFiles,
+            rootFiles
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, stack: err.stack });
+    }
+});
 
 // get_settings
 router.get('/settings', async (req, res) => {

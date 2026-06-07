@@ -13,6 +13,10 @@ import { notifyDeposit } from '../lib/notify.js';
 
 const router = Router();
 
+router.get('/', (req, res) => {
+    res.json({ success: true, message: 'Telegram webhook endpoint is active.' });
+});
+
 router.post('/', async (req, res) => {
     try {
         const botToken = process.env.BOT_TOKEN;
