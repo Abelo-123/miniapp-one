@@ -247,7 +247,8 @@ export function getInitDataUser() {
 
 export function getInitDataRaw(): string | undefined {
     try {
-        return retrieveLaunchParams().initDataRaw;
+        const raw = retrieveLaunchParams().initDataRaw;
+        return typeof raw === 'string' ? raw : undefined;
     } catch {
         return undefined;
     }
@@ -259,9 +260,10 @@ export async function getInitDataString(): Promise<string> {
     if (_cachedInitDataString !== null) return _cachedInitDataString;
     try {
         const lp = retrieveLaunchParams();
-        if (lp.initDataRaw) {
-            _cachedInitDataString = lp.initDataRaw;
-            return _cachedInitDataString;
+        const raw = lp.initDataRaw;
+        if (typeof raw === 'string') {
+            _cachedInitDataString = raw;
+            return raw;
         }
     } catch { /* noop */ }
     
@@ -281,7 +283,7 @@ export async function getInitDataString(): Promise<string> {
             if (state.chat) params.append('chat', JSON.stringify(state.chat));
             if (state.start_param) params.append('start_param', state.start_param);
             _cachedInitDataString = params.toString();
-            return _cachedInitDataString;
+            return _cachedInitDataString || '';
         }
         return '';
     } catch {
