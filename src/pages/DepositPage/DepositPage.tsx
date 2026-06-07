@@ -397,8 +397,7 @@ export function DepositPage() {
                 popupWindowRef.current = null;
             }
             console.error('[deposit] Error starting redirect payment:', err);
-                showToast('error', 'Network error. Please try again.');
-            }
+            showToast('error', 'Network error. Please try again.');
         }
     }, [user, showToast, verifyDeposit, phoneNumber, provider]);
 
