@@ -2,39 +2,130 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Payment Completed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Status</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 40px 24px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+        .icon-wrapper {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(0, 210, 106, 0.1);
+            border: 2px solid rgba(0, 210, 106, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 24px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 210, 106, 0.2); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(0, 210, 106, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 210, 106, 0); }
+        }
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #ffffff 0%, #a5a5b0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p {
+            font-size: 15px;
+            color: #a5a5b0;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 16px;
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #0063cc;
+        }
+    </style>
 </head>
-<body style="font-family: sans-serif; text-align: center; background: #0a0a0f; color: white; padding-top: 50px;">
-    <h2>Processing...</h2>
-    <p>Closing checkout window...</p>
+<body>
+    <div class="container">
+        <div class="icon-wrapper">✓</div>
+        <h2>Payment Status</h2>
+        <p id="status-message">Processing your checkout session...</p>
+        <button id="close-btn" class="btn" onclick="handleClose()">Return to Wallet</button>
+    </div>
+
     <script>
-        // 1. Check if we have launch parameters stored (which indicates we are running inside Telegram's main WebApp window)
+        const isTelegram = /Telegram/i.test(navigator.userAgent) || !!(window.parent && window.parent !== window);
         const launchParams = sessionStorage.getItem('paxyo:launch_params');
-        
-        if (launchParams) {
-            // Inside Telegram WebView: Navigate the current window directly back to the Mini App
-            try {
-                const basePath = window.location.pathname.replace('close-popup.html', '');
-                const appUrl = window.location.origin + basePath + launchParams;
-                window.location.replace(appUrl);
-            } catch (e) {
-                // Ultimate fallback
-                window.location.replace("tg://resolve?domain=paxyo_bot&startapp=open");
-            }
+        const statusMsg = document.getElementById('status-message');
+        const closeBtn = document.getElementById('close-btn');
+
+        if (isTelegram) {
+            statusMsg.innerHTML = "Your payment transaction has been processed.<br><br>Please tap the <b>Close</b> or <b>X</b> button at the top corner of this screen to return to the app.";
+            closeBtn.style.display = 'none'; // Native Telegram close button is used instead
         } else {
-            // Outside Telegram (Popup mode): Attempt to close the popup window
-            try {
-                window.close();
-            } catch (e) {
-                console.error("Failed to close window:", e);
-            }
-            
-            // If the window is still open (meaning it failed to close), fallback to the default bot link.
-            setTimeout(function() {
-                if (!window.closed) {
+            statusMsg.innerHTML = "Payment processed. You can now close this window or return to the main app.";
+        }
+
+        function handleClose() {
+            if (launchParams) {
+                try {
+                    const basePath = window.location.pathname.replace('close-popup.html', '');
+                    const appUrl = window.location.origin + basePath + launchParams;
+                    window.location.replace(appUrl);
+                } catch (e) {
                     window.location.replace("https://t.me/paxyo_bot?startapp=open");
                 }
-            }, 1000);
+            } else {
+                try {
+                    window.close();
+                } catch (e) {}
+                setTimeout(function() {
+                    window.location.replace("https://t.me/paxyo_bot?startapp=open");
+                }, 500);
+            }
+        }
+
+        // Auto-close fallback for standard popup windows
+        if (!isTelegram) {
+            setTimeout(handleClose, 3000);
         }
     </script>
 </body>
