@@ -247,19 +247,7 @@ export function getInitDataUser() {
 
 export function getInitDataRaw(): string | undefined {
     try {
-        const state = initData.state();
-        if (state) {
-            const params = new URLSearchParams();
-            if (state.auth_date) params.append('auth_date', state.auth_date.toString());
-            if (state.hash) params.append('hash', state.hash);
-            if (state.signature) params.append('signature', state.signature);
-            if (state.user) params.append('user', JSON.stringify(state.user));
-            if (state.receiver) params.append('receiver', JSON.stringify(state.receiver));
-            if (state.chat) params.append('chat', JSON.stringify(state.chat));
-            if (state.start_param) params.append('start_param', state.start_param);
-            return params.toString();
-        }
-        return undefined;
+        return retrieveLaunchParams().initDataRaw;
     } catch {
         return undefined;
     }
@@ -270,10 +258,22 @@ let _cachedInitDataString: string | null = null;
 export async function getInitDataString(): Promise<string> {
     if (_cachedInitDataString !== null) return _cachedInitDataString;
     try {
+        const lp = retrieveLaunchParams();
+        if (lp.initDataRaw) {
+            _cachedInitDataString = lp.initDataRaw;
+            return _cachedInitDataString;
+        }
+    } catch { /* noop */ }
+    
+    // Fallback if launch params is not available
+    try {
         const state = initData.state();
         if (state) {
             const params = new URLSearchParams();
-            if (state.auth_date) params.append('auth_date', state.auth_date.toString());
+            if (state.auth_date) {
+                const unixTime = Math.floor(state.auth_date.getTime() / 1000);
+                params.append('auth_date', unixTime.toString());
+            }
             if (state.hash) params.append('hash', state.hash);
             if (state.signature) params.append('signature', state.signature);
             if (state.user) params.append('user', JSON.stringify(state.user));
