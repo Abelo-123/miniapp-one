@@ -21,7 +21,7 @@ import './DepositPage.css';
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
 const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
 
-type DepositStep = 'amount' | 'verifying' | 'success' | 'error';
+type DepositStep = 'amount' | 'checkout' | 'verifying' | 'success' | 'error';
 
 export function DepositPage() {
     const { user, deposits, setBalance, refreshDeposits, showToast } = useApp();
@@ -401,6 +401,99 @@ export function DepositPage() {
         }
     }, [user, showToast, verifyDeposit, phoneNumber, provider]);
 
+    // ─── Start Inline Payment ─────────────────────────────────
+    const startInlinePayment = useCallback(async (depositAmount: number) => {
+        hapticImpact('medium');
+        setErrorMessage('');
+        
+        if (!(window as any).ChapaCheckout) {
+            console.warn('ChapaCheckout SDK not loaded. Falling back to redirect flow.');
+            startRedirectPayment(depositAmount);
+            return;
+        }
+
+        const userId = user?.id || 'unauth_local_user';
+        const uniqueTxRef = `DEP-${userId}-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        try {
+            const initData = await getInitDataString();
+            
+            showToast('info', 'Initializing secure transaction...');
+            const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: depositAmount,
+                    initData,
+                    user_id: userId,
+                    tx_ref: uniqueTxRef
+                }),
+            });
+            
+            const backendData = await backendRes.json();
+            if (!backendData.success) {
+                showToast('error', backendData.error || 'Failed to initialize payment');
+                return;
+            }
+
+            setStep('checkout');
+
+            let methods: string[] = [];
+            if (provider === 'telebirr') methods = ['telebirr'];
+            else if (provider === 'cbebirr') methods = ['cbebirr'];
+            else if (provider === 'mpesa') methods = ['mpesa'];
+            else methods = ['chapa', 'telebirr', 'cbebirr', 'mpesa']; // 'card' or default shows everything
+
+            setTimeout(() => {
+                try {
+                    const publicKey = import.meta.env.VITE_CHAPA_PUBLIC_KEY || 'CHAPUBK-3fWBzd7CeuNFXJOotgRqcDkXeWz1OFrT';
+                    
+                    const chapa = new (window as any).ChapaCheckout({
+                        publicKey,
+                        amount: depositAmount,
+                        currency: 'ETB',
+                        tx_ref: uniqueTxRef,
+                        title: 'Add Funds',
+                        description: 'Deposit to Paxyo',
+                        email: user?.email || `user-${userId}@paxyo.com`,
+                        first_name: user?.first_name || 'Paxyo',
+                        last_name: user?.last_name || 'User',
+                        phone_number: phoneNumber || undefined,
+                        showFlag: true,
+                        showPaymentMethodsNames: true,
+                        availablePaymentMethods: methods,
+                        callbackUrl: `${window.location.origin}/api/chapa-callback`,
+                        onSuccessfulPayment: (result: any) => {
+                            console.log('[Chapa SDK] Success:', result);
+                            showToast('success', 'Payment successful! Verifying balance...');
+                            verifyDeposit(uniqueTxRef);
+                        },
+                        onPaymentFailure: (error: any) => {
+                            console.error('[Chapa SDK] Failure:', error);
+                            setStep('error');
+                            setErrorMessage(error?.message || 'Payment failed.');
+                            hapticNotification('error');
+                        },
+                        onClose: () => {
+                            console.log('[Chapa SDK] Closed');
+                            setStep('amount');
+                        }
+                    });
+
+                    chapa.initialize('chapa-inline-form');
+                } catch (sdkErr: any) {
+                    console.error('Failed to initialize ChapaCheckout:', sdkErr);
+                    setStep('amount');
+                    showToast('error', 'Failed to load checkout form: ' + sdkErr.message);
+                }
+            }, 150);
+
+        } catch (err: any) {
+            console.error('[deposit] Error starting inline payment:', err);
+            showToast('error', 'Network error. Please try again.');
+        }
+    }, [user, provider, phoneNumber, showToast, verifyDeposit, startRedirectPayment]);
+
     // ─── Handle Deposit Button Click ─────────────────────────
     const handleDeposit = useCallback(() => {
         const val = parseFloat(amount);
@@ -437,8 +530,12 @@ export function DepositPage() {
         }
 
         setErrorMessage('');
-        startRedirectPayment(val);
-    }, [amount, phoneNumber, provider, startRedirectPayment, showToast]);
+        if (provider === 'card') {
+            startInlinePayment(val);
+        } else {
+            startRedirectPayment(val);
+        }
+    }, [amount, phoneNumber, provider, startRedirectPayment, startInlinePayment, showToast]);
 
     // ─── Native Main Button Integration ──────────────────────
     useEffect(() => {
@@ -655,6 +752,28 @@ export function DepositPage() {
                         Secured by Chapa
                     </div>
                 </>
+            )}
+
+            {/* ─── Checkout State (Inline SDK) ─── */}
+            {step === 'checkout' && (
+                <div className="chapa-section" style={{ padding: '0 16px' }}>
+                    <div className="chapa-section__header">
+                        <button 
+                            className="chapa-section__back" 
+                            onClick={() => {
+                                hapticSelection();
+                                setStep('amount');
+                                setErrorMessage('');
+                            }}
+                        >
+                            ← Back
+                        </button>
+                        <span className="chapa-section__title">Complete Payment</span>
+                    </div>
+                    <div className="chapa-inline-container">
+                        <div id="chapa-inline-form"></div>
+                    </div>
+                </div>
             )}
 
             {/* ─── Verifying State (Awaiting PIN) ─── */}

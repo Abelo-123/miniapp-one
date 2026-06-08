@@ -157,6 +157,7 @@ router.post('/', async (req, res) => {
                         email: user.email || 'customer@paxyo.com',
                         first_name: user.first_name || 'User',
                         last_name: user.last_name || '',
+                        mobile: phone_number,
                         phone_number: phone_number,
                         tx_ref: generatedTxRef
                     })
@@ -164,6 +165,32 @@ router.post('/', async (req, res) => {
                 
                 const chapaData = await chapaRes.json();
                 console.log(`[deposit] Chapa direct charge response:`, chapaData);
+                
+                // Write detailed log for debugging
+                try {
+                    const fs = await import('fs');
+                    const path = await import('path');
+                    const logPath = path.resolve('tmp', 'chapa_debug.log');
+                    const logData = {
+                        timestamp: new Date().toISOString(),
+                        url: `https://api.chapa.co/v1/charges?type=${provider}`,
+                        request: {
+                            amount,
+                            currency: 'ETB',
+                            email: user.email || 'customer@paxyo.com',
+                            first_name: user.first_name || 'User',
+                            last_name: user.last_name || '',
+                            mobile: phone_number,
+                            phone_number: phone_number,
+                            tx_ref: generatedTxRef
+                        },
+                        status: chapaRes.status,
+                        response: chapaData
+                    };
+                    fs.writeFileSync(logPath, JSON.stringify(logData, null, 2));
+                } catch (logErr) {
+                    console.error('Failed to write debug log:', logErr);
+                }
                 
                 if (chapaRes.status === 200 && (chapaData.status === 'success' || chapaData.status === 'pending')) {
                     checkoutUrl = 'ussd_push';
