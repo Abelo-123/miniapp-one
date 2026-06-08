@@ -459,6 +459,8 @@ export function DepositPage() {
                         first_name: user?.first_name || 'Paxyo',
                         last_name: user?.last_name || 'User',
                         phone_number: phoneNumber || undefined,
+                        mobile: phoneNumber || undefined,
+                        phoneNumber: phoneNumber || undefined,
                         showFlag: true,
                         showPaymentMethodsNames: true,
                         availablePaymentMethods: methods,
@@ -530,11 +532,7 @@ export function DepositPage() {
         }
 
         setErrorMessage('');
-        if (provider === 'card') {
-            startInlinePayment(val);
-        } else {
-            startRedirectPayment(val);
-        }
+        startInlinePayment(val);
     }, [amount, phoneNumber, provider, startRedirectPayment, startInlinePayment, showToast]);
 
     // ─── Native Main Button Integration ──────────────────────
