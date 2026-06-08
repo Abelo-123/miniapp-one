@@ -35,7 +35,7 @@ const app = express();
             try {
                 await conn.execute('ALTER TABLE orders ADD COLUMN custom_fields JSON AFTER status');
                 console.log('[Startup] Checked/Added custom_fields column to orders table');
-            } catch (e) {}
+            } catch (e) { }
 
             // Ensure service_custom table exists
             await conn.execute(`
@@ -53,7 +53,7 @@ const app = express();
             try {
                 await conn.execute('ALTER TABLE service_custom ADD COLUMN custom_description TEXT');
                 console.log('[Startup] Checked/Added custom_description column to service_custom table');
-            } catch (e) {}
+            } catch (e) { }
         } finally {
             conn.release();
         }
@@ -62,7 +62,7 @@ const app = express();
     }
 })();
 
-// cPanel/Passenger priority: Always use process.env.PORT if provided.
+// cPanel/Passenger priority: Alwayoos use process.env.PORT if provided.
 // On cPanel, this is usually a path to a socket, not a number.
 const PORT = process.env.PORT || 3001;
 
@@ -110,16 +110,16 @@ app.get('/api/debug/db', async (req, res) => {
         const [tables] = await conn.query('SHOW TABLES');
         const [authRows] = await conn.query('SELECT COUNT(*) as cnt FROM auth');
         conn.release();
-        res.json({ 
-            status: 'success', 
-            dbConnected: true, 
+        res.json({
+            status: 'success',
+            dbConnected: true,
             tables: tables.length,
             userCount: authRows[0].cnt
         });
-    } catch(e) {
-        res.json({ 
-            status: 'error', 
-            dbConnected: false, 
+    } catch (e) {
+        res.json({
+            status: 'error',
+            dbConnected: false,
             error: e.message,
             code: e.code,
             errno: e.errno
@@ -132,7 +132,7 @@ app.get('/api/test-db', async (req, res) => {
     try {
         const [rows] = await pool.execute('SELECT COUNT(*) as cnt FROM auth');
         res.json({ success: true, userCount: rows[0].cnt });
-    } catch(e) {
+    } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
