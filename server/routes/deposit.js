@@ -145,22 +145,23 @@ router.post('/', async (req, res) => {
         if (!success && phone_number && provider) {
             console.log(`[deposit] Initiating direct charge for ${provider} to ${phone_number}...`);
             try {
+                const params = new URLSearchParams();
+                params.append('amount', String(amount));
+                params.append('currency', 'ETB');
+                params.append('email', user.email || 'customer@paxyo.com');
+                params.append('first_name', user.first_name || 'User');
+                params.append('last_name', user.last_name || '');
+                params.append('mobile', phone_number);
+                params.append('phone_number', phone_number);
+                params.append('tx_ref', generatedTxRef);
+
                 const chapaRes = await fetch(`https://api.chapa.co/v1/charges?type=${provider}`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${process.env.CHAPA_SECRET_KEY}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: JSON.stringify({
-                        amount: amount,
-                        currency: 'ETB',
-                        email: user.email || 'customer@paxyo.com',
-                        first_name: user.first_name || 'User',
-                        last_name: user.last_name || '',
-                        mobile: phone_number,
-                        phone_number: phone_number,
-                        tx_ref: generatedTxRef
-                    })
+                    body: params.toString()
                 });
                 
                 const chapaData = await chapaRes.json();
