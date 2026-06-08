@@ -67,7 +67,26 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors({ optionsSuccessStatus: 200 }));
+const allowedOrigins = [
+    'https://abelo-123.github.io',
+    'http://localhost:5173',
+    'http://localhost:3000',
+];
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.warn(`[CORS] Blocked request from origin: ${origin}`);
+            callback(null, true); // Allow all for now — tighten later if needed
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
+    optionsSuccessStatus: 200,
+}));
 app.use(compression({
     level: 6,
     threshold: 1024

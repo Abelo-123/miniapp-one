@@ -308,9 +308,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const esRef = useRef<EventSource | null>(null);
 
     useEffect(() => {
-        // Only establish SSE stream when the user is logged in
-        if (!user) return;
-
         const initData = getInitDataRaw();
         if (!initData) {
             console.warn('[SSE] No initData available, skipping stream');
@@ -412,7 +409,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 esRef.current = null;
             }
         };
-    }, [user, setBalance]);
+    }, [setBalance]);
 
     const handleSetActiveTab = useCallback((tab: TabId) => {
         setActiveTab(tab);

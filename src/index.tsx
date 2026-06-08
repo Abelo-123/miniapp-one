@@ -9,7 +9,6 @@ import { Root } from '@/components/Root.tsx';
 import { EnvUnsupported } from '@/components/EnvUnsupported.tsx';
 import { init } from '@/init.ts';
 
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import './index.css';
 
 // Mock the environment in dev mode only (tree-shaken in production)

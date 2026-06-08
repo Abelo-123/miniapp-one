@@ -11,8 +11,7 @@ import {
     hapticImpact,
     hapticNotification,
     getInitDataString,
-    isTelegramEnv,
-    getTelegramPlatform
+    isTelegramEnv
 } from '../../helpers/telegram';
 import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
@@ -21,15 +20,13 @@ import './DepositPage.css';
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
 const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
 
-type DepositStep = 'amount' | 'checkout' | 'verifying' | 'success' | 'error';
+type DepositStep = 'amount' | 'verifying' | 'success' | 'error';
 
 export function DepositPage() {
     const { user, deposits, setBalance, refreshDeposits, showToast } = useApp();
     const [amount, setAmount] = useState('');
     const [step, setStep] = useState<DepositStep>('amount');
     const [errorMessage, setErrorMessage] = useState('');
-    const [provider, setProvider] = useState('telebirr');
-    const [phoneNumber, setPhoneNumber] = useState('');
     const [timeLeft, setTimeLeft] = useState(45);
     const timerRef = useRef<any>(null);
 
@@ -37,7 +34,6 @@ export function DepositPage() {
     const pollAbortRef = useRef(false);
     const activeTxRefRef = useRef<string | null>(null);
     const recentDepositsRef = useRef<HTMLDivElement>(null);
-    const popupWindowRef = useRef<Window | null>(null);
     const [checkoutUrl, setCheckoutUrl] = useState('');
 
     const balance = user?.balance ?? 0;
@@ -125,13 +121,6 @@ export function DepositPage() {
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
 
-                    if (popupWindowRef.current) {
-                        try {
-                            popupWindowRef.current.close();
-                        } catch (e) {}
-                        popupWindowRef.current = null;
-                    }
-
                     // First-time deposit guidance
                     const isFirstDeposit = !localStorage.getItem('hasDeposited');
                     if (isFirstDeposit) {
@@ -156,13 +145,6 @@ export function DepositPage() {
                     activeTxRefRef.current = null;
                     refreshDeposits().catch(() => { });
 
-                    if (popupWindowRef.current) {
-                        try {
-                            popupWindowRef.current.close();
-                        } catch (e) {}
-                        popupWindowRef.current = null;
-                    }
-
                     const isFirstDeposit = !localStorage.getItem('hasDeposited');
                     if (isFirstDeposit) {
                         localStorage.setItem('hasDeposited', 'true');
@@ -184,13 +166,6 @@ export function DepositPage() {
                     if (timerRef.current) clearInterval(timerRef.current);
                     setStep('error');
                     activeTxRefRef.current = null;
-
-                    if (popupWindowRef.current) {
-                        try {
-                            popupWindowRef.current.close();
-                        } catch (e) {}
-                        popupWindowRef.current = null;
-                    }
 
                     let declinedReason = data.bank_message || data.message || 'Payment method rejected the prompt';
                     if (declinedReason.toLowerCase().includes('fetched successfully') || declinedReason.toLowerCase().includes('not completed')) {
@@ -223,22 +198,13 @@ export function DepositPage() {
     // ─── Start Redirect Payment ──────────────────────────────
     const startRedirectPayment = useCallback(async (depositAmount: number) => {
         hapticImpact('medium');
-        
+        showToast('info', 'Opening secure checkout redirect...');
+
         const isTelegram = isTelegramEnv() || !!(window as any).Telegram?.WebApp?.platform || /Telegram/i.test(navigator.userAgent);
-        const platform = getTelegramPlatform();
-        const isTelegramDesktop = platform === 'tdesktop' || platform === 'weba' || platform === 'web';
-        const isUssdPush = provider !== 'card';
-        
-        if (isUssdPush) {
-            showToast('info', 'Sending USSD prompt to phone...');
-        } else {
-            showToast('info', 'Opening secure checkout redirect...');
-        }
-        
         let popupWindow: Window | null = null;
 
-        // Open blank popup synchronously to bypass browser popup blockers (outside Telegram OR on Telegram Desktop)
-        if (!isTelegram || (isTelegramDesktop && !isUssdPush)) {
+        // Open blank popup synchronously to bypass browser popup blockers (only outside Telegram)
+        if (!isTelegram) {
             const width = 500;
             const height = 700;
             const left = (window.screen.width / 2) - (width / 2);
@@ -248,7 +214,6 @@ export function DepositPage() {
                 'ChapaCheckoutPopup',
                 `width=${width},height=${height},top=${top},left=${left},status=no,toolbar=no,menubar=no,location=no`
             );
-            popupWindowRef.current = popupWindow;
         }
 
         try {
@@ -256,7 +221,7 @@ export function DepositPage() {
             const userId = user?.id || 'unauth_local_user';
 
             // Correctly resolve close-popup.html path relative to current URL (supports GitHub Pages subfolders!)
-            const returnUrl = new URL('./close-popup.html?tg=1', window.location.href).href;
+            const returnUrl = new URL('./close-popup.html', window.location.href).href;
 
             console.log('[deposit] return_url generated:', returnUrl);
 
@@ -267,102 +232,19 @@ export function DepositPage() {
                     amount: depositAmount,
                     initData,
                     user_id: userId,
-                    return_url: returnUrl,
-                    phone_number: isUssdPush ? phoneNumber : undefined,
-                    provider: isUssdPush ? provider : undefined
+                    return_url: returnUrl
                 }),
             });
             const backendData = await backendRes.json();
 
-            if (backendData.success) {
-                if (backendData.is_ussd_push) {
-                    setCheckoutUrl('ussd_push');
-                    showToast('success', 'USSD PIN prompt sent! Check your phone.');
-                    if (backendData.tx_ref) {
-                        verifyDeposit(backendData.tx_ref);
-                    }
-                    return;
-                }
-
+            if (backendData.success && backendData.checkout_url) {
                 setCheckoutUrl(backendData.checkout_url);
 
-                const isTelegramInvoice = backendData.checkout_url.includes('t.me') || backendData.checkout_url.includes('invoice');
-
                 if (isTelegram) {
-                    if (isTelegramInvoice) {
-                        try {
-                            const tg = (window as any).Telegram?.WebApp;
-                            if (tg && tg.openInvoice) {
-                                showToast('info', 'Opening Telegram payment sheet...');
-                                
-                                // Start verifying in background to catch webhook updates
-                                if (backendData.tx_ref) {
-                                    verifyDeposit(backendData.tx_ref);
-                                }
-
-                                tg.openInvoice(backendData.checkout_url, (status: string) => {
-                                    console.log('[deposit] Telegram invoice callback status:', status);
-                                    if (status === 'paid') {
-                                        showToast('success', 'Payment successful! Updating balance...');
-                                        hapticNotification('success');
-                                        setStep('success');
-                                        refreshDeposits().catch(() => {});
-                                        if (backendData.tx_ref) {
-                                            verifyDeposit(backendData.tx_ref);
-                                        }
-                                    } else if (status === 'cancelled') {
-                                        showToast('info', 'Payment cancelled');
-                                        setStep('amount');
-                                        pollAbortRef.current = true;
-                                        activeTxRefRef.current = null;
-                                        if (timerRef.current) clearInterval(timerRef.current);
-                                    } else {
-                                        showToast('error', `Payment status: ${status}`);
-                                        setStep('error');
-                                        setErrorMessage(`Payment failed or ended with status: ${status}`);
-                                        hapticNotification('error');
-                                        pollAbortRef.current = true;
-                                        activeTxRefRef.current = null;
-                                        if (timerRef.current) clearInterval(timerRef.current);
-                                    }
-                                });
-                                return;
-                            }
-                        } catch (e) {
-                            console.error('Error opening Telegram native invoice:', e);
-                        }
-                    }
-
-                    // For standard Chapa hosted redirect (non-invoice URL) on Telegram Desktop:
-                    if (isTelegramDesktop && popupWindow) {
-                        console.log('[deposit] Desktop client detected: opening checkout in browser popup window');
-                        popupWindow.location.href = backendData.checkout_url;
-                        showToast('success', 'Redirect opened! Checking status...');
-                        if (backendData.tx_ref) {
-                            verifyDeposit(backendData.tx_ref);
-                        }
-                        return;
-                    }
-
-                    // For standard Chapa hosted redirect (non-invoice URL) on mobile:
-                    // Open in Telegram's native in-app browser overlay so they can close/exit it easily at any time!
-                    try {
-                        const tg = (window as any).Telegram?.WebApp;
-                        if (tg && tg.openLink) {
-                            console.log('[deposit] Opening Chapa hosted redirect via WebApp.openLink');
-                            tg.openLink(backendData.checkout_url);
-                            
-                            showToast('success', 'Redirect opened! Checking status...');
-                            if (backendData.tx_ref) {
-                                verifyDeposit(backendData.tx_ref);
-                            }
-                            return;
-                        }
-                    } catch (e) {
-                        console.error('[deposit] Failed to open checkout via WebApp.openLink, falling back to location.href:', e);
-                    }
-
-                    // Fallback: Disable closing confirmation & hide back button before navigating.
+                    // 1. Disable closing confirmation & hide the native WebApp back button before navigating.
+                    // This prevents the Telegram client from showing the stuck confirmation prompt
+                    // and allows the native Close button to exit instantly, while Android back gesture
+                    // will navigate back in history to our React app.
                     try {
                         const twa = (window as any).Telegram?.WebApp;
                         if (twa) {
@@ -373,6 +255,9 @@ export function DepositPage() {
                         console.error('Error disabling Telegram WebApp confirmation/back-button:', e);
                     }
 
+                    // 2. Navigate the current Mini App WebView directly.
+                    // This forces the checkout to open directly within the Telegram WebApp window itself,
+                    // without escaping to Chrome or Safari.
                     window.location.href = backendData.checkout_url;
                 } else if (popupWindow) {
                     popupWindow.location.href = backendData.checkout_url;
@@ -385,125 +270,15 @@ export function DepositPage() {
                     verifyDeposit(backendData.tx_ref);
                 }
             } else {
-                if (popupWindow) {
-                    popupWindow.close();
-                    popupWindowRef.current = null;
-                }
+                if (popupWindow) popupWindow.close();
                 showToast('error', backendData.error || 'Failed to initialize redirect payment');
             }
         } catch (err) {
-            if (popupWindow) {
-                popupWindow.close();
-                popupWindowRef.current = null;
-            }
+            if (popupWindow) popupWindow.close();
             console.error('[deposit] Error starting redirect payment:', err);
             showToast('error', 'Network error. Please try again.');
         }
-    }, [user, showToast, verifyDeposit, phoneNumber, provider]);
-
-    // ─── Start Inline Payment ─────────────────────────────────
-    const startInlinePayment = useCallback(async (depositAmount: number) => {
-        hapticImpact('medium');
-        setErrorMessage('');
-        
-        if (!(window as any).ChapaCheckout) {
-            console.warn('ChapaCheckout SDK not loaded. Falling back to redirect flow.');
-            startRedirectPayment(depositAmount);
-            return;
-        }
-
-        const userId = user?.id || 'unauth_local_user';
-        const uniqueTxRef = `DEP-${userId}-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-        try {
-            const initData = await getInitDataString();
-            
-            showToast('info', 'Initializing secure transaction...');
-            const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    amount: depositAmount,
-                    initData,
-                    user_id: userId,
-                    tx_ref: uniqueTxRef
-                }),
-            });
-            
-            const backendData = await backendRes.json();
-            if (!backendData.success) {
-                showToast('error', backendData.error || 'Failed to initialize payment');
-                return;
-            }
-
-            setStep('checkout');
-
-            let methods: string[] = [];
-            if (provider === 'telebirr') methods = ['telebirr'];
-            else if (provider === 'cbebirr') methods = ['cbebirr'];
-            else if (provider === 'mpesa') methods = ['mpesa'];
-            else methods = ['chapa', 'telebirr', 'cbebirr', 'mpesa']; // 'card' or default shows everything
-
-            setTimeout(() => {
-                try {
-                    const publicKey = import.meta.env.VITE_CHAPA_PUBLIC_KEY || 'CHAPUBK-3fWBzd7CeuNFXJOotgRqcDkXeWz1OFrT';
-                    
-                    const chapa = new (window as any).ChapaCheckout({
-                        publicKey,
-                        amount: depositAmount,
-                        currency: 'ETB',
-                        tx_ref: uniqueTxRef,
-                        title: 'Add Funds',
-                        description: 'Deposit to Paxyo',
-                        email: `user-${userId}@paxyo.com`,
-                        first_name: user?.first_name || 'Paxyo',
-                        last_name: user?.last_name || 'User',
-                        phone_number: phoneNumber || undefined,
-                        mobile: phoneNumber || undefined,
-                        phoneNumber: phoneNumber || undefined,
-                        showFlag: true,
-                        showPaymentMethodsNames: true,
-                        availablePaymentMethods: methods,
-                        callbackUrl: `${window.location.origin}/api/chapa-callback`,
-                        onSuccessfulPayment: (result: any) => {
-                            console.log('[Chapa SDK] Success:', result);
-                            showToast('success', 'Payment successful! Verifying balance...');
-                            verifyDeposit(uniqueTxRef);
-                        },
-                        onPaymentFailure: (error: any) => {
-                            console.error('[Chapa SDK] Failure:', error);
-                            const errMsg = String(error?.message || error || '').toLowerCase();
-                            if (errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('cors') || errMsg.includes('failed to fetch')) {
-                                console.warn('CORS/Network error detected in Inline SDK. Falling back to redirect checkout.');
-                                showToast('info', 'Inline checkout blocked. Falling back to secure redirect...');
-                                setStep('amount');
-                                startRedirectPayment(depositAmount);
-                            } else {
-                                setStep('error');
-                                setErrorMessage(error?.message || 'Payment failed.');
-                                hapticNotification('error');
-                            }
-                        },
-                        onClose: () => {
-                            console.log('[Chapa SDK] Closed');
-                            setStep('amount');
-                        }
-                    });
-
-                    chapa.initialize('chapa-inline-form');
-                } catch (sdkErr: any) {
-                    console.error('Failed to initialize ChapaCheckout:', sdkErr);
-                    setStep('amount');
-                    showToast('info', 'Secure checkout loading redirect...');
-                    startRedirectPayment(depositAmount);
-                }
-            }, 150);
-
-        } catch (err: any) {
-            console.error('[deposit] Error starting inline payment:', err);
-            showToast('error', 'Network error. Please try again.');
-        }
-    }, [user, provider, phoneNumber, showToast, verifyDeposit, startRedirectPayment]);
+    }, [user, showToast, verifyDeposit]);
 
     // ─── Handle Deposit Button Click ─────────────────────────
     const handleDeposit = useCallback(() => {
@@ -527,26 +302,9 @@ export function DepositPage() {
             return hapticNotification('error');
         }
 
-        // Validate phone number for USSD Push flow
-        if (provider !== 'card') {
-            if (!phoneNumber || phoneNumber.trim() === '') {
-                showToast('error', 'Action Required: Please enter your mobile wallet phone number');
-                return hapticNotification('error');
-            }
-            const cleanedPhone = phoneNumber.replace(/[^0-9]/g, '');
-            if (cleanedPhone.length < 9 || cleanedPhone.length > 15) {
-                showToast('error', 'Action Required: Please enter a valid phone number');
-                return hapticNotification('error');
-            }
-        }
-
         setErrorMessage('');
-        if (provider === 'card') {
-            startInlinePayment(val);
-        } else {
-            startRedirectPayment(val);
-        }
-    }, [amount, phoneNumber, provider, startRedirectPayment, startInlinePayment, showToast]);
+        startRedirectPayment(val);
+    }, [amount, startRedirectPayment, showToast]);
 
     // ─── Native Main Button Integration ──────────────────────
     useEffect(() => {
@@ -660,79 +418,6 @@ export function DepositPage() {
                         ))}
                     </div>
 
-                    <div className="paxyo-section-header" style={{ marginTop: '16px' }}>
-                        <span>PAYMENT METHOD</span>
-                    </div>
-                    <div className="provider-selector-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', padding: '0 16px' }}>
-                        {[
-                            { id: 'telebirr', name: 'Telebirr', icon: '📱' },
-                            { id: 'cbebirr', name: 'CBE Birr', icon: '🏦' },
-                            { id: 'mpesa', name: 'M-Pesa', icon: '💸' },
-                            { id: 'card', name: 'Card/Other', icon: '💳' }
-                        ].map(p => (
-                            <button
-                                key={p.id}
-                                className={`provider-btn ${provider === p.id ? 'provider-btn--active' : ''}`}
-                                onClick={() => {
-                                    hapticSelection();
-                                    setProvider(p.id);
-                                }}
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '10px 4px',
-                                    background: provider === p.id ? 'rgba(0, 122, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                                    border: provider === p.id ? '1px solid #007AFF' : '1px solid rgba(255, 255, 255, 0.08)',
-                                    borderRadius: '12px',
-                                    color: provider === p.id ? '#007AFF' : 'var(--tg-theme-text-color)',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold',
-                                    fontSize: '11px',
-                                    transition: 'all 0.2s',
-                                    outline: 'none'
-                                }}
-                            >
-                                <span style={{ fontSize: '18px' }}>{p.icon}</span>
-                                <span style={{ whiteSpace: 'nowrap' }}>{p.name}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    {provider !== 'card' && (
-                        <>
-                            <div className="paxyo-section-header" style={{ marginTop: '16px' }}>
-                                <span>MOBILE WALLET NUMBER</span>
-                            </div>
-                            <div className="deposit-input-group" style={{ margin: '0 16px 8px 16px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', display: 'flex', alignItems: 'center', padding: '12px 16px' }}>
-                                <span style={{ color: 'var(--tg-theme-hint-color)', fontSize: '16px', fontWeight: 'bold', marginRight: '8px' }}>📞</span>
-                                <input
-                                    className="deposit-input-group__input"
-                                    inputMode="tel"
-                                    type="text"
-                                    placeholder={provider === 'mpesa' ? 'e.g. 254712345678' : 'e.g. 0912345678'}
-                                    value={phoneNumber}
-                                    onChange={(e) => {
-                                        const raw = e.target.value.replace(/[^0-9+]/g, '');
-                                        setPhoneNumber(raw);
-                                    }}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: 'var(--tg-theme-text-color)',
-                                        fontSize: '16px',
-                                        width: '100%',
-                                        outline: 'none'
-                                    }}
-                                />
-                            </div>
-                            <div style={{ padding: '0 20px', fontSize: '11px', color: 'var(--tg-theme-hint-color)', marginBottom: '8px', lineHeight: '1.4' }}>
-                                A USSD payment prompt will be sent directly to this number to authorize the transaction.
-                            </div>
-                        </>
-                    )}
-
                     {errorMessage && (
                         <div className="deposit-error">
                             <span>⚠️</span> {errorMessage}
@@ -765,28 +450,6 @@ export function DepositPage() {
                 </>
             )}
 
-            {/* ─── Checkout State (Inline SDK) ─── */}
-            {step === 'checkout' && (
-                <div className="chapa-section" style={{ padding: '0 16px' }}>
-                    <div className="chapa-section__header">
-                        <button 
-                            className="chapa-section__back" 
-                            onClick={() => {
-                                hapticSelection();
-                                setStep('amount');
-                                setErrorMessage('');
-                            }}
-                        >
-                            ← Back
-                        </button>
-                        <span className="chapa-section__title">Complete Payment</span>
-                    </div>
-                    <div className="chapa-inline-container">
-                        <div id="chapa-inline-form"></div>
-                    </div>
-                </div>
-            )}
-
             {/* ─── Verifying State (Awaiting PIN) ─── */}
             {step === 'verifying' && (
                 <div className="deposit-processing" style={{ padding: '24px 16px', textAlign: 'center' }}>
@@ -801,17 +464,8 @@ export function DepositPage() {
                         Awaiting Payment Verification
                     </div>
                     <div className="deposit-processing__subtext" style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '20px' }}>
-                        {checkoutUrl === 'ussd_push' ? (
-                            <>
-                                A USSD payment prompt has been sent to <b>{phoneNumber}</b>.<br />
-                                Please enter your mobile wallet <b>PIN</b> on your phone to complete the deposit.
-                            </>
-                        ) : (
-                            <>
-                                Please complete your payment in the checkout window. <br />
-                                If you paid using M-Pesa or Telebirr, enter your <b>PIN</b> when prompted.
-                            </>
-                        )}
+                        Please complete your payment in the checkout window. <br />
+                        If you paid using M-Pesa or Telebirr, enter your <b>PIN</b> when prompted.
                     </div>
 
                     <div style={{ width: '100%', height: '8px', background: 'var(--tg-theme-secondary-bg-color)', borderRadius: '4px', overflow: 'hidden', marginBottom: '12px' }}>
@@ -832,17 +486,15 @@ export function DepositPage() {
                         </span>
                     </div>
 
-                    {checkoutUrl !== 'ussd_push' && (
-                        <a
-                            href={checkoutUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="deposit-processing__subtext"
-                            style={{ display: 'block', fontSize: '12px', color: 'var(--tg-theme-button-color)', textDecoration: 'underline', marginBottom: '20px' }}
-                        >
-                            Didn't open? Click here to pay
-                        </a>
-                    )}
+                    <a
+                        href={checkoutUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="deposit-processing__subtext"
+                        style={{ display: 'block', fontSize: '12px', color: 'var(--tg-theme-button-color)', textDecoration: 'underline', marginBottom: '20px' }}
+                    >
+                        Didn't open? Click here to pay
+                    </a>
 
                     <div className="deposit-processing__actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <Button
@@ -866,12 +518,6 @@ export function DepositPage() {
                                 pollAbortRef.current = true;
                                 activeTxRefRef.current = null;
                                 if (timerRef.current) clearInterval(timerRef.current);
-                                if (popupWindowRef.current) {
-                                    try {
-                                        popupWindowRef.current.close();
-                                    } catch (e) {}
-                                    popupWindowRef.current = null;
-                                }
                                 setStep('amount');
                             }}
                             style={{ opacity: 0.7 }}

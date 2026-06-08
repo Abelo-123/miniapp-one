@@ -247,14 +247,19 @@ export function getInitDataUser() {
 
 export function getInitDataRaw(): string | undefined {
     try {
-        // 1. Try native WebApp initData first (direct window query, always works in Telegram)
-        const tg = (window as any).Telegram?.WebApp;
-        if (tg && typeof tg.initData === 'string' && tg.initData) {
-            return tg.initData;
+        const state = initData.state();
+        if (state) {
+            const params = new URLSearchParams();
+            if (state.auth_date) params.append('auth_date', state.auth_date.toString());
+            if (state.hash) params.append('hash', state.hash);
+            if (state.signature) params.append('signature', state.signature);
+            if (state.user) params.append('user', JSON.stringify(state.user));
+            if (state.receiver) params.append('receiver', JSON.stringify(state.receiver));
+            if (state.chat) params.append('chat', JSON.stringify(state.chat));
+            if (state.start_param) params.append('start_param', state.start_param);
+            return params.toString();
         }
-        // 2. Fallback to SDK launch parameters
-        const raw = retrieveLaunchParams().initDataRaw;
-        return typeof raw === 'string' ? raw : undefined;
+        return undefined;
     } catch {
         return undefined;
     }
@@ -263,32 +268,12 @@ export function getInitDataRaw(): string | undefined {
 let _cachedInitDataString: string | null = null;
 
 export async function getInitDataString(): Promise<string> {
-    if (_cachedInitDataString !== null) return _cachedInitDataString as string;
-    try {
-        // 1. Try native WebApp initData first
-        const tg = (window as any).Telegram?.WebApp;
-        if (tg && typeof tg.initData === 'string' && tg.initData) {
-            _cachedInitDataString = tg.initData;
-            return tg.initData;
-        }
-        // 2. Fallback to SDK launch parameters
-        const lp = retrieveLaunchParams();
-        const raw = lp.initDataRaw;
-        if (typeof raw === 'string') {
-            _cachedInitDataString = raw;
-            return raw;
-        }
-    } catch { /* noop */ }
-    
-    // 3. Fallback to parsing SDK state manually
+    if (_cachedInitDataString !== null) return _cachedInitDataString;
     try {
         const state = initData.state();
         if (state) {
             const params = new URLSearchParams();
-            if (state.auth_date) {
-                const unixTime = Math.floor(state.auth_date.getTime() / 1000);
-                params.append('auth_date', unixTime.toString());
-            }
+            if (state.auth_date) params.append('auth_date', state.auth_date.toString());
             if (state.hash) params.append('hash', state.hash);
             if (state.signature) params.append('signature', state.signature);
             if (state.user) params.append('user', JSON.stringify(state.user));
@@ -296,7 +281,7 @@ export async function getInitDataString(): Promise<string> {
             if (state.chat) params.append('chat', JSON.stringify(state.chat));
             if (state.start_param) params.append('start_param', state.start_param);
             _cachedInitDataString = params.toString();
-            return _cachedInitDataString || '';
+            return _cachedInitDataString;
         }
         return '';
     } catch {
