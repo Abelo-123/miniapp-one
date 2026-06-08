@@ -7,7 +7,16 @@ import { processTransaction } from '../lib/wallet.js';
 const router = Router();
 const connectedClients = new Map();
 
+const MAX_SSE_CLIENTS = 5; // Shared hosting process limit safety
+
 router.get('/stream', (req, res) => {
+    // Reject if too many SSE connections are open (shared hosting has ~20-30 process limit)
+    let totalClients = 0;
+    for (const [, set] of connectedClients) totalClients += set.size;
+    if (totalClients >= MAX_SSE_CLIENTS) {
+        return res.status(503).json({ error: 'Too many connections, please retry later' });
+    }
+
     const { initData, user_id } = req.query;
     let tgId = getTelegramUserId(initData);
     if (!tgId) tgId = user_id || 'unauth_local_user';
@@ -28,7 +37,14 @@ router.get('/stream', (req, res) => {
     connectedClients.get(tgId).add(res);
     ensurePolling();
 
+    // Auto-disconnect after 2 minutes to free up cPanel processes
+    const autoDisconnect = setTimeout(() => {
+        res.write(`data: ${JSON.stringify({ type: 'RECONNECT', reason: 'timeout' })}\n\n`);
+        res.end();
+    }, 2 * 60 * 1000);
+
     req.on('close', () => {
+        clearTimeout(autoDisconnect);
         const set = connectedClients.get(tgId);
         if (set) {
             set.delete(res);
@@ -482,7 +498,7 @@ async function masterPoller() {
 
 function startPolling() {
     if (pollTimer) return;
-    pollTimer = setInterval(masterPoller, 5000);
+    pollTimer = setInterval(masterPoller, 30000); // 30s — safe for shared hosting
 }
 
 function ensurePolling() {

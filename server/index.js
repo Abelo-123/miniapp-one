@@ -62,31 +62,12 @@ const app = express();
     }
 })();
 
-// cPanel/Passenger priority: Alwayoos use process.env.PORT if provided.
-// On cPanel, this is usually a path to a socket, not a number.
+// cPanel/Passenger priority: Always use process.env.PORT if provided.
+// On cPanel, thfffis isff usually a path to a socket, not a number.
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-const allowedOrigins = [
-    'https://abelo-123.github.io',
-    'http://localhost:5173',
-    'http://localhost:3000',
-];
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, curl, server-to-server)
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.warn(`[CORS] Blocked request from origin: ${origin}`);
-            callback(null, true); // Allow all for now — tighten later if needed
-        }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true,
-    optionsSuccessStatus: 200,
-}));
+app.use(cors({ optionsSuccessStatus: 200 }));
 app.use(compression({
     level: 6,
     threshold: 1024
@@ -142,16 +123,6 @@ app.use('/api/deposit', depositRouter);
 app.use('/api/complete-deposit', completeDepositRouter);
 app.use('/api/verify-deposit', verifyDepositRouter);
 app.use('/api/chapa-callback', chapaCallbackRouter);
-
-// Dynamically load Telegram Webhook to prevent server crashes if file isn't uploaded
-import('./routes/telegramWebhook.js')
-    .then(module => {
-        app.use('/api/telegram-webhook', module.default);
-        console.log('[Startup] Telegram Webhook Router loaded successfully.');
-    })
-    .catch(err => {
-        console.warn('[Startup] Skipping Telegram Webhook (file missing or error):', err.message);
-    });
 
 // User Data Routes
 app.use('/api/deposits', getDepositsRouter);

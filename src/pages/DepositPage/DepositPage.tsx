@@ -18,7 +18,7 @@ import './DepositPage.css';
 
 
 const PRESET_AMOUNTS = [10, 100, 1000, 10000];
-const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || '/api';
+const NODE_API_URL = import.meta.env.VITE_NODE_API_URL || 'https://paxyo.com/api';
 
 type DepositStep = 'amount' | 'verifying' | 'success' | 'error';
 

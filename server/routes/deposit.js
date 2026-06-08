@@ -29,7 +29,7 @@ const MAX_DEPOSIT = parseInt(process.env.MAX_DEPOSIT) || 100000;
 
 router.post('/', async (req, res) => {
     try {
-        const { amount: rawAmount, initData, tx_ref: txRef, user_id, return_url, phone_number, provider } = req.body;
+        const { amount: rawAmount, initData, tx_ref: txRef, user_id, return_url } = req.body;
         const amount = parseFloat(rawAmount) || 0;
 
         // ─── Validate amount ─────────────────────────────────
@@ -90,7 +90,7 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // ═══ FLOW B: REDIRECT MODE (server generates tx_ref + calls Chapa/Telegram) ═══
+        // ═══ FLOW B: REDIRECT MODE (server generates tx_ref + calls Chapa) ═══
         const generatedTxRef = `DEP-${tgId}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 
         // Insert pending deposit
@@ -99,137 +99,20 @@ router.post('/', async (req, res) => {
             [tgId, amount, generatedTxRef]
         );
 
-        let checkoutUrl = '';
-        let success = false;
-        let errorMsg = '';
-        let isUssdPush = false;
+        // Call Chapa API to initialize payment
+        const chapa = new Chapa();
+        const result = await chapa.initialize({
+            amount,
+            email: user.email || 'customer@paxyo.com',
+            first_name: user.first_name || 'User',
+            last_name: user.last_name || '',
+            tx_ref: generatedTxRef,
+            return_url: return_url,
+        });
 
-        const providerToken = process.env.TELEGRAM_PAYMENT_PROVIDER_TOKEN;
-        const botToken = process.env.BOT_TOKEN;
-        const useTelegramNative = process.env.USE_TELEGRAM_NATIVE_PAYMENTS === 'true';
+        if (result.success && result.data?.checkout_url) {
+            const checkoutUrl = result.data.checkout_url;
 
-        if (useTelegramNative && providerToken && botToken) {
-            console.log(`[deposit] Generating native Telegram invoice link using provider token...`);
-            try {
-                const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/createInvoiceLink`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        title: 'Balance Deposit',
-                        description: `Add ${amount} ETB to your Paxyo balance`,
-                        payload: generatedTxRef,
-                        provider_token: providerToken,
-                        currency: 'ETB',
-                        prices: [
-                            { label: 'Deposit Amount', amount: Math.round(amount * 100) }
-                        ],
-                        need_phone_number: false,
-                        send_phone_number_to_provider: false
-                    })
-                });
-                const tgData = await tgRes.json();
-                if (tgData.ok && tgData.result) {
-                    checkoutUrl = tgData.result;
-                    success = true;
-                } else {
-                    console.error('[deposit] Telegram createInvoiceLink error:', tgData);
-                    errorMsg = tgData.description || 'Failed to generate Telegram invoice link';
-                }
-            } catch (err) {
-                console.error('[deposit] Telegram API error:', err.message);
-                errorMsg = `Telegram connection error: ${err.message}`;
-            }
-        }
-
-        // ═══ FLOW C: DIRECT CHARGE / USSD PUSH MODE ═══
-        if (!success && phone_number && provider) {
-            console.log(`[deposit] Initiating direct charge for ${provider} to ${phone_number}...`);
-            try {
-                const params = new URLSearchParams();
-                params.append('amount', String(amount));
-                params.append('currency', 'ETB');
-                params.append('email', user.email || 'customer@paxyo.com');
-                params.append('first_name', user.first_name || 'User');
-                params.append('last_name', user.last_name || '');
-                params.append('mobile', phone_number);
-                params.append('phone_number', phone_number);
-                params.append('tx_ref', generatedTxRef);
-
-                const chapaRes = await fetch(`https://api.chapa.co/v1/charges?type=${provider}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${process.env.CHAPA_SECRET_KEY}`,
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: params.toString()
-                });
-                
-                const chapaData = await chapaRes.json();
-                console.log(`[deposit] Chapa direct charge response:`, chapaData);
-                
-                // Write detailed log for debugging
-                try {
-                    const fs = await import('fs');
-                    const path = await import('path');
-                    const logPath = path.resolve('tmp', 'chapa_debug.log');
-                    const logData = {
-                        timestamp: new Date().toISOString(),
-                        url: `https://api.chapa.co/v1/charges?type=${provider}`,
-                        request: {
-                            amount,
-                            currency: 'ETB',
-                            email: user.email || 'customer@paxyo.com',
-                            first_name: user.first_name || 'User',
-                            last_name: user.last_name || '',
-                            mobile: phone_number,
-                            phone_number: phone_number,
-                            tx_ref: generatedTxRef
-                        },
-                        status: chapaRes.status,
-                        response: chapaData
-                    };
-                    fs.writeFileSync(logPath, JSON.stringify(logData, null, 2));
-                } catch (logErr) {
-                    console.error('Failed to write debug log:', logErr);
-                }
-                
-                if (chapaRes.status === 200 && (chapaData.status === 'success' || chapaData.status === 'pending')) {
-                    checkoutUrl = 'ussd_push';
-                    success = true;
-                    isUssdPush = true;
-                } else {
-                    errorMsg = chapaData.message || 'Chapa direct charge initiation failed';
-                }
-            } catch (err) {
-                console.error('[deposit] Chapa direct charge API error:', err.message);
-                errorMsg = `Chapa connection error: ${err.message}`;
-            }
-        }
-
-        // If not processed via Telegram or Direct Charge, fall back to standard Chapa hosted redirect flow
-        if (!success) {
-            if (providerToken && botToken) {
-                console.warn(`[deposit] Telegram invoice generation failed. Falling back to Chapa hosted URL... Error: ${errorMsg}`);
-            }
-            const chapa = new Chapa();
-            const result = await chapa.initialize({
-                amount,
-                email: user.email || 'customer@paxyo.com',
-                first_name: user.first_name || 'User',
-                last_name: user.last_name || '',
-                tx_ref: generatedTxRef,
-                return_url: return_url,
-            });
-
-            if (result.success && result.data?.checkout_url) {
-                checkoutUrl = result.data.checkout_url;
-                success = true;
-            } else {
-                errorMsg = result.message || 'Failed to initialize Chapa payment';
-            }
-        }
-
-        if (success && checkoutUrl) {
             // Save checkout_url in DB
             await pool.execute('UPDATE deposits SET checkout_url = ? WHERE tx_ref = ?', [
                 checkoutUrl,
@@ -240,13 +123,11 @@ router.post('/', async (req, res) => {
                 success: true,
                 checkout_url: checkoutUrl,
                 tx_ref: generatedTxRef,
-                is_ussd_push: isUssdPush,
-                tg_error: errorMsg || undefined
             });
         } else {
             return res.json({
                 success: false,
-                error: errorMsg || 'Payment initialization failed',
+                error: result.message || 'Failed to initialize Chapa payment',
             });
         }
     } catch (err) {

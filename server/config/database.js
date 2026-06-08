@@ -13,7 +13,7 @@ const pool = mysql.createPool({
     port: 3306,
     charset: 'utf8mb4',
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 3,
     queueLimit: 0,
     connectTimeout: 10000,
 });
@@ -23,9 +23,8 @@ pool.getConnection()
     .then(async conn => {
         console.log('✅ DB Connected to cPanel MySQL');
         try {
-            await conn.execute(`DROP TABLE IF EXISTS chat_messages`);
             await conn.execute(`
-                CREATE TABLE chat_messages (
+                CREATE TABLE IF NOT EXISTS chat_messages (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     user_id VARCHAR(50) NOT NULL,
                     message TEXT NOT NULL,
