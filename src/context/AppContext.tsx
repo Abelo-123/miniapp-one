@@ -316,6 +316,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
         let cancelled = false;
+        let reconnectDelay = 3000; // Start at 3s, exponential backoff
+        const MAX_RECONNECT_DELAY = 30000; // Cap at 30s
 
         function connect() {
             if (cancelled) return;
@@ -332,12 +334,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             es.onopen = () => {
                 console.log('[SSE] Connected successfully');
+                reconnectDelay = 3000; // Reset backoff on successful connection
             };
 
             es.onmessage = (event) => {
                 console.log('[SSE] Received:', event.data);
                 try {
                     const data = JSON.parse(event.data);
+
+                    if (data.type === 'RECONNECT') {
+                        // Server asked us to reconnect (timeout)
+                        es.close();
+                        esRef.current = null;
+                        if (!cancelled) {
+                            reconnectTimer = setTimeout(connect, 1000);
+                        }
+                        return;
+                    }
 
                     if (data.type === 'ORDER_PLACED' && data.order) {
                         // Instantly insert the server-verified order into state
@@ -390,11 +403,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             };
 
             es.onerror = (err) => {
-                console.warn('[SSE] Connection error, will reconnect in 3s', err);
+                console.warn(`[SSE] Connection error, will reconnect in ${reconnectDelay / 1000}s`, err);
                 es.close();
                 esRef.current = null;
                 if (!cancelled) {
-                    reconnectTimer = setTimeout(connect, 3000);
+                    reconnectTimer = setTimeout(connect, reconnectDelay);
+                    // Exponential backoff: 3s → 6s → 12s → 24s → 30s (capped)
+                    reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY);
                 }
             };
         }
