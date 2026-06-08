@@ -472,9 +472,17 @@ export function DepositPage() {
                         },
                         onPaymentFailure: (error: any) => {
                             console.error('[Chapa SDK] Failure:', error);
-                            setStep('error');
-                            setErrorMessage(error?.message || 'Payment failed.');
-                            hapticNotification('error');
+                            const errMsg = String(error?.message || error || '').toLowerCase();
+                            if (errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('cors') || errMsg.includes('failed to fetch')) {
+                                console.warn('CORS/Network error detected in Inline SDK. Falling back to redirect checkout.');
+                                showToast('info', 'Inline checkout blocked. Falling back to secure redirect...');
+                                setStep('amount');
+                                startRedirectPayment(depositAmount);
+                            } else {
+                                setStep('error');
+                                setErrorMessage(error?.message || 'Payment failed.');
+                                hapticNotification('error');
+                            }
                         },
                         onClose: () => {
                             console.log('[Chapa SDK] Closed');
@@ -486,7 +494,8 @@ export function DepositPage() {
                 } catch (sdkErr: any) {
                     console.error('Failed to initialize ChapaCheckout:', sdkErr);
                     setStep('amount');
-                    showToast('error', 'Failed to load checkout form: ' + sdkErr.message);
+                    showToast('info', 'Secure checkout loading redirect...');
+                    startRedirectPayment(depositAmount);
                 }
             }, 150);
 
@@ -532,7 +541,11 @@ export function DepositPage() {
         }
 
         setErrorMessage('');
-        startInlinePayment(val);
+        if (provider === 'card') {
+            startInlinePayment(val);
+        } else {
+            startRedirectPayment(val);
+        }
     }, [amount, phoneNumber, provider, startRedirectPayment, startInlinePayment, showToast]);
 
     // ─── Native Main Button Integration ──────────────────────
