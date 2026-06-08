@@ -455,7 +455,7 @@ export function DepositPage() {
                         tx_ref: uniqueTxRef,
                         title: 'Add Funds',
                         description: 'Deposit to Paxyo',
-                        email: user?.email || `user-${userId}@paxyo.com`,
+                        email: `user-${userId}@paxyo.com`,
                         first_name: user?.first_name || 'Paxyo',
                         last_name: user?.last_name || 'User',
                         phone_number: phoneNumber || undefined,
