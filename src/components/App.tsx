@@ -1,6 +1,7 @@
 import { AppRoot } from '@telegram-apps/telegram-ui';
 import { AppProvider, useApp } from '../context/AppContext';
 import { BottomNav } from './BottomNav/BottomNav';
+import { NODE_API_URL } from '../api';
 import { ToastContainer } from './Toast/Toast';
 import { LoadingOverlay } from './LoadingOverlay/LoadingOverlay';
 import { useEffect, useRef, useMemo, useState } from 'react';
@@ -66,8 +67,8 @@ function AppContent({ themeOverride, setThemeOverride }: AppContentProps) {
     }
 
     // Silent background pre-fetch (Warm up the cache)
-    fetch('/api/services').catch(() => {});
-    fetch('/api/categories').catch(() => {});
+    fetch(`${NODE_API_URL}/services`).catch(() => {});
+    fetch(`${NODE_API_URL}/categories`).catch(() => {});
   }, []);
 
   // Combined Back Button logic for Modals and Tabs
