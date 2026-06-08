@@ -4,10 +4,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment
+# Environment (keep .env.production tracked — it has only public VITE_ vars)
 .env
 .env.local
-.env.production
 .env.*.local
 
 # OS
