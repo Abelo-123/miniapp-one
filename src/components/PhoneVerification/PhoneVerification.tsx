@@ -30,7 +30,7 @@ export function PhoneVerification() {
         setIsLoading(true);
         try {
             const initData = await getInitDataString();
-            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || 'https://paxyo.com/api'}/otp/send`, {
+            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || 'https://paxyoback.infinityfreeapp.com'}/otp/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ initData, phone_number: phoneNumber })
@@ -58,7 +58,7 @@ export function PhoneVerification() {
         setIsLoading(true);
         try {
             const initData = await getInitDataString();
-            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || 'https://paxyo.com/api'}/otp/verify`, {
+            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || 'https://paxyoback.infinityfreeapp.com'}/otp/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ initData, phone_number: phoneNumber, otp })

@@ -60,7 +60,7 @@ export function HistoryPage() {
 
         try {
             const initData = window.Telegram?.WebApp?.initData || '';
-            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || 'https://paxyo.com/api'}/cancel-order`, {
+            const res = await fetch(`${import.meta.env.VITE_NODE_API_URL || 'https://paxyoback.infinityfreeapp.com'}/cancel-order`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: orderId, initData }),
