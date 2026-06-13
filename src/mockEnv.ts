@@ -75,5 +75,5 @@ async function setupMockEnv() {
 }
 
 if (import.meta.env.DEV) {
-  setupMockEnv();
+  await setupMockEnv();
 }

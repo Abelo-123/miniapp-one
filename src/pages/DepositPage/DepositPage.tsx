@@ -11,7 +11,7 @@ import {
     hapticImpact,
     hapticNotification,
     getInitDataString,
-    isTelegramEnv
+    openLink
 } from '../../helpers/telegram';
 import { Button } from '@telegram-apps/telegram-ui';
 import './DepositPage.css';
@@ -195,35 +195,17 @@ export function DepositPage() {
         setStep('success');
     }, [setBalance, showToast, refreshDeposits, user]);
 
-    // ─── Start Redirect Payment ──────────────────────────────
+    // ─── Start Redirect Payment (Modal/Overlay Link) ─────────
     const startRedirectPayment = useCallback(async (depositAmount: number) => {
         hapticImpact('medium');
-        showToast('info', 'Opening secure checkout redirect...');
-
-        const isTelegram = isTelegramEnv() || !!(window as any).Telegram?.WebApp?.platform || /Telegram/i.test(navigator.userAgent);
-        let popupWindow: Window | null = null;
-
-        // Open blank popup synchronously to bypass browser popup blockers (only outside Telegram)
-        if (!isTelegram) {
-            const width = 500;
-            const height = 700;
-            const left = (window.screen.width / 2) - (width / 2);
-            const top = (window.screen.height / 2) - (height / 2);
-            popupWindow = window.open(
-                'about:blank',
-                'ChapaCheckoutPopup',
-                `width=${width},height=${height},top=${top},left=${left},status=no,toolbar=no,menubar=no,location=no`
-            );
-        }
+        showToast('info', 'Opening secure checkout...');
 
         try {
             const initData = await getInitDataString();
             const userId = user?.id || 'unauth_local_user';
 
-            // Correctly resolve close-popup.html path relative to current URL (supports GitHub Pages subfolders!)
+            // Correctly resolve close-popup.html path relative to current URL
             const returnUrl = new URL('./close-popup.html', window.location.href).href;
-
-            console.log('[deposit] return_url generated:', returnUrl);
 
             const backendRes = await fetch(`${NODE_API_URL}/deposit`, {
                 method: 'POST',
@@ -240,42 +222,25 @@ export function DepositPage() {
             if (backendData.success && backendData.checkout_url) {
                 setCheckoutUrl(backendData.checkout_url);
 
-                if (isTelegram) {
-                    // 1. Disable closing confirmation & hide the native WebApp back button before navigating.
-                    // This prevents the Telegram client from showing the stuck confirmation prompt
-                    // and allows the native Close button to exit instantly, while Android back gesture
-                    // will navigate back in history to our React app.
-                    try {
-                        const twa = (window as any).Telegram?.WebApp;
-                        if (twa) {
-                            twa.disableClosingConfirmation?.();
-                            twa.BackButton?.hide?.();
-                        }
-                    } catch (e) {
-                        console.error('Error disabling Telegram WebApp confirmation/back-button:', e);
-                    }
+                // Open link natively inside Telegram's closable in-app browser modal sheet
+                openLink(backendData.checkout_url);
 
-                    // 2. Navigate the current Mini App WebView directly.
-                    // This forces the checkout to open directly within the Telegram WebApp window itself,
-                    // without escaping to Chrome or Safari.
-                    window.location.href = backendData.checkout_url;
-                } else if (popupWindow) {
-                    popupWindow.location.href = backendData.checkout_url;
-                }
+                showToast('success', 'Secure checkout opened! Checking status...');
 
-                showToast('success', 'Redirect opened! Checking status...');
-
-                // Start verifying the generated tx_ref
                 if (backendData.tx_ref) {
                     verifyDeposit(backendData.tx_ref);
                 }
             } else {
-                if (popupWindow) popupWindow.close();
-                showToast('error', backendData.error || 'Failed to initialize redirect payment');
+                let errorMsg = 'Failed to initialize redirect payment';
+                if (backendData.error) {
+                    errorMsg = typeof backendData.error === 'string' 
+                        ? backendData.error 
+                        : JSON.stringify(backendData.error);
+                }
+                showToast('error', errorMsg);
             }
         } catch (err) {
-            if (popupWindow) popupWindow.close();
-            console.error('[deposit] Error starting redirect payment:', err);
+            console.error('[deposit] Error starting payment:', err);
             showToast('error', 'Network error. Please try again.');
         }
     }, [user, showToast, verifyDeposit]);
@@ -464,8 +429,8 @@ export function DepositPage() {
                         Awaiting Payment Verification
                     </div>
                     <div className="deposit-processing__subtext" style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)', lineHeight: '1.5', marginBottom: '20px' }}>
-                        Please complete your payment in the checkout window. <br />
-                        If you paid using M-Pesa or Telebirr, enter your <b>PIN</b> when prompted.
+                        Please complete your payment in the mobile wallet prompt. <br />
+                        Enter your <b>PIN</b> when prompted to authorize the transaction.
                     </div>
 
                     <div style={{ width: '100%', height: '8px', background: 'var(--tg-theme-secondary-bg-color)', borderRadius: '4px', overflow: 'hidden', marginBottom: '12px' }}>
@@ -486,15 +451,15 @@ export function DepositPage() {
                         </span>
                     </div>
 
-                    <a
-                        href={checkoutUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="deposit-processing__subtext"
-                        style={{ display: 'block', fontSize: '12px', color: 'var(--tg-theme-button-color)', textDecoration: 'underline', marginBottom: '20px' }}
-                    >
-                        Didn't open? Click here to pay
-                    </a>
+                    {checkoutUrl && (
+                        <button
+                            onClick={() => openLink(checkoutUrl)}
+                            className="deposit-processing__subtext"
+                            style={{ display: 'block', margin: '0 auto 20px', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '12px', color: 'var(--tg-theme-button-color)', textDecoration: 'underline' }}
+                        >
+                            Didn't open? Click here to pay
+                        </button>
+                    )}
 
                     <div className="deposit-processing__actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <Button

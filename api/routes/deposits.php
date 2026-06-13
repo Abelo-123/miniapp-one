@@ -16,8 +16,10 @@ function chapaInitializePayment($data) {
     $firstName = !empty($data['first_name']) ? $data['first_name'] : 'User';
     $lastName = !empty($data['last_name']) ? $data['last_name'] : '';
     
-    $callbackUrl = (strpos($siteUrl, 'localhost') !== false) ? 'https://webhook.site/dummy-paxyo-callback' : "{$siteUrl}/api/chapa-callback";
-    $returnUrl = !empty($data['return_url']) ? $data['return_url'] : "{$siteUrl}/api/chapa-callback";
+    // Ensure siteUrl has protocol
+    $baseUrl = (strpos($siteUrl, 'http') === 0) ? $siteUrl : "https://{$siteUrl}";
+    $callbackUrl = (strpos($baseUrl, 'localhost') !== false) ? 'https://webhook.site/dummy-paxyo-callback' : "{$baseUrl}/api/chapa-callback";
+    $returnUrl = !empty($data['return_url']) ? $data['return_url'] : "{$baseUrl}/api/chapa-callback";
     
     $payload = [
         'amount'        => $data['amount'],
@@ -185,8 +187,8 @@ if ($route === '/deposit') {
             }
             
             // Create pending deposit
-            $stmt = $pdo->prepare("INSERT INTO deposits (user_id, amount, tx_ref, status) VALUES (:user_id, :amount, :tx_ref, 'pending')");
-            $stmt->execute(['user_id' => $tgId, 'amount' => $amount, 'tx_ref' => $txRef]);
+            $stmt = $pdo->prepare("INSERT INTO deposits (user_id, amount, tx_ref, status, reference_id) VALUES (:user_id, :amount, :tx_ref, 'pending', :reference_id)");
+            $stmt->execute(['user_id' => $tgId, 'amount' => $amount, 'tx_ref' => $txRef, 'reference_id' => $txRef]);
             $depositId = $pdo->lastInsertId();
             
             echo json_encode([
@@ -200,8 +202,8 @@ if ($route === '/deposit') {
         // FLOW B: REDIRECT MODE (server generates reference + calls Chapa API)
         $generatedTxRef = "DEP-{$tgId}-" . time() . "-" . bin2hex(random_bytes(4));
         
-        $stmt = $pdo->prepare("INSERT INTO deposits (user_id, amount, tx_ref, status) VALUES (:user_id, :amount, :tx_ref, 'pending')");
-        $stmt->execute(['user_id' => $tgId, 'amount' => $amount, 'tx_ref' => $generatedTxRef]);
+        $stmt = $pdo->prepare("INSERT INTO deposits (user_id, amount, tx_ref, status, reference_id) VALUES (:user_id, :amount, :tx_ref, 'pending', :reference_id)");
+        $stmt->execute(['user_id' => $tgId, 'amount' => $amount, 'tx_ref' => $generatedTxRef, 'reference_id' => $generatedTxRef]);
         
         // Initialize payment with Chapa
         $chapaResult = chapaInitializePayment([
@@ -287,8 +289,8 @@ if ($route === '/complete-deposit') {
             
             if (!$deposit) {
                 if ($amount > 0) {
-                    $stmt = $pdo->prepare("INSERT INTO deposits (user_id, amount, tx_ref, status) VALUES (:user_id, :amount, :tx_ref, 'pending')");
-                    $stmt->execute(['user_id' => $tgId, 'amount' => $amount, 'tx_ref' => $txRef]);
+                    $stmt = $pdo->prepare("INSERT INTO deposits (user_id, amount, tx_ref, status, reference_id) VALUES (:user_id, :amount, :tx_ref, 'pending', :reference_id)");
+                    $stmt->execute(['user_id' => $tgId, 'amount' => $amount, 'tx_ref' => $txRef, 'reference_id' => $txRef]);
                     
                     $stmt = $pdo->prepare('SELECT * FROM deposits WHERE tx_ref = :tx_ref FOR UPDATE');
                     $stmt->execute(['tx_ref' => $txRef]);

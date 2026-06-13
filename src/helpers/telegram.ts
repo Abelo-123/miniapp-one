@@ -250,7 +250,13 @@ export function getInitDataRaw(): string | undefined {
         const state = initData.state();
         if (state) {
             const params = new URLSearchParams();
-            if (state.auth_date) params.append('auth_date', state.auth_date.toString());
+            if (state.auth_date) {
+                const dateVal = state.auth_date as any;
+                const authDateVal = dateVal instanceof Date 
+                    ? Math.floor(dateVal.getTime() / 1000).toString() 
+                    : String(dateVal);
+                params.append('auth_date', authDateVal);
+            }
             if (state.hash) params.append('hash', state.hash);
             if (state.signature) params.append('signature', state.signature);
             if (state.user) params.append('user', JSON.stringify(state.user));
@@ -273,7 +279,13 @@ export async function getInitDataString(): Promise<string> {
         const state = initData.state();
         if (state) {
             const params = new URLSearchParams();
-            if (state.auth_date) params.append('auth_date', state.auth_date.toString());
+            if (state.auth_date) {
+                const dateVal = state.auth_date as any;
+                const authDateVal = dateVal instanceof Date 
+                    ? Math.floor(dateVal.getTime() / 1000).toString() 
+                    : String(dateVal);
+                params.append('auth_date', authDateVal);
+            }
             if (state.hash) params.append('hash', state.hash);
             if (state.signature) params.append('signature', state.signature);
             if (state.user) params.append('user', JSON.stringify(state.user));

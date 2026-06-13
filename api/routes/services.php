@@ -110,8 +110,16 @@ if ($route === '/categories') {
         }
         
         if (!$rawServices) {
-            $rawServices = fetchUpstreamServices();
-            setCachedData('upstream_services', $rawServices);
+            try {
+                $rawServices = fetchUpstreamServices();
+                setCachedData('upstream_services', $rawServices);
+            } catch (Exception $e) {
+                // cURL blocked/failed - fall back to stale cache with 1 year TTL
+                $rawServices = getCachedData('upstream_services', 86400 * 365);
+                if (!$rawServices) {
+                    throw $e;
+                }
+            }
         }
         
         // Extract Categories from enabled services
@@ -172,8 +180,8 @@ if ($route === '/categories') {
         ]);
         
     } catch (Exception $e) {
-        // Fallback to stale cache if available
-        $staleCache = getCachedData('upstream_services', 86400 * 7); // Serve stale up to 7 days
+        // Fallback to stale cache if available (up to 1 year)
+        $staleCache = getCachedData('upstream_services', 86400 * 365);
         if ($staleCache) {
             $categoriesSet = [];
             foreach ($staleCache as $svc) {
@@ -211,7 +219,7 @@ if ($route === '/services') {
         // 1. Get database configs
         $rateMultiplier = 55.0;
         try {
-            $stmt = $pdo->query('SELECT setting_value FROM settings WHERE setting_key = "rate_multiplier"');
+            $stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'rate_multiplier'");
             $row = $stmt->fetch();
             if ($row) $rateMultiplier = (float)$row['setting_value'] ?: 55.0;
         } catch (Exception $e) {}
@@ -246,8 +254,16 @@ if ($route === '/services') {
             $rawServices = getCachedData('upstream_services', 3600);
         }
         if (!$rawServices) {
-            $rawServices = fetchUpstreamServices();
-            setCachedData('upstream_services', $rawServices);
+            try {
+                $rawServices = fetchUpstreamServices();
+                setCachedData('upstream_services', $rawServices);
+            } catch (Exception $ex) {
+                // cURL blocked/failed - fall back to stale cache with 1 year TTL
+                $rawServices = getCachedData('upstream_services', 86400 * 365);
+                if (!$rawServices) {
+                    throw $ex;
+                }
+            }
         }
 
         // 2. Centralized formatter
@@ -293,7 +309,7 @@ if ($route === '/services') {
         if ($reqCategory === 'Top Services') {
             $topServicesIdsStr = '';
             try {
-                $stmt = $pdo->query('SELECT setting_value FROM settings WHERE setting_key = "top_services_ids"');
+                $stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'top_services_ids'");
                 $row = $stmt->fetch();
                 if ($row) $topServicesIdsStr = $row['setting_value'] ?: '';
             } catch (Exception $e) {}
@@ -349,7 +365,7 @@ if ($route === '/services/top') {
         // Get multiplier
         $rateMultiplier = 55.0;
         try {
-            $stmt = $pdo->query('SELECT setting_value FROM settings WHERE setting_key = "rate_multiplier"');
+            $stmt = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'rate_multiplier'");
             $row = $stmt->fetch();
             if ($row) $rateMultiplier = (float)$row['setting_value'] ?: 55.0;
         } catch (Exception $e) {}

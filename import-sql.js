@@ -3,23 +3,34 @@
  * Usage: node import-sql.js < exported-sql-file.sql
  */
 import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
 import mysql from 'mysql2/promise';
+
+// Load .env from api directory
+dotenv.config({ path: path.join(process.cwd(), 'api/.env') });
 
 const SQL_FILE = process.argv[2];
 
 if (!SQL_FILE) {
     console.log('Usage: node import-sql.js <sql-file.sql>');
-    console.log('Example: node import-sql.js backup.sql');
+    console.log('Example: node import-sql.js "paxyocom_paxyov3 (4).sql"');
     process.exit(1);
 }
 
-// Render MySQL credentials - UPDATE THESE
+// MySQL credentials from api/.env
 const DB_CONFIG = {
-    host: '10.2.65.146', // Get from Render Dashboard → Your MySQL → Internal Host
-    user: 'your-render-username',  // Get from Render
-    password: 'your-render-password', // Get from Render  
-    database: 'your-render-dbname',   // Get from Render
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+    multipleStatements: true,
+    ssl: {
+        rejectUnauthorized: false // Required for secure connections to cloud providers like Aiven
+    }
 };
+
 
 async function importSQL() {
     console.log('📂 Reading SQL file:', SQL_FILE);
@@ -41,32 +52,16 @@ async function importSQL() {
         connection = await mysql.createConnection(DB_CONFIG);
         console.log('✅ Connected!');
         
-        // Split into individual statements
-        const statements = sql.split(/;\s*$/m).filter(s => s.trim());
+        // Enable multiple statements on this specific connection if not already enabled
+        console.log('📝 Executing SQL dump...');
         
-        console.log(`📝 Executing ${statements.length} statements...`);
-        
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const statement of statements) {
-            const trimmed = statement.trim();
-            if (!trimmed || trimmed.startsWith('--')) continue;
-            
-            try {
-                await connection.query(trimmed);
-                successCount++;
-            } catch (e) {
-                errorCount++;
-                if (errorCount <= 5) {
-                    console.error('❌ Error:', e.message.substring(0, 100));
-                }
-            }
+        try {
+            // Aiven enforces primary keys. We temporarily disable this requirement for the import session.
+            await connection.query('SET SESSION sql_require_primary_key = 0;\n' + sql);
+            console.log('✅ All statements executed successfully!');
+        } catch (e) {
+            console.error('❌ Error executing SQL:', e.message);
         }
-        
-        console.log('✅ Completed!');
-        console.log(`   Success: ${successCount}`);
-        console.log(`   Errors: ${errorCount}`);
         
     } catch (e) {
         console.error('❌ Connection failed:', e.message);
